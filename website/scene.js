@@ -164,6 +164,8 @@ glowMesh.scale.setScalar(CONFIG.planetRadius * 2.3); glowMesh.layers.set(LAYERS.
 /* ---------- shared time uniforms */
 const planetTime = { value: 0 }, cloudTime = { value: 0 }, starTime = { value: 0 }, markerTime = { value: 0 };
 const uRes = { value: new THREE.Vector2(window.innerWidth, window.innerHeight) };
+const uResB = { value: new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5) };   // bloom pass renders at half size
+const uResT = { value: new THREE.Vector2(window.innerWidth * 0.75, window.innerHeight * 0.75) }; // star pass at three quarters
 
 /* ---------- motes */
 {
@@ -171,7 +173,7 @@ const uRes = { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
   for (let i = 0; i < n; i++) { pos[i * 3] = Math.random() * 2 - 1; pos[i * 3 + 1] = Math.random() * 2 - 1; pos[i * 3 + 2] = Math.random() * 2 - 1; sz[i] = CONFIG.atmoSize * (0.4 + Math.random()); seed[i] = Math.random() * 100; }
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("size", new THREE.BufferAttribute(sz, 1)); g.setAttribute("seed", new THREE.BufferAttribute(seed, 1));
   const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uRes, uColor: { value: hexToVec3(CONFIG.atmoColor) } },
+    uniforms: { uTime: { value: 0 }, uRes: uResB, uColor: { value: hexToVec3(CONFIG.atmoColor) } },
     vertexShader: `attribute float size; attribute float seed; uniform float uTime; uniform vec2 uRes; varying float vA;
       vec3 warp(vec3 p, float t){ float c=0.9,a=1.9,b=0.02,s=0.05; p*=2.;
         p.x+=c*sin(s*t+a*p.y)+t*b; p.y+=c*cos(s*t+a*p.x); p.y+=c*sin(s*t+a*p.z)+t*b;
@@ -193,7 +195,7 @@ const uRes = { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
     pos[i * 3] = 90 * r * Math.cos(th); pos[i * 3 + 1] = 90 * r * Math.sin(th); pos[i * 3 + 2] = 90 * u; seed[i] = Math.random() * 100; bright[i] = 0.35 + Math.random() * 0.65; }
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("seed", new THREE.BufferAttribute(seed, 1)); g.setAttribute("bright", new THREE.BufferAttribute(bright, 1));
   const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: starTime, uSize: { value: CONFIG.starSize }, uFlicker: { value: CONFIG.starFlicker }, uColor: { value: hexToVec3(CONFIG.starColor) }, uRes },
+    uniforms: { uTime: starTime, uSize: { value: CONFIG.starSize }, uFlicker: { value: CONFIG.starFlicker }, uColor: { value: hexToVec3(CONFIG.starColor) }, uRes: uResT },
     vertexShader: `attribute float seed; attribute float bright; uniform float uTime; uniform float uSize; uniform float uFlicker; uniform vec2 uRes; varying float vTw;
       void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); float tw = 0.6 + 0.4 * sin(uTime * uFlicker + seed); vTw = bright * tw;
         gl_PointSize = max(uSize * uRes.y / 900.0 * (90.0 / max(-mv.z, 1.0)), 1.0); gl_Position = projectionMatrix * mv; }`,
@@ -351,7 +353,7 @@ function buildMarkers(mesh) {
   }
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(out, 3)); g.setAttribute("seed", new THREE.Float32BufferAttribute(seeds, 1));
   const m = new THREE.ShaderMaterial({ transparent: true, depthTest: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: markerTime, uColor: { value: hexToVec3(CONFIG.markerColor) }, uSize: { value: CONFIG.markerSize }, uSpeed: { value: CONFIG.markerSpeed }, uRes },
+    uniforms: { uTime: markerTime, uColor: { value: hexToVec3(CONFIG.markerColor) }, uSize: { value: CONFIG.markerSize }, uSpeed: { value: CONFIG.markerSpeed }, uRes: uResB },
     vertexShader: `attribute float seed; uniform float uSize; uniform vec2 uRes; varying float vSeed; varying float vFade;
       void main(){ vSeed = seed; vec4 mv = modelViewMatrix * vec4(position, 1.0); vec3 vn = normalize(normalMatrix * normalize(position)); vec3 vd = normalize(-mv.xyz);
         vFade = smoothstep(0.15, 0.5, dot(vn, vd)); gl_PointSize = max(uSize * uRes.y / 900.0 * (7.0 / max(-mv.z, 1.0)), 2.0); gl_Position = projectionMatrix * mv; }`,
@@ -374,7 +376,7 @@ function resize() {
   finalComposer.setPixelRatio(pr); finalComposer.setSize(w, h);
   bloomComposer.setPixelRatio(pr); bloomComposer.setSize(Math.round(w * 0.5), Math.round(h * 0.5));    // bloom is a blur: half res is invisible
   torusComposer.setPixelRatio(pr); torusComposer.setSize(Math.round(w * 0.75), Math.round(h * 0.75));
-  uRes.value.set(w, h); STOPS_Y[0].v = heroY();
+  uRes.value.set(w, h); uResB.value.set(Math.round(w * 0.5), Math.round(h * 0.5)); uResT.value.set(Math.round(w * 0.75), Math.round(h * 0.75)); STOPS_Y[0].v = heroY();
 }
 window.addEventListener("resize", resize); resize();
 
