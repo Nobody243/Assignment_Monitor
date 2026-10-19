@@ -61,11 +61,6 @@
     }
     if (!hasGsap || reduce) return;
     gsap.to(".hero-copy", { yPercent: -14, opacity: 0, ease: "none", scrollTrigger: { trigger: ".hero", start: "12% top", end: "70% top", scrub: 0.6 } });
-    const win = $(".reveal-win");
-    if (win) {
-      gsap.fromTo(win, { scale: 0.88, yPercent: 10, opacity: 0.6 }, { scale: 1, yPercent: 0, opacity: 1, ease: "none",
-        scrollTrigger: { trigger: ".reveal", start: "top 95%", end: "top 35%", scrub: 0.6 } });
-    }
   }
 
   /* ------------------------------------------------------------ ticker reacts to scroll velocity */
@@ -98,13 +93,9 @@
       if (hint) hint.classList.toggle("is-done", idx === steps.length - 1);
     };
     setActive(0);
-    const space = $("#space");
-    if (space && hasGsap && !reduce) {   // the planet belongs to the hero and the reveal; fade it out before the tour
-      gsap.to(space, { opacity: 0, ease: "none", scrollTrigger: { trigger: section, start: "top 95%", end: "top 25%", scrub: true } });
-    }
     const desktop = window.matchMedia("(min-width: 901px)").matches;
     if (!hasGsap || reduce || !desktop) { if (!desktop) steps.forEach((s) => s.classList.add("is-active")); return; }
-    const perStep = () => Math.round(window.innerHeight * 0.85);
+    const perStep = () => Math.round(window.innerHeight * 0.42);   // short scroll per step: the carousel should feel quick
     const st = ScrollTrigger.create({
       trigger: section, start: "top top", end: () => "+=" + perStep() * steps.length, pin: ".story-pin", pinSpacing: true,
       anticipatePin: 1, scrub: true,

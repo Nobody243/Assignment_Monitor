@@ -64,16 +64,6 @@
       <div class="hero-fade" aria-hidden="true"></div>
     </section>
 
-    <!-- ================================================================ app reveal -->
-    <section class="reveal" aria-label="The app">
-      <div class="wrap">
-        <div class="win reveal-win">
-          <div class="win-bar"><i></i><i></i><i></i><b>Assignment Monitor</b></div>
-          <img src="assets/shot-dashboard-dark.png" alt="Assignment Monitor dashboard: next deadline, counters for pending, due today, due this week, extended, overdue and submitted, plus the needs-attention list" width="1280" height="840" fetchpriority="high">
-        </div>
-      </div>
-    </section>
-
     <!-- ================================================================ ticker -->
     <div class="ticker" aria-hidden="true">
       <div class="ticker-track">
@@ -241,25 +231,46 @@
     </section>
   </main>
 
-  <footer>
+  <footer class="footer">
+    <div class="footer-mark" aria-hidden="true">Assignment Monitor</div>
     <div class="wrap">
-      <div>
-        <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="28" height="28"><span>Assignment Monitor<small>for Bahria University LMS</small></span></a>
-        <p style="margin-top:14px;max-width:38ch">A small, honest tool that reads your LMS so you don't have to. Made by Nobody243.</p>
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="34" height="34"><span>Assignment Monitor<small>for Bahria University LMS</small></span></a>
+          <p>A small, honest tool that reads your LMS so you don't have to. Built by a Bahria student, for Bahria students. Free forever, open source, and it never phones home.</p>
+          <div class="footer-cta">
+            <a class="btn btn-accent" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">Download <small data-version>v1.0.0</small></a>
+            <a class="btn btn-ghost" href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener">Star on GitHub</a>
+          </div>
+        </div>
+        <nav class="footer-cols" aria-label="Footer">
+          <div><h4>Get it</h4><ul>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">Installer for Windows</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-portable.zip" data-download="zip">Portable zip</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/releases" target="_blank" rel="noopener">All releases</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/README.md#run-from-source" target="_blank" rel="noopener">Run from source</a></li>
+          </ul></div>
+          <div><h4>Explore</h4><ul>
+            <li><a href="#story">Tour</a></li><li><a href="#features">Features</a></li><li><a href="#how">Setup</a></li><li><a href="#screens">Screens</a></li><li><a href="#faq">FAQ</a></li>
+          </ul></div>
+          <div><h4>Project</h4><ul>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener">Source code</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/issues" target="_blank" rel="noopener">Report a problem</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/CODE_SIGNING_POLICY.md" target="_blank" rel="noopener">Code signing policy</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/THIRD_PARTY_LICENSES.md" target="_blank" rel="noopener">Third-party licenses</a></li>
+          </ul></div>
+          <div><h4>Legal</h4><ul>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy &amp; terms</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a></li>
+            <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+          </ul></div>
+        </nav>
       </div>
-      <div><h4>Project</h4><ul>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener">GitHub</a></li>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/releases" target="_blank" rel="noopener">All releases</a></li>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/issues" target="_blank" rel="noopener">Report a problem</a></li>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/README.md#run-from-source" target="_blank" rel="noopener">Run from source</a></li>
-      </ul></div>
-      <div><h4>Legal</h4><ul>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy &amp; terms</a></li>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a></li>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/CODE_SIGNING_POLICY.md" target="_blank" rel="noopener">Code signing policy</a></li>
-        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
-      </ul></div>
-      <p class="disclaimer">© <span id="year"></span> Nobody243. Assignment Monitor is an independent, open-source project and is not affiliated with, endorsed by, or supported by Bahria University. Use it with your own account only. Deadlines shown come from the portal and can be out of date; always confirm on the LMS.</p>
+      <div class="footer-bottom">
+        <p>© <span id="year"></span> Nobody243 · MIT · Made in Pakistan</p>
+        <p class="footer-note">Independent, open-source project. Not affiliated with, endorsed by, or supported by Bahria University. Use it with your own account only; deadlines come from the portal and can be out of date, so always confirm on the LMS.</p>
+        <a class="footer-top-link mono" href="#top">Back to top ↑</a>
+      </div>
     </div>
   </footer>
 
