@@ -44,6 +44,10 @@ def main():
         "--name", NAME,
         "--icon", str(ROOT / "assets" / "icon.ico"),
         "--add-data", f"{ROOT / 'assets'}{sep}assets",
+        "--add-data", f"{ROOT / 'PRIVACY.md'}{sep}docs",
+        "--add-data", f"{ROOT / 'SECURITY.md'}{sep}docs",
+        "--add-data", f"{ROOT / 'THIRD_PARTY_LICENSES.md'}{sep}docs",
+        "--add-data", f"{ROOT / 'LICENSE'}{sep}docs",
         "--collect-all", "customtkinter",
         "--collect-all", "playwright",          # bundles the Node driver: no Python or Node needed
         "--hidden-import", "winotify",

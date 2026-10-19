@@ -1,26 +1,26 @@
 # Assignment Monitor
 
-**for Bahria University LMS**
+**for Bahria University LMS** · unofficial, open source, Windows
 
-A Windows app that keeps an eye on your LMS assignments so you don't have to. Install it, sign in once, and it quietly does the rest.
+A desktop app that keeps an eye on your LMS assignments so you don't have to. Install it, sign in once, and it quietly does the rest.
 
-- Dashboard of what's pending, due today, due this week, extended, overdue and submitted
-- Notices when a teacher **extends a deadline**, even though the portal squashes the old and new dates together
-- **Daily check at 7 PM** and a catch-up check when you sign in to Windows
-- **Hourly voice reminder** on the day an unsubmitted assignment is due
-- Lives in the **system tray**, can start with Windows, dark and light themes
+- Dashboard: next deadline, what's pending, due today, due this week, extended, overdue, submitted
+- Catches **extended deadlines**, which the portal hides by merging the old and new dates into one string
+- **Checks automatically** every day at 7 PM and when you sign in to Windows
+- **Reminds you aloud every hour** on the day an unsubmitted assignment is due
+- Lives in the **system tray**, can start with Windows, light and dark themes, keyboard shortcuts
 
 ## Install
 
 1. Download **`AssignmentMonitor-Setup.exe`** from the [latest release](https://github.com/Nobody243/Assignment_Monitor/releases/latest).
 2. Run it. It installs for your user account only (no administrator password) and adds a Start Menu and Desktop icon.
-3. Open Assignment Monitor, enter your enrollment number, CMS password and campus, leave "Run automatically" ticked, and click **Connect & start monitoring**.
+3. Open Assignment Monitor, enter your enrollment number, CMS password and campus, leave "Check automatically" ticked, and click **Connect and start monitoring**.
 
 That's it. The app verifies the sign-in, reads your assignments and registers the background checks.
 
 Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs from any folder.
 
-> Windows SmartScreen may warn the first time because the app isn't code-signed. Click **More info**, then **Run anyway**.
+> Windows SmartScreen may warn the first time because the app isn't code-signed. Click **More info**, then **Run anyway**. You can always build it yourself from source (below).
 
 **Requirements:** Windows 10 or 11. Google Chrome is used if installed; otherwise a browser engine is downloaded once automatically.
 
@@ -28,14 +28,16 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 
 | Screen | What it does |
 | --- | --- |
-| **Dashboard** | "Up next" card, counters, needs-attention list sorted by deadline, per-course progress. Click any counter or course to filter. |
+| **Dashboard** | Next deadline, counters, needs-attention list sorted by deadline, per-course progress. Click a counter or course to filter. |
 | **Assignments** | Full list with filters, course picker and search. Shows extension history and marks. |
-| **Settings** | Account and campus, theme, tray and start-with-Windows options, voice and notification preferences, background automation, switch account. |
+| **Settings** | Account and campus, theme, tray and start-with-Windows options, notification preferences, automatic checks, data folder, privacy and licenses. |
 | **Activity** | Log of every sync and reminder, including the scheduled background runs. |
 
-**Tray:** closing the window keeps the app in the system tray (you can turn this off in Settings). Right-click the tray icon to open, sync now, or quit. "Start with Windows" opens it minimized to the tray at sign-in.
+Shortcuts: **F5** sync · **Ctrl+1…4** switch pages · **Ctrl+F** search · **Esc** clear search.
 
-**Background automation** registers three scheduled tasks for your user account:
+**Tray:** closing the window keeps the app in the system tray (switchable in Settings). Right-click the tray icon to open, sync now, or quit. "Start with Windows" opens it minimized to the tray at sign-in. Launching the app while it is already running just brings the window back.
+
+**Automatic checks** are three Windows scheduled tasks for your user account:
 
 | Task | When | What |
 | --- | --- | --- |
@@ -43,14 +45,19 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | `AssignmentMonitor_LogonCheck` | 2 min after sign-in | Catch-up sync if the PC was off at 19:00 |
 | `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today |
 
-These run even when the app window is closed. Turn them off any time from Settings. Uninstalling removes them too.
+They run even when the app is closed. Turn them off any time from Settings; uninstalling removes them too.
 
 **Updating:** Settings → "Check for updates" opens the Releases page. Install the new Setup over the old one; your sign-in and data are kept.
 
-## Privacy
+## Privacy and security
 
 - Your password is encrypted with Windows Data Protection (DPAPI) for your user account and stored in `%LOCALAPPDATA%\Assignment Monitor\settings.env`. It is only ever sent to `cms.bahria.edu.pk` when signing in.
-- Assignment data, logs and the browser profile stay in that same local folder. Nothing is sent anywhere else.
+- Assignment data, logs and the browser profile stay in that same local folder. There is no server, no account, no telemetry.
+- The app only reads your own assignments page; it never submits or changes anything on the portal.
+
+Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md) · [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
+
+Assignment Monitor is an independent student project and is not affiliated with, endorsed by, or supported by Bahria University.
 
 ## Run from source
 
@@ -70,6 +77,7 @@ python app.py --remind               hourly same-day reminder
 python app.py --status               print saved assignments
 python app.py --test-alert           test notification and voice
 python app.py --tray                 start minimized to the tray
+python app.py --quit                 ask the running instance to quit
 python app.py --setup                open the sign-in screen (switch account)
 python app.py --enable-automation    register the background tasks
 python app.py --disable-automation   remove them
@@ -77,14 +85,16 @@ python app.py --disable-automation   remove them
 
 When running from source, data lives in the project folder (`.env`, `data/`, `chrome_profile/`), all git-ignored.
 
-## Build
+## Tests and build
 
 ```bash
-pip install -r requirements.txt pyinstaller
-python build.py
+pip install -r requirements-dev.txt
+ruff check .          # lint
+pytest                # unit tests: deadline parsing, change tracking, settings encryption, scraper parsing
+python build.py       # dist/AssignmentMonitor-portable.zip and, with Inno Setup 6, dist/AssignmentMonitor-Setup.exe
 ```
 
-Produces `dist/AssignmentMonitor-portable.zip` and, if [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed, `dist/AssignmentMonitor-Setup.exe`. Pushing a tag like `v2.1.0` runs the same build on GitHub Actions and attaches both files to a release.
+GitHub Actions runs lint, tests and a dependency audit on every push. Pushing a tag like `v2.1.0` also builds the installer and zip and attaches them to a release.
 
 ## How it works
 
@@ -108,12 +118,13 @@ secure_store.py DPAPI password encryption
 config.py       paths, settings, logging
 build.py        PyInstaller + Inno Setup build
 installer.iss   installer definition
+tests/          pytest suite
 ```
 
 ## Troubleshooting
 
 - **"Sign-in failed"** – check enrollment, password and campus in Settings. The portal's own error text is shown.
-- **Nothing happens at 7 PM** – the PC must be on and you signed in. Settings → Background automation should say "Enabled".
+- **Nothing happens at 7 PM** – the PC must be on and you signed in. Settings → Automatic checks should say "Enabled".
 - **Details** – Activity tab, or the log file in the data folder.
 
 ## License

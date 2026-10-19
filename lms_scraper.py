@@ -157,7 +157,7 @@ def run_lms_check(headless: bool = True, interactive: bool = False) -> List[dict
                 try:
                     page.wait_for_url(re.compile(r"lms\.bahria\.edu\.pk", re.IGNORECASE), timeout=30000)
                 except Exception:
-                    raise RuntimeError(f"LMS single sign-on failed; the portal landed on {page.url}")
+                    raise RuntimeError(f"LMS single sign-on failed; the portal landed on {page.url}") from None
                 time.sleep(1)
 
                 try:

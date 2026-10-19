@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+exclude = ["build", "dist", "chrome_profile"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E402", "E731", "B008"]

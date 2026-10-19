@@ -22,6 +22,7 @@ FROZEN = bool(getattr(sys, "frozen", False))
 SOURCE_DIR = Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SOURCE_DIR))
 ASSETS_DIR = RESOURCE_DIR / "assets"
+DOCS_DIR = RESOURCE_DIR / "docs" if FROZEN else SOURCE_DIR   # PRIVACY.md etc. travel with the app
 
 if FROZEN:
     _local = Path(os.environ.get("LOCALAPPDATA") or Path.home())
@@ -88,6 +89,7 @@ DEFAULTS = {
     "HEADLESS": True,
     "THEME": "dark",
     "CLOSE_TO_TRAY": True,
+    "WINDOW_GEOMETRY": "",
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY")
 
@@ -174,6 +176,8 @@ def save_env(config: dict) -> None:
     lines.append(f"INSTITUTE_ID={merged['INSTITUTE_ID']}")
     lines.append(f"NOTIFY_DAYS_AHEAD={int(merged['NOTIFY_DAYS_AHEAD'])}")
     lines.append(f"THEME={merged['THEME']}")
+    if merged.get("WINDOW_GEOMETRY"):
+        lines.append(f"WINDOW_GEOMETRY={merged['WINDOW_GEOMETRY']}")
     for key in _BOOL_KEYS:
         lines.append(f"{key}={'True' if merged[key] else 'False'}")
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)

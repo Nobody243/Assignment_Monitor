@@ -56,9 +56,26 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 Filename: "{app}\{#MyAppExe}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
+Filename: "{app}\{#MyAppExe}"; Parameters: "--quit"; Flags: runhidden; RunOnceId: "QuitApp"
 Filename: "{app}\{#MyAppExe}"; Parameters: "--disable-automation"; Flags: runhidden; RunOnceId: "DisableAutomation"
 
 [UninstallDelete]
 ; the browser profile and downloaded engine are large and fully rebuildable; settings and data are kept
 Type: filesandordirs; Name: "{localappdata}\{#MyAppName}\chrome_profile"
 Type: filesandordirs; Name: "{localappdata}\{#MyAppName}\browsers"
+
+[Code]
+// A running instance may be hidden in the tray with no window, so ask it to quit before files are replaced.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Exe: String;
+  ResultCode: Integer;
+begin
+  Exe := ExpandConstant('{app}\{#MyAppExe}');
+  if FileExists(Exe) then
+  begin
+    Exec(Exe, '--quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(1500);
+  end;
+  Result := '';
+end;
