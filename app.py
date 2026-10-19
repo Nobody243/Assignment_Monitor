@@ -6,6 +6,7 @@ Bahria LMS Monitor - desktop application and command-line entry point.
     app.py --remind        hourly same-day reminder task
     app.py --status        print the saved assignments
     app.py --test-alert    test desktop notification and voice
+    app.py --tray          start minimized to the system tray
 """
 import ctypes
 import logging
@@ -24,7 +25,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
-from config import (APP_ID, APP_NAME, APP_VERSION, ASSETS_DIR, BASE_DIR, DATA_DIR, LOG_PATH, FROZEN,
+from config import (APP_ID, APP_NAME, APP_VERSION, TAGLINE, ASSETS_DIR, BASE_DIR, DATA_DIR, LOG_PATH, FROZEN,
                     RELEASES_URL, REPO_URL, CAMPUS_NAMES, CAMPUS_ID_BY_NAME, campus_name,
                     load_env, save_env, has_credentials, load_meta, setup_logging)
 
@@ -44,6 +45,9 @@ def main():
     parser.add_argument("--quiet", "-q", action="store_true", help="with --check: no notifications")
     parser.add_argument("--visible", action="store_true", help="with --check: show the browser window")
     parser.add_argument("--setup", action="store_true", help="open the sign-in screen (switch account)")
+    parser.add_argument("--tray", action="store_true", help="start minimized to the system tray")
+    parser.add_argument("--enable-automation", action="store_true", help="register the background tasks, then exit")
+    parser.add_argument("--disable-automation", action="store_true", help="remove the background tasks, then exit")
     parser.add_argument("--view", default="dashboard", choices=["dashboard", "assignments", "settings", "activity"])
     args = parser.parse_args()
     setup_logging(to_console=not FROZEN)
@@ -59,14 +63,24 @@ def main():
         else:
             code = jobs.test_alert()
         sys.exit(code)
+    if args.enable_automation or args.disable_automation:
+        import automation
+        ok, msg = automation.enable() if args.enable_automation else automation.disable()
+        if args.disable_automation:
+            automation.set_start_with_windows(False)
+        print(msg)
+        sys.exit(0 if ok else 1)
 
-    run_gui(start_view=args.view, force_setup=args.setup)
+    run_gui(start_view=args.view, force_setup=args.setup, start_hidden=args.tray)
 
 
-def run_gui(start_view="dashboard", force_setup=False):
+SHOW_EVENT_NAME = "Local\\AssignmentMonitor.ShowWindow"
+
+
+def run_gui(start_view="dashboard", force_setup=False, start_hidden=False):
     if _another_instance_running():
         log.info("Already running; bringing the existing window to the front.")
-        _focus_existing_window()
+        _signal_existing_window()
         return
     try:
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
@@ -74,7 +88,7 @@ def run_gui(start_view="dashboard", force_setup=False):
         pass
     log.info("%s %s started (%s)", APP_NAME, APP_VERSION, "packaged" if FROZEN else "source")
     try:
-        App(start_view=start_view, force_setup=force_setup).mainloop()
+        App(start_view=start_view, force_setup=force_setup, start_hidden=start_hidden).mainloop()
     except Exception:
         log.exception("The app crashed")
         raise
@@ -92,12 +106,14 @@ def _another_instance_running() -> bool:
         return False
 
 
-def _focus_existing_window():
+def _signal_existing_window():
+    """Asks the running instance (possibly hidden in the tray) to show its window."""
     try:
-        hwnd = ctypes.windll.user32.FindWindowW(None, APP_NAME)
-        if hwnd:
-            ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenEventW(0x0002, False, SHOW_EVENT_NAME)  # EVENT_MODIFY_STATE
+        if h:
+            k32.SetEvent(h)
+            k32.CloseHandle(h)
     except Exception:
         pass
 
@@ -107,6 +123,7 @@ import customtkinter as ctk                      # noqa: E402  (imported after t
 from tkinter import messagebox                   # noqa: E402
 
 import automation                                 # noqa: E402
+from tray import TrayIcon                                                                   # noqa: E402
 from tracker import load_stored_assignments, compare_assignments, clear_stored_assignments  # noqa: E402
 from lms_scraper import run_lms_check, LoginError, _release_lock                            # noqa: E402
 from notifier import alert_assignments, send_toast, speak_voice                            # noqa: E402
@@ -212,7 +229,8 @@ class SetupView(ctk.CTkFrame):
         logo = ctk.CTkLabel(inner, text="🎓", font=ctk.CTkFont(size=30), width=64, height=64,
                             fg_color=C["sky_t"], corner_radius=18)
         logo.pack(anchor="w")
-        ctk.CTkLabel(inner, text=APP_NAME, font=F(30, "bold"), text_color=C["text"]).pack(anchor="w", pady=(14, 2))
+        ctk.CTkLabel(inner, text=APP_NAME, font=F(30, "bold"), text_color=C["text"]).pack(anchor="w", pady=(14, 0))
+        ctk.CTkLabel(inner, text=TAGLINE, font=F(14, "bold"), text_color=C["accent"]).pack(anchor="w", pady=(0, 6))
         ctk.CTkLabel(inner, text="Your assignments, deadlines and reminders\nin one place. Set it up once, it runs on its own.",
                      font=F(14), text_color=C["muted"], justify="left").pack(anchor="w", pady=(0, 26))
 
@@ -663,6 +681,16 @@ class SettingsView(ctk.CTkScrollableFrame):
         look = self._card("Appearance", "Pick the look you prefer. The choice is remembered.")
         theme_switch(look, self.app).pack(anchor="w", padx=22, pady=(0, 20))
 
+        bg = self._card("Running in the background",
+                        "Keep the app in the system tray so it is always one click away. "
+                        "Right-click the tray icon to open, sync or quit.")
+        self.tray_sw = self._switch(bg, "Keep running in the tray when the window is closed",
+                                    env.get("CLOSE_TO_TRAY", True))
+        self.startup_sw = ctk.CTkSwitch(bg, text="Start with Windows, minimized to the tray", font=F(13),
+                                        text_color=C["text"], progress_color=C["accent"], command=self._toggle_startup)
+        self.startup_sw.select() if automation.starts_with_windows() else self.startup_sw.deselect()
+        self.startup_sw.pack(anchor="w", padx=22, pady=(4, 20))
+
         notif = self._card("Notifications", "How the app gets your attention after a sync or an hourly check.")
         self.voice = self._switch(notif, "Voice alerts through the speakers", env.get("ENABLE_VOICE", True))
         self.toast = self._switch(notif, "Windows desktop notifications", env.get("ENABLE_WINDOWS_TOAST", True))
@@ -698,8 +726,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         self._soft_button(row, "Switch account", lambda: self.app.show_setup()).pack(side="left", padx=(0, 10))
         self._soft_button(row, "Clear local data", self._clear_data).pack(side="left")
 
-        about = self._card("About", f"{APP_NAME} {APP_VERSION} · {'packaged build' if FROZEN else 'running from source'} · "
-                           f"made by Nobody243")
+        about = self._card("About", f"{APP_NAME} {APP_VERSION} {TAGLINE} · "
+                           f"{'installed build' if FROZEN else 'running from source'} · made by Nobody243")
         row = ctk.CTkFrame(about, fg_color="transparent")
         row.pack(fill="x", padx=22, pady=(0, 20))
         if "<" not in REPO_URL:
@@ -739,9 +767,18 @@ class SettingsView(ctk.CTkScrollableFrame):
         env["ENABLE_VOICE"] = bool(self.voice.get())
         env["ENABLE_WINDOWS_TOAST"] = bool(self.toast.get())
         env["NOTIFY_DAYS_AHEAD"] = int(self.days.get())
+        if hasattr(self, "tray_sw"):
+            env["CLOSE_TO_TRAY"] = bool(self.tray_sw.get())
         save_env(env)
         self.app.env = load_env()
         self.app.set_status("Preferences saved.")
+
+    def _toggle_startup(self):
+        want = bool(self.startup_sw.get())
+        ok = automation.set_start_with_windows(want)
+        if not ok:
+            self.startup_sw.deselect()
+        self.app.set_status("Start with Windows " + ("enabled." if want and ok else "disabled." if not want else "could not be enabled."))
 
     def _save_account(self):
         enroll = self.enroll.get().strip()
@@ -844,7 +881,7 @@ class App(ctk.CTk):
     NAV = [("dashboard", "Dashboard", "▦"), ("assignments", "Assignments", "☰"),
            ("settings", "Settings", "⚙"), ("activity", "Activity", "≡")]
 
-    def __init__(self, start_view="dashboard", force_setup=False):
+    def __init__(self, start_view="dashboard", force_setup=False, start_hidden=False):
         self.env = load_env()
         self.theme = self.env.get("THEME", "dark")
         ctk.set_appearance_mode(self.theme)
@@ -874,9 +911,12 @@ class App(ctk.CTk):
         self.log_queue = queue.Queue()
         logging.getLogger("bahria").addHandler(QueueHandler(self.log_queue))
 
+        self.tray = None
+        self._tray_hint_shown = False
         self.container = ctk.CTkFrame(self, fg_color="transparent")
         self.container.pack(fill="both", expand=True)
-        if has_credentials(self.env) and not force_setup:
+        signed_in = has_credentials(self.env) and not force_setup
+        if signed_in:
             self.show_main()
             if start_view in self.views:
                 self.navigate(start_view)
@@ -884,6 +924,72 @@ class App(ctk.CTk):
             self.show_setup()
         self.after(250, self._drain_logs)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._start_tray()
+        self.update_tray_tooltip()
+        self._listen_for_show_requests()
+        if start_hidden and signed_in and self.tray:
+            self.after(50, self.hide_to_tray)
+
+    # ---- tray / background
+    def _start_tray(self):
+        try:
+            self.tray = TrayIcon(APP_NAME, ASSETS_DIR / "icon.ico",
+                                 on_open=lambda: self.after(0, self.show_window),
+                                 on_sync=lambda: self.after(0, self.start_sync),
+                                 on_quit=lambda: self.after(0, self.quit_app))
+            self.tray.start()
+        except Exception as e:
+            log.warning("Tray icon unavailable: %s", e)
+            self.tray = None
+
+    def _listen_for_show_requests(self):
+        """A second launch of the app sets a named event; we answer by showing the window."""
+        try:
+            k32 = ctypes.windll.kernel32
+            self._show_event = k32.CreateEventW(None, False, False, SHOW_EVENT_NAME)
+        except Exception:
+            self._show_event = None
+            return
+
+        def wait():
+            while True:
+                if k32.WaitForSingleObject(self._show_event, 0xFFFFFFFF) != 0:
+                    break
+                try:
+                    self.after(0, self.show_window)
+                except RuntimeError:
+                    break
+        threading.Thread(target=wait, daemon=True).start()
+
+    def show_window(self):
+        self.deiconify()
+        self.lift()
+        try:
+            self.attributes("-topmost", True)
+            self.after(200, lambda: self.attributes("-topmost", False))
+            self.focus_force()
+        except Exception:
+            pass
+
+    def hide_to_tray(self):
+        self.withdraw()
+        if not self._tray_hint_shown:
+            self._tray_hint_shown = True
+            if self.tray:
+                self.tray.notify("Still running in the tray. Right-click the icon to open or quit.", APP_NAME)
+
+    def quit_app(self):
+        if self.syncing:
+            _release_lock()
+        if self.tray:
+            self.tray.stop()
+        self.destroy()
+
+    def update_tray_tooltip(self):
+        if not self.tray:
+            return
+        pending = sum(1 for a in self.data.values() if is_open_pending(a))
+        self.tray.set_tooltip(f"{APP_NAME} · {pending} pending" if self.data else APP_NAME)
 
     # ---- theme
     def set_theme(self, theme):
@@ -921,8 +1027,8 @@ class App(ctk.CTk):
                      corner_radius=10).pack(side="left", padx=(0, 10))
         bt = ctk.CTkFrame(brand, fg_color="transparent")
         bt.pack(side="left")
-        ctk.CTkLabel(bt, text="Bahria LMS", font=F(16, "bold"), text_color=C["text"]).pack(anchor="w")
-        ctk.CTkLabel(bt, text="Assignment Monitor", font=F(11), text_color=C["muted"]).pack(anchor="w")
+        ctk.CTkLabel(bt, text=APP_NAME, font=F(16, "bold"), text_color=C["text"]).pack(anchor="w")
+        ctk.CTkLabel(bt, text="Bahria University LMS", font=F(11), text_color=C["muted"]).pack(anchor="w")
 
         self.nav_buttons = {}
         for key, label, glyph in self.NAV:
@@ -1012,6 +1118,7 @@ class App(ctk.CTk):
                 except ValueError:
                     pass
             self.last_sync_lbl.configure(text=f"Last sync: {ls}" if ls else "Not synced yet")
+        self.update_tray_tooltip()
         if self.current and self.current in self.views and hasattr(self.views[self.current], "refresh"):
             self.views[self.current].refresh()
 
@@ -1068,11 +1175,13 @@ class App(ctk.CTk):
         self.after(250, self._drain_logs)
 
     def _on_close(self):
+        if self.tray and self.env.get("CLOSE_TO_TRAY", True) and self.views:
+            self.hide_to_tray()
+            return
         if self.syncing:
             if not messagebox.askyesno(APP_NAME, "A sync is still running. Close anyway?"):
                 return
-            _release_lock()
-        self.destroy()
+        self.quit_app()
 
 
 if __name__ == "__main__":

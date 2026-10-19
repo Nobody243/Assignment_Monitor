@@ -12,11 +12,14 @@ from config import APP_NAME, ASSETS_DIR, FROZEN, SOURCE_DIR, app_command
 log = logging.getLogger("bahria.automation")
 CREATE_NO_WINDOW = 0x08000000
 
-TASK_DAILY = "BahriaLMS_DailyCheck"
-TASK_HOURLY = "BahriaLMS_HourlyReminder"
-TASK_LOGON = "BahriaLMS_LogonCheck"
-LEGACY_TASKS = ("BahriaLMS_HourlyUrgentReminder",)
-STARTUP_SCRIPT = "BahriaLMS_Startup.vbs"
+TASK_DAILY = "AssignmentMonitor_DailyCheck"
+TASK_HOURLY = "AssignmentMonitor_HourlyReminder"
+TASK_LOGON = "AssignmentMonitor_LogonCheck"
+LEGACY_TASKS = ("BahriaLMS_DailyCheck", "BahriaLMS_HourlyReminder", "BahriaLMS_LogonCheck",
+                "BahriaLMS_HourlyUrgentReminder")
+STARTUP_SCRIPT = "AssignmentMonitor_Startup.vbs"
+LEGACY_STARTUP = ("BahriaLMS_Startup.vbs",)
+STARTUP_SHORTCUT = f"{APP_NAME}.lnk"
 
 
 def _run(cmd, timeout=60):
@@ -55,25 +58,51 @@ def _write_startup_script(command: str):
     return True
 
 
-def create_shortcuts():
-    """Desktop and Start Menu shortcuts that open the app window."""
-    cmd = app_command()
+def _make_shortcut(path: Path, extra_args=()):
+    cmd = app_command(*extra_args)
     target, args = cmd[0], _quote(cmd[1:])
     icon = ASSETS_DIR / "icon.ico"
     workdir = Path(target).parent if FROZEN else SOURCE_DIR
     ps = f"""
 $wsh = New-Object -ComObject WScript.Shell
-foreach ($dir in @([Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('Desktop'))) {{
-  $sc = $wsh.CreateShortcut((Join-Path $dir '{APP_NAME}.lnk'))
-  $sc.TargetPath = '{target}'
-  $sc.Arguments = '{args}'
-  $sc.WorkingDirectory = '{workdir}'
-  {"$sc.IconLocation = '" + str(icon) + ", 0'" if icon.exists() else ""}
-  $sc.Description = 'Bahria University LMS Assignment Monitor'
-  $sc.Save()
-}}"""
+$sc = $wsh.CreateShortcut('{path}')
+$sc.TargetPath = '{target}'
+$sc.Arguments = '{args}'
+$sc.WorkingDirectory = '{workdir}'
+{"$sc.IconLocation = '" + str(icon) + ", 0'" if icon.exists() else ""}
+$sc.Description = '{APP_NAME} for Bahria University LMS'
+$sc.Save()"""
     r = _run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps])
     return r.returncode == 0
+
+
+def create_shortcuts():
+    """Desktop and Start Menu shortcuts that open the app window."""
+    ok = True
+    for folder in (Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs",
+                   Path.home() / "Desktop"):
+        if folder.exists():
+            ok = _make_shortcut(folder / f"{APP_NAME}.lnk") and ok
+    return ok
+
+
+def starts_with_windows() -> bool:
+    return (_startup_dir() / STARTUP_SHORTCUT).exists()
+
+
+def set_start_with_windows(enable: bool):
+    """Opens the app minimized to the tray when the user signs in to Windows."""
+    path = _startup_dir() / STARTUP_SHORTCUT
+    if enable:
+        ok = _make_shortcut(path, ("--tray",))
+        log.info("Start with Windows %s.", "enabled" if ok else "could not be enabled")
+        return ok
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    log.info("Start with Windows disabled.")
+    return True
 
 
 def enable():
@@ -92,6 +121,11 @@ def enable():
             logon = "startup folder"
         for legacy in LEGACY_TASKS:
             _run(["schtasks", "/Delete", "/F", "/TN", legacy])
+        for legacy in LEGACY_STARTUP:
+            try:
+                (_startup_dir() / legacy).unlink()
+            except OSError:
+                pass
         shortcuts = create_shortcuts()
         log.info("Background automation enabled (sign-in check via %s, shortcuts %s).",
                  logon, "created" if shortcuts else "skipped")
@@ -105,11 +139,12 @@ def disable():
     """Removes the background jobs. Shortcuts are kept."""
     for name in (TASK_DAILY, TASK_HOURLY, TASK_LOGON, *LEGACY_TASKS):
         _run(["schtasks", "/Delete", "/F", "/TN", name])
-    try:
-        (_startup_dir() / STARTUP_SCRIPT).unlink()
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        log.warning("Could not remove startup script: %s", e)
+    for name in (STARTUP_SCRIPT, *LEGACY_STARTUP):
+        try:
+            (_startup_dir() / name).unlink()
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            log.warning("Could not remove startup script: %s", e)
     log.info("Background automation disabled.")
     return not is_enabled(), "Background automation is off."

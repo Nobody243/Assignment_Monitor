@@ -11,10 +11,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-APP_NAME = "Bahria LMS Monitor"
-APP_ID = "BahriaLMSMonitor.Desktop"          # Windows AppUserModelID (taskbar grouping / toasts)
+APP_NAME = "Assignment Monitor"
+TAGLINE = "for Bahria University LMS"
+APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
 APP_VERSION = "2.1.0"
-REPO_URL = "https://github.com/Nobody243/Bahria-LMS-Monitor"
+REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 
 FROZEN = bool(getattr(sys, "frozen", False))
@@ -23,7 +24,14 @@ RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SOURCE_DIR))
 ASSETS_DIR = RESOURCE_DIR / "assets"
 
 if FROZEN:
-    BASE_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / APP_NAME
+    _local = Path(os.environ.get("LOCALAPPDATA") or Path.home())
+    BASE_DIR = _local / APP_NAME
+    _legacy = _local / "Bahria LMS Monitor"
+    if not BASE_DIR.exists() and _legacy.exists():
+        try:
+            _legacy.rename(BASE_DIR)          # keep data from the previous app name
+        except OSError:
+            pass
     ENV_PATH = BASE_DIR / "settings.env"
 else:
     BASE_DIR = SOURCE_DIR
@@ -79,8 +87,9 @@ DEFAULTS = {
     "ENABLE_WINDOWS_TOAST": True,
     "HEADLESS": True,
     "THEME": "dark",
+    "CLOSE_TO_TRAY": True,
 }
-_BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS")
+_BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY")
 
 
 def app_command(*args: str) -> list:
