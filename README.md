@@ -47,7 +47,7 @@ Shortcuts: **F5** sync · **Ctrl+1…4** switch pages · **Ctrl+F** search · **
 
 They run even when the app is closed. Turn them off any time from Settings; uninstalling removes them too.
 
-**Updating:** Settings → "Check for updates" opens the Releases page. Install the new Setup over the old one; your sign-in and data are kept.
+**Updating:** the app checks GitHub for a newer numbered release when it starts and shows "Update available · Install" at the top. One click downloads the installer and reinstalls over the current version; your sign-in and data are kept. You can turn the check off in Settings.
 
 ## Privacy and security
 
@@ -94,7 +94,7 @@ pytest                # unit tests: deadline parsing, change tracking, settings 
 python build.py       # dist/AssignmentMonitor-portable.zip and, with Inno Setup 6, dist/AssignmentMonitor-Setup.exe
 ```
 
-GitHub Actions runs lint, tests and a dependency audit on every push. Pushing a tag like `v2.1.0` also builds the installer and zip and attaches them to a release.
+GitHub Actions runs lint, tests and a dependency audit on every push. Every commit on `main` also builds the installer and zip and refreshes the rolling **Latest build** pre-release; pushing a tag like `v1.0.0` publishes a numbered release. The app checks numbered releases when it starts (switchable in Settings) and can download and install the update itself.
 
 ## How it works
 

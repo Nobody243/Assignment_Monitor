@@ -15,7 +15,8 @@ Running from source, the same files live in the project folder and are git-ignor
 
 - The app only connects to `https://cms.bahria.edu.pk` and `https://lms.bahria.edu.pk`, over HTTPS, to do exactly what you would do by hand: sign in, open the LMS, open the assignments page for each course.
 - If Google Chrome is not installed, Playwright's Chromium is downloaded once from Microsoft's Playwright CDN.
-- "Check for updates" opens the GitHub releases page in your browser. The app itself does not phone home, has no telemetry, and sends nothing anywhere else.
+- Update check: when the app starts (and when you click "Check for updates") it asks `api.github.com` for the newest release number, and downloads the installer from GitHub only if you click Install. Nothing about you is sent beyond the request itself. Switch it off in Settings → Running in the background.
+- Otherwise the app does not phone home, has no telemetry, and sends nothing anywhere else.
 
 ## Design choices
 

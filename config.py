@@ -14,7 +14,7 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "2.1.0"
+APP_VERSION = "1.0.0"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 
@@ -89,9 +89,10 @@ DEFAULTS = {
     "HEADLESS": True,
     "THEME": "dark",
     "CLOSE_TO_TRAY": True,
+    "CHECK_UPDATES": True,
     "WINDOW_GEOMETRY": "",
 }
-_BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY")
+_BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES")
 
 
 def app_command(*args: str) -> list:

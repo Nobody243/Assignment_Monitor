@@ -4,20 +4,32 @@ settings.env
 data/
 chrome_profile/
 browsers/
+*.log
 
 # python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 .venv/
 venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
 # build output
 build/
 dist/
 *.spec
+Output/
 
-# editors / os
+# editors, tools, OS
 .vscode/
 .idea/
+.claude/
+*.swp
 Thumbs.db
 desktop.ini
+.DS_Store

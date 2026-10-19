@@ -26,19 +26,19 @@ def test_dpapi_round_trip_and_blob_is_not_plain_text():
 
 @windows_only
 def test_password_is_never_written_in_plain_text(env_file):
-    config.save_env({"ENROLLMENT": "01-135232-000", "PASSWORD": "hunter2", "INSTITUTE_ID": "9"})
+    config.save_env({"ENROLLMENT": "01-123456-001", "PASSWORD": "hunter2", "INSTITUTE_ID": "9"})
     raw = env_file.read_text(encoding="utf-8")
     assert "hunter2" not in raw
     assert "PASSWORD_ENC=" in raw
     loaded = config.load_env()
     assert loaded["PASSWORD"] == "hunter2"
-    assert loaded["ENROLLMENT"] == "01-135232-000"
+    assert loaded["ENROLLMENT"] == "01-123456-001"
     assert loaded["INSTITUTE_ID"] == "9"
 
 
 @windows_only
 def test_legacy_plain_text_password_is_migrated_on_load(env_file):
-    env_file.write_text("ENROLLMENT=01-135232-000\nPASSWORD=oldplain\n", encoding="utf-8")
+    env_file.write_text("ENROLLMENT=01-123456-001\nPASSWORD=oldplain\n", encoding="utf-8")
     loaded = config.load_env()
     assert loaded["PASSWORD"] == "oldplain"
     raw = env_file.read_text(encoding="utf-8")

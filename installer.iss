@@ -1,5 +1,5 @@
 ; Inno Setup script for Assignment Monitor.
-; Built by build.py:  ISCC installer.iss /DAppVersion=2.1.0 /DSourceDir=dist\AssignmentMonitor
+; Built by build.py:  ISCC installer.iss /DAppVersion=1.0.0 /DSourceDir=dist\AssignmentMonitor
 ; Installs per user (no administrator rights needed) into %LOCALAPPDATA%\Programs.
 
 #define MyAppName "Assignment Monitor"
@@ -54,6 +54,8 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: deskto
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+; silent in-app update: relaunch automatically (the updater passes /RELAUNCH=1)
+Filename: "{app}\{#MyAppExe}"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallRun]
 Filename: "{app}\{#MyAppExe}"; Parameters: "--quit"; Flags: runhidden; RunOnceId: "QuitApp"
@@ -65,6 +67,11 @@ Type: filesandordirs; Name: "{localappdata}\{#MyAppName}\chrome_profile"
 Type: filesandordirs; Name: "{localappdata}\{#MyAppName}\browsers"
 
 [Code]
+function ShouldRelaunch: Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
+
 // A running instance may be hidden in the tray with no window, so ask it to quit before files are replaced.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var

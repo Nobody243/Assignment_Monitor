@@ -12,6 +12,7 @@ With your permission, the app signs in to the Bahria University CMS/LMS portal u
 - It does not access anyone else's account or data.
 - It does not change anything on the portal: it never submits, uploads, or posts.
 - It does not collect analytics, crash reports, or usage statistics.
+- The optional update check contacts GitHub (`api.github.com`) to read the latest release number; you can turn it off in Settings.
 
 ## Your responsibilities
 

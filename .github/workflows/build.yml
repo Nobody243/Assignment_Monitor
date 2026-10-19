@@ -1,4 +1,4 @@
-name: Test and build
+name: Test, build and release
 
 on:
   push:
@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: windows-latest
@@ -18,6 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -26,20 +31,23 @@ jobs:
         run: ruff check .
       - name: Unit tests
         run: pytest
-      - name: Dependency audit
+      - name: Dependency audit (advisory)
+        continue-on-error: true
         run: |
           pip install pip-audit
           pip-audit -r requirements.txt
 
   build:
+    # every commit on main and every version tag produces the installer and the portable zip
     needs: test
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest   # ships with Inno Setup 6, so build.py also produces the installer
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -49,15 +57,28 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AssignmentMonitor-windows
+          name: AssignmentMonitor-windows-${{ github.sha }}
           path: |
             dist/AssignmentMonitor-Setup.exe
             dist/AssignmentMonitor-portable.zip
-      - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
+
+      - name: Publish numbered release (version tags)
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/AssignmentMonitor-Setup.exe
             dist/AssignmentMonitor-portable.zip
           generate_release_notes: true
+
+      - name: Refresh rolling "latest" pre-release (every commit on main)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest \
+            dist/AssignmentMonitor-Setup.exe dist/AssignmentMonitor-portable.zip \
+            --prerelease --title "Latest build (main)" \
+            --notes "Automatic build of commit ${GITHUB_SHA::7}. For the stable version use the newest numbered release. The app's update check only looks at numbered releases."

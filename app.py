@@ -146,6 +146,7 @@ import tkinter.font as tkfont                    # noqa: E402
 from tkinter import messagebox                   # noqa: E402
 
 import automation                                                                           # noqa: E402
+import updater                                                                              # noqa: E402
 from tray import TrayIcon                                                                   # noqa: E402
 from tracker import load_stored_assignments, compare_assignments, clear_stored_assignments  # noqa: E402
 from lms_scraper import run_lms_check, LoginError, _release_lock                            # noqa: E402
@@ -335,7 +336,7 @@ class SetupView(ctk.CTkFrame):
                      font=F(12), text_color=C["muted"]).pack(anchor="w", pady=(0, 18), **pad)
 
         env = self.app.env
-        self.enroll = self._field(box, "Enrollment number", "01-135232-000", pad)
+        self.enroll = self._field(box, "Enrollment number", "01-123456-001", pad)
         if env.get("ENROLLMENT"):
             self.enroll.insert(0, env["ENROLLMENT"])
 
@@ -405,7 +406,7 @@ class SetupView(ctk.CTkFrame):
             self.status.configure(text="Enter both your enrollment number and password.", text_color=C["red"])
             return
         if not ENROLLMENT_RE.match(enroll):
-            self.status.configure(text="Enrollment numbers look like 01-135232-000.", text_color=C["amber"])
+            self.status.configure(text="Enrollment numbers look like 01-123456-001.", text_color=C["amber"])
             return
         env = dict(self.app.env)
         env.update({"ENROLLMENT": enroll, "PASSWORD": pwd,
@@ -740,6 +741,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         bg = self._section("Running in the background",
                            "Closing the window keeps the app in the system tray; right-click the icon to open, sync or quit.")
         self.tray_sw = self._switch(bg, "Keep running in the tray when the window is closed", env.get("CLOSE_TO_TRAY", True))
+        self.updates_sw = self._switch(bg, "Check for updates when the app starts (asks api.github.com)",
+                                       env.get("CHECK_UPDATES", True))
         self.startup_sw = ctk.CTkSwitch(bg, text="Start with Windows, minimized to the tray", font=F(13),
                                         text_color=C["ink"], progress_color=C["accent"], command=self._toggle_startup)
         self.startup_sw.select() if automation.starts_with_windows() else self.startup_sw.deselect()
@@ -784,7 +787,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                      font=F(12), text_color=C["dim"]).pack(anchor="w", padx=20, pady=(0, 10))
         row = ctk.CTkFrame(about, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
-        docs = [("Check for updates", lambda: webbrowser.open(RELEASES_URL)),
+        docs = [("Check for updates", lambda: self.app.check_for_updates(quiet=False)),
                 ("Privacy & terms", lambda: open_doc("PRIVACY.md", f"{REPO_URL}/blob/main/PRIVACY.md")),
                 ("Security", lambda: open_doc("SECURITY.md", f"{REPO_URL}/blob/main/SECURITY.md")),
                 ("Licenses", lambda: open_doc("THIRD_PARTY_LICENSES.md", f"{REPO_URL}/blob/main/THIRD_PARTY_LICENSES.md")),
@@ -822,6 +825,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         env["ENABLE_WINDOWS_TOAST"] = bool(self.toast.get())
         env["NOTIFY_DAYS_AHEAD"] = int(self.days.get())
         env["CLOSE_TO_TRAY"] = bool(self.tray_sw.get())
+        env["CHECK_UPDATES"] = bool(self.updates_sw.get())
         save_env(env)
         self.app.env = load_env()
         self.app.set_status("Preferences saved.")
@@ -955,6 +959,7 @@ class App(ctk.CTk):
         self.setup_console = None
         self.tray = None
         self._tray_hint_shown = False
+        self.update_info = None
         self.log_queue = queue.Queue()
         logging.getLogger("bahria").addHandler(QueueHandler(self.log_queue))
 
@@ -975,6 +980,65 @@ class App(ctk.CTk):
         self._listen_for_events()
         if start_hidden and signed_in and self.tray:
             self.after(50, self.hide_to_tray)
+        if self.env.get("CHECK_UPDATES", True):
+            self.after(4000, lambda: self.check_for_updates(quiet=True))
+
+    # ---- updates
+    def check_for_updates(self, quiet=False):
+        def work():
+            info = updater.check_latest()
+            try:
+                self.after(0, self._update_checked, info, quiet)
+            except RuntimeError:
+                pass
+        threading.Thread(target=work, daemon=True).start()
+
+    def _update_checked(self, info, quiet):
+        self.update_info = info
+        if info and info.get("newer"):
+            text = f"Update {info['version']} available  ·  Install"
+            if "update_lbl" in self.__dict__:
+                self.update_lbl.configure(text=text)
+            self.set_status(f"Version {info['version']} is available. Click Install at the top to update.")
+            if self.tray:
+                self.tray.set_tooltip(f"{APP_NAME} · update {info['version']} available")
+        elif not quiet:
+            if info is None:
+                self.set_status("Could not reach GitHub to check for updates.")
+                webbrowser.open(RELEASES_URL)
+            else:
+                self.set_status(f"You have the latest version ({APP_VERSION}).")
+
+    def install_update(self):
+        info = self.update_info
+        if not info or not info.get("newer"):
+            return
+        if not info.get("setup_url"):
+            webbrowser.open(info.get("page") or RELEASES_URL)
+            return
+        if not messagebox.askyesno(APP_NAME, f"Download and install version {info['version']} now?\n\n"
+                                   "The app will close, update itself and reopen."):
+            return
+        self.set_status("Downloading update…")
+
+        def work():
+            try:
+                def progress(done, total):
+                    pct = f" {done * 100 // total}%" if total else ""
+                    try:
+                        self.after(0, self.set_status, f"Downloading update…{pct}")
+                    except RuntimeError:
+                        pass
+                path = updater.download_installer(info["setup_url"], progress)
+                log.info("Installing update %s", info["version"])
+                updater.run_installer(path)
+                self.after(0, self.quit_app)
+            except Exception as e:
+                err = str(e)
+                log.error("Update failed: %s", err)
+                self.after(0, lambda: messagebox.showerror(APP_NAME, f"The update could not be installed.\n\n{err}"))
+                self.after(0, self.set_status, "Update failed.")
+        threading.Thread(target=work, daemon=True).start()
 
     # ---- window
     def _place_window(self):
@@ -1101,6 +1165,11 @@ class App(ctk.CTk):
         self.last_sync_lbl.pack(anchor="w")
         self.sync_btn = primary_button(top, "Sync now", self.start_sync, width=120)
         self.sync_btn.pack(side="right")
+        self.update_lbl = ctk.CTkLabel(top, text="", font=F(12, "bold"), text_color=C["accent"], cursor="hand2")
+        self.update_lbl.pack(side="right", padx=14)
+        self.update_lbl.bind("<Button-1>", lambda e: self.install_update())
+        if self.update_info and self.update_info.get("newer"):
+            self.update_lbl.configure(text=f"Update {self.update_info['version']} available  ·  Install")
 
         self.sync_bar = ctk.CTkProgressBar(content, mode="indeterminate", height=3, corner_radius=0,
                                            progress_color=C["accent"], fg_color=C["bg"])
