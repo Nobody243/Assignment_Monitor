@@ -35,7 +35,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
-CloseApplications=yes
+CloseApplications=force
 RestartApplications=no
 
 [Languages]
@@ -70,11 +70,17 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Exe: String;
   ResultCode: Integer;
+  Ok: Boolean;
 begin
   Exe := ExpandConstant('{app}\{#MyAppExe}');
   if FileExists(Exe) then
   begin
-    Exec(Exe, '--quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    // polite request first (new builds), then force-close anything left (older builds)
+    Ok := Exec(Exe, '--quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Log(Format('PrepareToInstall: --quit exec=%d code=%d', [Integer(Ok), ResultCode]));
+    Sleep(2000);
+    Ok := Exec(ExpandConstant('{cmd}'), '/C taskkill /IM {#MyAppExe} /F /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Log(Format('PrepareToInstall: taskkill exec=%d code=%d', [Integer(Ok), ResultCode]));
     Sleep(1500);
   end;
   Result := '';
