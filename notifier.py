@@ -18,17 +18,37 @@ def send_toast(title: str, message: str) -> None:
         log.warning("Toast notification failed: %s", e)
 
 
-def speak_voice(message: str, force: bool = False) -> None:
-    """Speaks aloud using the Windows built-in speech synthesizer."""
+def _ps(script: str, timeout: int = 30):
+    return subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+                          check=False, timeout=timeout, capture_output=True, text=True, creationflags=CREATE_NO_WINDOW)
+
+
+def list_voices() -> list:
+    """Names of the speech voices installed on this PC (Windows built-in synthesizer)."""
+    try:
+        r = _ps("Add-Type -AssemblyName System.Speech; "
+                "(New-Object System.Speech.Synthesis.SpeechSynthesizer).GetInstalledVoices() | "
+                "Where-Object { $_.Enabled } | ForEach-Object { $_.VoiceInfo.Name }", timeout=20)
+        return [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+    except Exception as e:
+        log.warning("Could not list voices: %s", e)
+        return []
+
+
+def speak_voice(message: str, force: bool = False, voice: str = None, volume: int = None, rate: int = None) -> None:
+    """Speaks aloud using the Windows built-in speech synthesizer, with the user's voice, volume and speed."""
     env = load_env()
     if not force and not env.get("ENABLE_VOICE", True):
         return
+    voice = env.get("VOICE_NAME", "") if voice is None else voice
+    volume = int(env.get("VOICE_VOLUME", 100)) if volume is None else int(volume)
+    rate = int(env.get("VOICE_RATE", 0)) if rate is None else int(rate)
     try:
         clean_msg = message.replace("'", "''")
-        cmd = ["powershell.exe", "-NoProfile", "-Command",
-               f"& {{ Add-Type -AssemblyName System.Speech; "
-               f"(New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{clean_msg}') }}"]
-        subprocess.run(cmd, check=False, timeout=30, creationflags=CREATE_NO_WINDOW)
+        clean_voice = (voice or "").replace("'", "''")
+        select = f"try {{ $s.SelectVoice('{clean_voice}') }} catch {{ }}; " if clean_voice else ""
+        _ps("Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+            f"{select}$s.Volume = {min(100, max(0, volume))}; $s.Rate = {min(5, max(-5, rate))}; $s.Speak('{clean_msg}')")
     except Exception as e:
         log.warning("Voice alert failed: %s", e)
 

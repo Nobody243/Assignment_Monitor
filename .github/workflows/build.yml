@@ -4,7 +4,9 @@ on:
   push:
     branches: ["main"]
     tags: ["v*"]
+    paths-ignore: ["website/**", "*.md"]
   pull_request:
+    paths-ignore: ["website/**", "*.md"]
   workflow_dispatch:
 
 permissions:
@@ -42,6 +44,9 @@ jobs:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: windows-latest   # ships with Inno Setup 6, so build.py also produces the installer
+    env:
+      # Code signing (SignPath Foundation) switches on automatically once the two secrets exist.
+      HAS_SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && secrets.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,13 +59,36 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Build app, portable zip and installer
         run: python build.py
-      - name: Upload build artifacts
+
+      - name: Upload unsigned build artifacts
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: AssignmentMonitor-windows-${{ github.sha }}
           path: |
             dist/AssignmentMonitor-Setup.exe
             dist/AssignmentMonitor-portable.zip
+
+      # ---- code signing: numbered releases only, and only when SignPath is configured
+      - name: Submit release to SignPath for signing
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: Assignment_Monitor
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signed
+      - name: Use signed files for the release
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_SIGNPATH == 'true'
+        shell: bash
+        run: |
+          ls -R dist/signed
+          cp -f dist/signed/AssignmentMonitor-Setup.exe dist/AssignmentMonitor-Setup.exe
+          cp -f dist/signed/AssignmentMonitor-portable.zip dist/AssignmentMonitor-portable.zip
+          echo "SIGNED_NOTE=Signed with a SignPath Foundation certificate (see CODE_SIGNING_POLICY.md)." >> "$GITHUB_ENV"
 
       - name: Publish numbered release (version tags)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -70,6 +98,11 @@ jobs:
             dist/AssignmentMonitor-Setup.exe
             dist/AssignmentMonitor-portable.zip
           generate_release_notes: true
+          body: |
+            **Download:** `AssignmentMonitor-Setup.exe` (installer, recommended) or `AssignmentMonitor-portable.zip`.
+            ${{ env.SIGNED_NOTE }}
+
+            Code signing policy: free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). See [CODE_SIGNING_POLICY.md](https://github.com/${{ github.repository }}/blob/main/CODE_SIGNING_POLICY.md).
 
       - name: Refresh rolling "latest" pre-release (every commit on main)
         if: github.ref == 'refs/heads/main'
@@ -81,4 +114,4 @@ jobs:
           gh release create latest \
             dist/AssignmentMonitor-Setup.exe dist/AssignmentMonitor-portable.zip \
             --prerelease --title "Latest build (main)" \
-            --notes "Automatic build of commit ${GITHUB_SHA::7}. For the stable version use the newest numbered release. The app's update check only looks at numbered releases."
+            --notes "Automatic, unsigned build of commit ${GITHUB_SHA::7}. For the stable version use the newest numbered release. The app's update check only looks at numbered releases."

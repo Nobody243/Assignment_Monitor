@@ -24,7 +24,11 @@ RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SOURCE_DIR))
 ASSETS_DIR = RESOURCE_DIR / "assets"
 DOCS_DIR = RESOURCE_DIR / "docs" if FROZEN else SOURCE_DIR   # PRIVACY.md etc. travel with the app
 
-if FROZEN:
+_home_override = os.environ.get("ASSIGNMENT_MONITOR_HOME")   # optional: keep all data in a chosen folder
+if _home_override:
+    BASE_DIR = Path(_home_override)
+    ENV_PATH = BASE_DIR / "settings.env"
+elif FROZEN:
     _local = Path(os.environ.get("LOCALAPPDATA") or Path.home())
     BASE_DIR = _local / APP_NAME
     _legacy = _local / "Bahria LMS Monitor"
@@ -37,6 +41,7 @@ if FROZEN:
 else:
     BASE_DIR = SOURCE_DIR
     ENV_PATH = BASE_DIR / ".env"
+BASE_DIR.mkdir(parents=True, exist_ok=True)
 
 DATA_DIR = BASE_DIR / "data"
 PROFILE_DIR = BASE_DIR / "chrome_profile"
@@ -90,6 +95,9 @@ DEFAULTS = {
     "THEME": "dark",
     "CLOSE_TO_TRAY": True,
     "CHECK_UPDATES": True,
+    "VOICE_NAME": "",
+    "VOICE_VOLUME": 100,
+    "VOICE_RATE": 0,
     "WINDOW_GEOMETRY": "",
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES")
@@ -128,6 +136,16 @@ def load_env() -> dict:
         elif key == "NOTIFY_DAYS_AHEAD":
             try:
                 config[key] = max(0, int(val))
+            except ValueError:
+                pass
+        elif key == "VOICE_VOLUME":
+            try:
+                config[key] = min(100, max(0, int(val)))
+            except ValueError:
+                pass
+        elif key == "VOICE_RATE":
+            try:
+                config[key] = min(5, max(-5, int(val)))
             except ValueError:
                 pass
         elif key in ("PASSWORD", "PASSWORD_ENC"):
@@ -177,6 +195,9 @@ def save_env(config: dict) -> None:
     lines.append(f"INSTITUTE_ID={merged['INSTITUTE_ID']}")
     lines.append(f"NOTIFY_DAYS_AHEAD={int(merged['NOTIFY_DAYS_AHEAD'])}")
     lines.append(f"THEME={merged['THEME']}")
+    lines.append(f"VOICE_NAME={merged['VOICE_NAME']}")
+    lines.append(f"VOICE_VOLUME={int(merged['VOICE_VOLUME'])}")
+    lines.append(f"VOICE_RATE={int(merged['VOICE_RATE'])}")
     if merged.get("WINDOW_GEOMETRY"):
         lines.append(f"WINDOW_GEOMETRY={merged['WINDOW_GEOMETRY']}")
     for key in _BOOL_KEYS:

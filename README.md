@@ -1,6 +1,6 @@
 # Assignment Monitor
 
-**for Bahria University LMS** · unofficial, open source, Windows
+**for Bahria University LMS** · unofficial, open source, Windows · [website](https://assignment-monitor.vercel.app)
 
 A desktop app that keeps an eye on your LMS assignments so you don't have to. Install it, sign in once, and it quietly does the rest.
 
@@ -30,7 +30,7 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | --- | --- |
 | **Dashboard** | Next deadline, counters, needs-attention list sorted by deadline, per-course progress. Click a counter or course to filter. |
 | **Assignments** | Full list with filters, course picker and search. Shows extension history and marks. |
-| **Settings** | Account and campus, theme, tray and start-with-Windows options, notification preferences, automatic checks, data folder, privacy and licenses. |
+| **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), automatic checks, data folder, privacy and licenses. |
 | **Activity** | Log of every sync and reminder, including the scheduled background runs. |
 
 Shortcuts: **F5** sync · **Ctrl+1…4** switch pages · **Ctrl+F** search · **Esc** clear search.
@@ -56,6 +56,8 @@ They run even when the app is closed. Turn them off any time from Settings; unin
 - The app only reads your own assignments page; it never submits or changes anything on the portal.
 
 Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md) · [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
+
+**Code signing policy:** free code signing for releases is provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). Numbered releases are signed automatically by the CI pipeline once the project is approved; see [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
 
 Assignment Monitor is an independent student project and is not affiliated with, endorsed by, or supported by Bahria University.
 

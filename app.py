@@ -34,8 +34,14 @@ from config import (APP_ID, APP_NAME, APP_VERSION, TAGLINE, ASSETS_DIR, BASE_DIR
 log = logging.getLogger("bahria.app")
 ENROLLMENT_RE = re.compile(r"^\d{2}-\d{6}-\d{3}$")
 GEOMETRY_RE = re.compile(r"^\d{3,5}x\d{3,5}\+-?\d+\+-?\d+$")
-SHOW_EVENT_NAME = "Local\\AssignmentMonitor.ShowWindow"
-QUIT_EVENT_NAME = "Local\\AssignmentMonitor.Quit"
+# One instance per data folder, so a portable or demo copy can run beside the installed app.
+_INSTANCE_TAG = ""
+if os.environ.get("ASSIGNMENT_MONITOR_HOME"):
+    import hashlib
+    _INSTANCE_TAG = "." + hashlib.sha1(str(BASE_DIR).lower().encode()).hexdigest()[:8]
+SHOW_EVENT_NAME = f"Local\\AssignmentMonitor.ShowWindow{_INSTANCE_TAG}"
+QUIT_EVENT_NAME = f"Local\\AssignmentMonitor.Quit{_INSTANCE_TAG}"
+MUTEX_NAME = f"Local\\AssignmentMonitor.MainWindow{_INSTANCE_TAG}"
 
 
 # ============================================================================ command line
@@ -120,7 +126,7 @@ _MUTEX = None
 def _another_instance_running() -> bool:
     global _MUTEX
     try:
-        _MUTEX = ctypes.windll.kernel32.CreateMutexW(None, False, "Local\\AssignmentMonitor.MainWindow")
+        _MUTEX = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
         return ctypes.windll.kernel32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
     except Exception:
         return False
@@ -150,7 +156,7 @@ import updater                                                                  
 from tray import TrayIcon                                                                   # noqa: E402
 from tracker import load_stored_assignments, compare_assignments, clear_stored_assignments  # noqa: E402
 from lms_scraper import run_lms_check, LoginError, _release_lock                            # noqa: E402
-from notifier import alert_assignments, send_toast, speak_voice                            # noqa: E402
+from notifier import alert_assignments, send_toast, speak_voice, list_voices               # noqa: E402
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
 
 # ---------------------------------------------------------------------------- design tokens
@@ -760,7 +766,43 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.days.set(str(env.get("NOTIFY_DAYS_AHEAD", 3)))
         self.days.pack(side="left", padx=10)
         ctk.CTkLabel(days_row, text="days", font=F(13), text_color=C["ink"]).pack(side="left")
-        soft_button(notif, "Send a test alert", self._test_alert).pack(anchor="w", padx=20, pady=(8, 18))
+        voice_row = ctk.CTkFrame(notif, fg_color="transparent")
+        voice_row.pack(fill="x", padx=20, pady=(10, 4))
+        ctk.CTkLabel(voice_row, text="Voice", font=F(13), text_color=C["ink"], width=60, anchor="w").pack(side="left")
+        self.voice_menu = ctk.CTkOptionMenu(voice_row, values=["Default"], width=260, height=32, font=F(12),
+                                            fg_color=C["field"], text_color=C["ink"], button_color=C["line2"],
+                                            button_hover_color=C["dim"], dropdown_font=F(12), command=lambda v: self._save_prefs())
+        self.voice_menu.set(env.get("VOICE_NAME") or "Default")
+        self.voice_menu.pack(side="left", padx=(10, 0))
+        self.after(400, lambda: threading.Thread(target=self._load_voices, daemon=True).start())
+
+        vol_row = ctk.CTkFrame(notif, fg_color="transparent")
+        vol_row.pack(fill="x", padx=20, pady=(6, 4))
+        ctk.CTkLabel(vol_row, text="Volume", font=F(13), text_color=C["ink"], width=60, anchor="w").pack(side="left")
+        self.volume = ctk.CTkSlider(vol_row, from_=0, to=100, number_of_steps=20, width=260, height=16,
+                                    progress_color=C["accent"], button_color=C["accent"], button_hover_color=C["accent_h"],
+                                    fg_color=C["surface2"], command=self._volume_changed)
+        self.volume.set(int(env.get("VOICE_VOLUME", 100)))
+        self.volume.pack(side="left", padx=(10, 10))
+        self.volume_lbl = ctk.CTkLabel(vol_row, text=f"{int(env.get('VOICE_VOLUME', 100))}%", font=F(12),
+                                       text_color=C["muted"], width=40, anchor="w")
+        self.volume_lbl.pack(side="left")
+        self.volume.bind("<ButtonRelease-1>", lambda e: self._save_prefs())
+
+        rate_row = ctk.CTkFrame(notif, fg_color="transparent")
+        rate_row.pack(fill="x", padx=20, pady=(6, 4))
+        ctk.CTkLabel(rate_row, text="Speed", font=F(13), text_color=C["ink"], width=60, anchor="w").pack(side="left")
+        self.rate = ctk.CTkSegmentedButton(rate_row, values=["Slow", "Normal", "Fast"], font=F(12, "bold"), height=30,
+                                           selected_color=C["accent"], selected_hover_color=C["accent_h"],
+                                           unselected_color=C["surface"], unselected_hover_color=C["surface2"],
+                                           text_color=C["ink"], fg_color=C["line"], command=lambda v: self._save_prefs())
+        self.rate.set({-2: "Slow", 0: "Normal", 2: "Fast"}.get(int(env.get("VOICE_RATE", 0)), "Normal"))
+        self.rate.pack(side="left", padx=(10, 0))
+
+        btns = ctk.CTkFrame(notif, fg_color="transparent")
+        btns.pack(fill="x", padx=20, pady=(10, 18))
+        soft_button(btns, "Preview voice", self._preview_voice).pack(side="left", padx=(0, 8))
+        soft_button(btns, "Send a test alert", self._test_alert).pack(side="left")
 
         auto = self._section("Automatic checks",
                              "Windows runs a check daily at 7:00 PM and two minutes after you sign in, plus an hourly "
@@ -826,6 +868,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         env["NOTIFY_DAYS_AHEAD"] = int(self.days.get())
         env["CLOSE_TO_TRAY"] = bool(self.tray_sw.get())
         env["CHECK_UPDATES"] = bool(self.updates_sw.get())
+        if hasattr(self, "rate"):
+            env["VOICE_NAME"], env["VOICE_VOLUME"], env["VOICE_RATE"] = self._voice_prefs()
         save_env(env)
         self.app.env = load_env()
         self.app.set_status("Preferences saved.")
@@ -851,6 +895,34 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.acc_msg.configure(text="Saved. Verifying sign-in…", text_color=C["muted"])
         self.app.start_sync(on_done=lambda ok, msg: self.acc_msg.configure(
             text="Sign-in verified." if ok else msg, text_color=C["green"] if ok else C["red"]))
+
+    def _load_voices(self):
+        voices = list_voices()
+        if not voices:
+            return
+        try:
+            self.after(0, lambda: self._show_voices(voices))
+        except RuntimeError:
+            pass
+
+    def _show_voices(self, voices):
+        current = self.voice_menu.get()
+        self.voice_menu.configure(values=["Default"] + voices)
+        if current not in voices:
+            self.voice_menu.set("Default" if not self.app.env.get("VOICE_NAME") else self.app.env["VOICE_NAME"])
+
+    def _volume_changed(self, value):
+        self.volume_lbl.configure(text=f"{int(value)}%")
+
+    def _voice_prefs(self):
+        name = self.voice_menu.get()
+        return ("" if name == "Default" else name, int(self.volume.get()), {"Slow": -2, "Normal": 0, "Fast": 2}[self.rate.get()])
+
+    def _preview_voice(self):
+        voice, volume, rate = self._voice_prefs()
+        self.app.set_status("Playing voice preview…")
+        threading.Thread(target=lambda: speak_voice("This is how your assignment reminders will sound.",
+                                                    force=True, voice=voice, volume=volume, rate=rate), daemon=True).start()
 
     def _test_alert(self):
         self.app.set_status("Sending test alert…")
