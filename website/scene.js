@@ -26,10 +26,10 @@ const CONFIG = {
   oceanGlint: 0.45, oceanDeep: 0.12, oceanFlow: 3, oceanFlowSpeed: 0.8, oceanFlowScale: 2.1,
   glowColor: "#3a6cff", glowIntensity: 1.3, planetRadius: 1.95, spin: 0.03, initRotation: 2.07,
   tilt: 0.37, autoRotate: 0,
-  cloud1Height: 1.005, cloud1Opacity: 0.6, cloud1Spin: 0.06,
-  cloud2Height: 1.03, cloud2Opacity: 0.5, cloud2Spin: 0.14,
-  cloud3Height: 1.075, cloud3Opacity: 0.5, cloud3Spin: 0.1,
-  bgColor: "#07080d", flameColor: "#3a6cff", flameColor2: "#ff8a5c", flameAmt: 0.15,
+  cloud1Height: 1.004, cloud1Opacity: 0.6, cloud1Spin: 0.06,
+  cloud2Height: 1.014, cloud2Opacity: 0.5, cloud2Spin: 0.14,
+  cloud3Height: 1.028, cloud3Opacity: 0.5, cloud3Spin: 0.1,
+  bgColor: "#07080d",
   atmoColor: "#9fc4ff", atmoCount: 320, atmoSize: 22, atmoSpeed: 0.8,
   starColor: "#cfe0ff", starCount: 1400, starSize: 1.6, starFlicker: 1,
   markerColor: "#ffb48a", markerCount: 60, markerSize: 16, markerSpeed: 0.5,
@@ -100,35 +100,29 @@ torusComposer.addPass(new UnrealBloomPass(size.clone(), 0.22, 0.2, 0));
 torusComposer.addPass(new ShaderPass(CopyShader));
 const bloomComposer = new EffectComposer(renderer); bloomComposer.renderToScreen = false;
 bloomComposer.addPass(new RenderPass(scene, camera));
-bloomComposer.addPass(new UnrealBloomPass(size.clone(), 0.5, 0.6, 0));
+bloomComposer.addPass(new UnrealBloomPass(size.clone(), 0.3, 0.45, 0));
 bloomComposer.addPass(new ShaderPass(GammaCorrectionShader));
 
 const blackTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); blackTex.needsUpdate = true;
 const FinalPass = {
   uniforms: {
     iTime: { value: 0 }, tDiffuse: { value: null }, torusTexture: { value: null }, bloomTexture: { value: null }, haloTexture: { value: blackTex },
-    uBg: { value: hexToVec3(CONFIG.bgColor) }, uFlameA: { value: hexToVec3(CONFIG.flameColor) },
-    uFlameB: { value: hexToVec3(CONFIG.flameColor2) }, uFlameAmt: { value: CONFIG.flameAmt },
+    uBg: { value: hexToVec3(CONFIG.bgColor) }, uBgLow: { value: hexToVec3("#0b1230") },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position, 1.0); }`,
   fragmentShader: `
     uniform float iTime; uniform sampler2D tDiffuse; uniform sampler2D bloomTexture; uniform sampler2D torusTexture; uniform sampler2D haloTexture;
-    uniform vec3 uBg; uniform vec3 uFlameA; uniform vec3 uFlameB; uniform float uFlameAmt;
+    uniform vec3 uBg; uniform vec3 uBgLow;
     varying vec2 vUv;
-    vec3 warp3d(vec3 pos, float t){ float curv=.8,a=1.9,b=0.7; pos*=2.;
-      pos.x+=curv*sin(t+a*pos.y)+t*b; pos.y+=curv*cos(t+a*pos.x);
-      pos.y+=curv*sin(t+a*pos.z)+t*b; pos.z+=curv*cos(t+a*pos.y);
-      pos.z+=curv*sin(t+a*pos.x)+t*b; pos.x+=curv*cos(t+a*pos.z);
-      return 0.5+0.5*cos(pos.xyz+vec3(1,2,4)); }
+    /* a quiet sky: deep navy low on the screen fading to near-black above, plus a hair of noise so the
+       gradient never bands on 8-bit displays. (The template's animated "flame" bands were dropped on purpose.) */
     void main(){
       vec2 uv = 2.*vUv - 1.;
-      vec3 w = pow(warp3d(vec3(uv.x, sin(uv.y), uv.y), iTime*1.5), vec3(1.5));
-      vec3 flame = 1.5*uFlameA*w.x; flame*=w.y; flame += uFlameB*w.z;
-      flame *= smoothstep(0.25, 1., abs(uv.y));
-      float md = smoothstep(-0.7, 1., -uv.y*uv.x); flame *= md*md;
-      vec3 bg = uBg * (1.0 - 0.4 * length(uv));
-      vec3 halo = texture2D(haloTexture, vUv).xyz;
-      gl_FragColor = vec4(bg + flame*uFlameAmt + texture2D(bloomTexture, vUv).xyz + texture2D(torusTexture, vUv).xyz + texture2D(tDiffuse, vUv).xyz + halo, 1.);
+      float low = smoothstep(1.1, -0.9, uv.y) * (1.0 - 0.35 * abs(uv.x));
+      vec3 bg = mix(uBg * 0.75, uBgLow, low * 0.9);
+      float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+      vec3 col = bg + texture2D(bloomTexture, vUv).xyz + texture2D(torusTexture, vUv).xyz + texture2D(tDiffuse, vUv).xyz + texture2D(haloTexture, vUv).xyz;
+      gl_FragColor = vec4(col + n / 255.0, 1.0);
     }`,
 };
 const finalPass = new ShaderPass(FinalPass);
@@ -153,15 +147,17 @@ scene.add(worldGroup);
 /* ---------- atmosphere halo */
 const glowMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
   transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
-  uniforms: { uGlow: { value: hexToVec3(CONFIG.glowColor) }, uIntensity: { value: CONFIG.glowIntensity } },
+  uniforms: { uGlow: { value: hexToVec3(CONFIG.glowColor) }, uGlowEdge: { value: hexToVec3("#bfe4ff") }, uIntensity: { value: CONFIG.glowIntensity } },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-  fragmentShader: `uniform vec3 uGlow; uniform float uIntensity; varying vec2 vUv;
+  fragmentShader: `uniform vec3 uGlow; uniform vec3 uGlowEdge; uniform float uIntensity; varying vec2 vUv;
     void main(){ float d = length(vUv - 0.5) * 2.0;
       float disc = 1.0 / 2.3;                                    /* planet limb in plane units (half-extent = 2.3 radii) */
-      float outer = pow(clamp(1.0 - (d - disc) / (1.0 - disc), 0.0, 1.0), 3.2);   /* soft falloff from the limb outwards */
-      float inner = smoothstep(disc - 0.05, disc + 0.012, d);     /* the disc itself stays clear so the surface reads */
+      float x = clamp((d - disc) / (1.0 - disc), 0.0, 1.0);      /* 0 at the limb, 1 at the plane edge */
+      float outer = exp(-x * 6.0) * (1.0 - x);                   /* one smooth exponential falloff, no shoulders */
+      float inner = smoothstep(disc - 0.015, disc + 0.01, d);     /* the disc itself stays clear so the surface reads */
       float a = outer * inner;
-      gl_FragColor = vec4(uGlow * a * uIntensity, a); }`,
+      vec3 col = mix(uGlowEdge, uGlow, smoothstep(0.0, 0.3, x));  /* pale cyan at the limb easing into deep blue */
+      gl_FragColor = vec4(col * a * uIntensity, a); }`,
 }));
 glowMesh.scale.setScalar(CONFIG.planetRadius * 2.3); glowMesh.layers.set(LAYERS.BLOOM_SCENE); worldGroup.add(glowMesh);
 
@@ -241,7 +237,7 @@ gl_FragColor.rgb = vec3(1.0);
 float cloudNoise = snoise(vec3(vCloudUv.x * noiseScale + uTime * uSpeedX + uPhase, vCloudUv.y * noiseScale - uTime * uSpeedY + uPhase, uTime * uSpeedZ + uPhase));
 float cloudNdv = max(dot(normalize(vNormal), normalize(vViewPosition)), 0.0);
 float cloudEdge = pow(1.0 - cloudNdv, 3.0);
-float cloudMod = mix(cloudNoise, 1.0, cloudEdge);
+float cloudMod = cloudNoise * (1.0 - cloudEdge * 0.9);   /* clouds thin out at the limb instead of stacking into bright rings */
 float cloudNdl = dot(normalize(vNormal), normalize(vec3(-0.9, 0.18, 0.4)));
 float cloudDay = 1.0 - smoothstep(0.30, -0.30, cloudNdl) * 0.9;
 gl_FragColor.a *= cloudMod * uOpacity * cloudDay;`);

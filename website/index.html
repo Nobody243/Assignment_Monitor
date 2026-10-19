@@ -21,15 +21,28 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- ================================================================ intro (first visit per session; app.js removes it, CSS hides it after 9s if scripts fail) -->
+  <!-- ================================================================ intro: plays on every load while the planet and fonts load; app.js removes it, CSS hides it after 9s if scripts fail -->
   <div class="intro" id="intro" aria-busy="true">
+    <div class="intro-grid" aria-hidden="true"></div>
     <div class="intro-center">
-      <div class="intro-mark"><img src="assets/logo.svg" alt="" width="56" height="56"><i></i><i></i></div>
-      <div class="intro-word">Assignment Monitor<small>for Bahria University LMS</small></div>
-      <div class="intro-row mono"><span class="intro-status" aria-live="polite">Warming up</span><span class="intro-pct">00</span></div>
-      <div class="intro-bar"><b></b></div>
+      <div class="intro-dial" aria-hidden="true">
+        <svg viewBox="0 0 220 220">
+          <circle class="intro-track" cx="110" cy="110" r="100"/>
+          <circle class="intro-arc" cx="110" cy="110" r="100"/>
+          <g class="intro-tip"><circle cx="110" cy="10" r="3.2"/><circle class="intro-tip-halo" cx="110" cy="10" r="9"/></g>
+          <g class="intro-ticks"></g>
+        </svg>
+        <div class="intro-num"><span class="intro-pct">00</span><sup>%</sup></div>
+        <div class="intro-ring"></div>
+      </div>
+      <div class="intro-word"><img src="assets/logo.svg" alt="" width="22" height="22">Assignment Monitor</div>
+      <div class="intro-status-wrap mono"><span class="intro-status" aria-live="polite">Warming up</span><i class="intro-caret"></i></div>
+      <ol class="intro-stages mono" aria-hidden="true">
+        <li data-at="0"><b>01</b>Renderer</li><li data-at="30"><b>02</b>Planet</li><li data-at="65"><b>03</b>City lights</li><li data-at="88"><b>04</b>Campuses</li>
+      </ol>
     </div>
-    <div class="intro-corner intro-corner-l mono">Islamabad · Lahore · Karachi</div>
+    <div class="intro-corner intro-corner-l mono">For Bahria University LMS</div>
+    <div class="intro-corner intro-corner-c mono">Islamabad · Lahore · Karachi</div>
     <div class="intro-corner intro-corner-r mono"><span data-version>v1.0.0</span> · Windows · free</div>
   </div>
   <canvas id="space" aria-hidden="true"></canvas>

@@ -50,44 +50,67 @@
     }));
   }
 
-  /* ------------------------------------------------------------ intro: a short loading screen on the first visit of a session.
-     It waits for the planet (scene.js reports progress), runs the counter to 100, then lifts like a curtain while the
-     planet floats up underneath. It never blocks longer than 8 s and is skipped for reduced motion and repeat visits. */
+  /* ------------------------------------------------------------ intro: a loading screen on every visit.
+     It holds the page while the planet, its textures and the web fonts load (scene.js reports progress), so the hero
+     appears finished instead of assembling in front of the visitor. A dial sweeps with real progress, the stages light
+     up, and on "ready" the screen opens like an iris while the planet floats up underneath. Capped at 6.5 s; skipped
+     for reduced motion. */
   const introDone = new Promise((resolve) => window.addEventListener("intro:done", resolve, { once: true }));
   function initIntro() {
     const el = $("#intro");
     const release = () => { document.documentElement.classList.remove("is-intro"); if (lenis) lenis.start(); window.dispatchEvent(new Event("intro:done")); };
-    let seen = false; try { seen = sessionStorage.getItem("am-intro") === "1"; sessionStorage.setItem("am-intro", "1"); } catch (e) { /* storage off */ }
-    if (!el || !hasGsap || reduce || seen) { if (el) el.remove(); setTimeout(release, 0); return; }
+    if (!el || !hasGsap || reduce) { if (el) el.remove(); setTimeout(release, 0); return; }
     document.documentElement.classList.add("is-intro"); window.scrollTo(0, 0); if (lenis) lenis.stop();
-    const pctEl = $(".intro-pct", el), statusEl = $(".intro-status", el), bar = $(".intro-bar b", el);
-    const stages = [[0, "Warming up"], [12, "Loading the planet"], [55, "Painting city lights"], [86, "Placing campuses"], [100, "Ready"]];
-    const t0 = performance.now(); let real = 0, shown = 0, ready = false, closing = false;
+    const pctEl = $(".intro-pct", el), statusEl = $(".intro-status", el), arc = $(".intro-arc", el), tip = $(".intro-tip", el), stageEls = $$(".intro-stages li", el);
+    const ticksG = $(".intro-ticks", el), ticks = [];
+    for (let i = 0; i < 60; i++) {                                          // 60 hairline ticks just inside the track; they light up with progress
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      const major = i % 15 === 0, r1 = major ? 86 : 90, r2 = 94, ang = (i / 60) * Math.PI * 2 - Math.PI / 2;
+      t.setAttribute("x1", 110 + Math.cos(ang) * r1); t.setAttribute("y1", 110 + Math.sin(ang) * r1);
+      t.setAttribute("x2", 110 + Math.cos(ang) * r2); t.setAttribute("y2", 110 + Math.sin(ang) * r2);
+      ticksG.appendChild(t); ticks.push(t);
+    }
+    const CIRC = 2 * Math.PI * 100;
+    const stages = [[0, "Warming up the renderer"], [12, "Loading the planet"], [48, "Painting city lights"], [78, "Placing campuses"], [100, "Ready"]];
+    const t0 = performance.now(); let real = 0, shown = 0, ready = false, fontsOk = false, closing = false;
     window.addEventListener("scene:progress", (e) => { real = Math.max(real, (e.detail && e.detail.p) || 0); });
     window.addEventListener("scene:ready", () => { ready = true; }, { once: true });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fontsOk = true; }); else fontsOk = true;
+    const setStatus = (txt) => { if (statusEl.textContent === txt) return; statusEl.textContent = txt; statusEl.classList.remove("is-swap"); void statusEl.offsetWidth; statusEl.classList.add("is-swap"); };
+    gsap.from([".intro-dial", ".intro-word", ".intro-status-wrap", ".intro-stages", ".intro-corner"], { opacity: 0, y: 14, duration: 0.7, ease: "power3.out", stagger: 0.07 });
+    const paint = (p) => {
+      const pct = Math.round(p * 100);
+      pctEl.textContent = String(pct).padStart(2, "0");
+      arc.style.strokeDashoffset = String(CIRC * (1 - p));
+      tip.style.transform = `rotate(${p * 360}deg)`;
+      ticks.forEach((t, i) => t.classList.toggle("is-lit", i / 60 <= p));
+      stageEls.forEach((li) => li.classList.toggle("is-on", pct >= Number(li.dataset.at)));
+      const stage = stages.filter((st) => pct >= st[0]).pop(); if (stage) setStatus(stage[1]);
+    };
     const close = () => {
-      closing = true; pctEl.textContent = "100"; bar.style.transform = "scaleX(1)"; statusEl.textContent = "Ready"; el.setAttribute("aria-busy", "false");
+      closing = true; paint(1); el.classList.add("is-ready"); el.setAttribute("aria-busy", "false");
+      const R = Math.hypot(window.innerWidth, window.innerHeight) * 0.62 + 80;
       gsap.timeline()
-        .to([".intro-center", ".intro-corner"], { opacity: 0, y: -10, duration: 0.35, ease: "power2.in", stagger: 0.02 }, 0.15)
-        .add(release, 0.45)
-        .to(el, { clipPath: "inset(0 0 100% 0)", duration: 0.95, ease: "power4.inOut" }, 0.45)
+        .to([".intro-word", ".intro-status-wrap", ".intro-stages", ".intro-corner"], { opacity: 0, y: -8, duration: 0.3, ease: "power2.in", stagger: 0.03 }, 0.45)
+        .to(".intro-num", { scale: 0.86, opacity: 0, duration: 0.35, ease: "power2.in" }, 0.5)
+        .to(".intro-dial svg", { scale: 1.12, opacity: 0, duration: 0.5, ease: "power2.in" }, 0.5)
+        .add(release, 0.8)
+        .to(el, { "--r": R + "px", duration: 1.15, ease: "power4.inOut" }, 0.8)
         .add(() => el.remove());
     };
     const tick = () => {
       if (closing) return;
       const elapsed = (performance.now() - t0) / 1000;
-      const floor = Math.min(0.9, elapsed / 5);                         // keeps moving even on a slow connection
-      const target = ready ? 1 : Math.min(0.96, Math.max(real, floor));
-      shown += (target - shown) * 0.08;
-      const pct = Math.round(shown * 100);
-      pctEl.textContent = String(pct).padStart(2, "0");
-      bar.style.transform = "scaleX(" + shown + ")";
-      const stage = stages.filter((st) => pct >= st[0]).pop(); if (stage && statusEl.textContent !== stage[1]) statusEl.textContent = stage[1];
-      if ((ready && elapsed > 1.4 && shown > 0.985) || elapsed > 6.5) { close(); return; }
+      const floor = Math.min(0.9, elapsed / 5);                             // keeps moving even on a slow connection
+      const done = ready && fontsOk;
+      const target = done ? 1 : Math.min(0.96, Math.max(real, floor));
+      shown += (target - shown) * (done ? 0.12 : 0.07);
+      paint(shown);
+      if ((done && elapsed > 1.6 && shown > 0.992) || elapsed > 6.5) { close(); return; }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    setTimeout(() => { if (!closing) close(); }, 6500);               // hard cap even if frames stall while shaders compile
+    setTimeout(() => { if (!closing) close(); }, 6500);                     // hard cap even if frames stall while shaders compile
   }
 
   /* ------------------------------------------------------------ hero headline (plays once the intro has lifted) */
