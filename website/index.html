@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Assignment Monitor — never miss a Bahria LMS deadline</title>
   <meta name="description" content="A free, open-source Windows app that watches your Bahria University LMS assignments: daily checks, hourly reminders on due days, extended-deadline detection. Everything stays on your PC.">
-  <meta name="theme-color" content="#07080d">
+  <meta name="theme-color" content="#0a0a0b">
   <link rel="icon" href="favicon.ico" sizes="32x32">
   <link rel="icon" href="assets/logo-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="assets/logo-192.png">
@@ -16,32 +16,27 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+  <canvas id="space" aria-hidden="true"></canvas>
   <div class="grain" aria-hidden="true"></div>
 
   <header class="nav">
     <div class="wrap">
       <a class="brand" href="#top" aria-label="Assignment Monitor home">
-        <img src="assets/logo-64.png" alt="" width="30" height="30">
+        <img src="assets/logo-64.png" alt="" width="28" height="28">
         <span>Assignment Monitor<small>for Bahria University LMS</small></span>
       </a>
       <nav class="nav-links" aria-label="Sections">
-        <a href="#features">Features</a>
-        <a href="#how">How it works</a>
-        <a href="#screens">Screens</a>
-        <a href="#privacy">Privacy</a>
-        <a href="#faq">FAQ</a>
+        <a href="#story">Tour</a><a href="#features">Features</a><a href="#how">Setup</a><a href="#screens">Screens</a><a href="#privacy">Privacy</a><a href="#faq">FAQ</a>
       </nav>
       <div class="nav-cta">
         <a class="icon-btn" href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener" aria-label="Source on GitHub">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.9 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
         </a>
         <a class="btn btn-primary" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
           Download <small data-version>v1.0.0</small>
         </a>
       </div>
@@ -49,230 +44,186 @@
   </header>
 
   <main id="top">
-    <!-- ============================================================ hero -->
+    <!-- ================================================================ hero -->
     <section class="hero">
-      <div class="wrap">
-        <span class="eyebrow" data-reveal><i></i> Free &amp; open source · Windows 10/11</span>
-        <h1 data-reveal="2">Never miss an LMS deadline <span class="serif">again.</span></h1>
-        <p class="lede" data-reveal="3">Assignment Monitor signs in to the Bahria University portal for you, reads every course, catches extended deadlines the portal hides, and reminds you out loud on the day something is due. Set it up once; it runs on its own.</p>
-        <div class="hero-cta" data-reveal="4">
-          <a class="btn btn-primary btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">
+      <div class="wrap hero-copy">
+        <span class="eyebrow mono">Windows 10 / 11 · free · open source</span>
+        <h1>Never miss an LMS deadline <span class="serif">again.</span></h1>
+        <p class="lede">Assignment Monitor signs in to the Bahria University portal for you, reads every course, catches the extended deadlines the portal hides, and reminds you out loud on the day something is due.</p>
+        <div class="hero-cta">
+          <a class="btn btn-accent btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
             Download for Windows <small><span data-version>v1.0.0</span> · <span data-setup-size>41 MB</span></small>
           </a>
           <a class="btn btn-ghost btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-portable.zip" data-download="zip">Portable zip <small data-zip-size></small></a>
         </div>
-        <div class="hero-meta" data-reveal="4">
-          <span>No account</span><span>No server</span><span>Password never leaves your PC</span><span>MIT licensed</span>
-        </div>
-
-        <div class="hero-shot" data-reveal>
-          <div class="window">
-            <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><b>Assignment Monitor</b></div>
-            <img src="assets/shot-dashboard-dark.png" alt="Assignment Monitor dashboard: next deadline, counters for pending, due today, due this week, extended, overdue and submitted, plus the needs-attention list" width="1280" height="840" fetchpriority="high">
-          </div>
-          <div class="chip chip-1" aria-hidden="true"><i style="background:#ff7b6b"></i><div>Due today<small>Lab 9: Stored Procedures · 11:55 pm</small></div></div>
-          <div class="chip chip-2" aria-hidden="true"><i style="background:#b7a3ff"></i><div>Extension caught<small>Test Plan Review moved by 7 days</small></div></div>
-          <div class="chip chip-3" aria-hidden="true"><i style="background:#4ade80"></i><div>Synced at 7:00 PM<small>16 assignments · 6 courses</small></div></div>
-        </div>
+        <div class="hero-meta"><span>No account</span><span>No server</span><span>Password never leaves your PC</span><span>MIT</span></div>
+        <div class="hero-pins mono" aria-hidden="true"><span>Islamabad</span><span>Lahore</span><span>Karachi</span></div>
       </div>
+      <div class="hero-fade" aria-hidden="true"></div>
     </section>
 
-    <!-- ============================================================ stats -->
-    <section class="stats" aria-label="At a glance">
+    <!-- ================================================================ app reveal -->
+    <section class="reveal" aria-label="The app">
       <div class="wrap">
-        <div class="stats-grid" data-reveal>
-          <div class="stat"><b>7:00 PM</b><span>Automatic check every day, plus a catch-up when you sign in</span></div>
-          <div class="stat"><b>Hourly</b><span>Voice and desktop reminders while something is due today</span></div>
-          <div class="stat"><b>Both dates</b><span>Reads the original and the extended deadline the portal merges</span></div>
-          <div class="stat"><b>100% local</b><span>No cloud, no account, nothing sent anywhere but the portal</span></div>
+        <div class="win reveal-win">
+          <div class="win-bar"><i></i><i></i><i></i><b>Assignment Monitor</b></div>
+          <img src="assets/shot-dashboard-dark.png" alt="Assignment Monitor dashboard: next deadline, counters for pending, due today, due this week, extended, overdue and submitted, plus the needs-attention list" width="1280" height="840" fetchpriority="high">
         </div>
       </div>
     </section>
 
-    <!-- ============================================================ features -->
+    <!-- ================================================================ ticker -->
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span>Synced 19:00</span><span>26 assignments across 9 courses</span><span>2 pending</span><span>1 extension caught: Test Plan Review +7 days</span><span>Next: Lab 9 tonight 23:55</span><span>Hourly reminder armed</span><span>Nothing sent anywhere but the portal</span>
+      </div>
+    </div>
+
+    <!-- ================================================================ numbers -->
+    <section class="numbers" aria-label="At a glance">
+      <div class="wrap">
+        <div class="numbers-grid">
+          <div class="num" data-reveal><b><i data-count="19">0</i>:00</b><span>Automatic check every evening, plus a catch-up when you sign in</span></div>
+          <div class="num" data-reveal><b><i data-count="60">0</i>&thinsp;min</b><span>Between voice reminders while an unsubmitted assignment is due today</span></div>
+          <div class="num" data-reveal><b><i data-count="2">0</i> dates</b><span>Read from every deadline: the original and the extension the portal merges into it</span></div>
+          <div class="num" data-reveal><b><i data-count="0">0</i> servers</b><span>Nothing of yours leaves your PC. No account, no cloud, no telemetry</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ story -->
+    <section id="story">
+      <div class="wrap">
+        <div class="section-head" data-reveal>
+          <span class="mono">Tour</span>
+          <h2>One screen, one question: <span class="serif accent">what's next?</span></h2>
+        </div>
+        <div class="story-grid">
+          <div class="story-visual" data-reveal>
+            <div class="win shot">
+              <div class="win-bar"><i></i><i></i><i></i><b>Dashboard</b></div>
+              <img src="assets/shot-dashboard-light.png" alt="The dashboard in the light theme" width="1280" height="840" loading="lazy">
+              <div class="spot"></div><div class="spot-label"></div>
+            </div>
+          </div>
+          <div class="story-steps">
+            <article class="story-step" data-spot="20.5,25,75.5,14.6" data-label="Next deadline"><span class="mono">01</span><h3>The next deadline, with a countdown</h3><p>Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet.</p></article>
+            <article class="story-step" data-spot="20.5,40.5,75.5,11.5" data-label="Six counters"><span class="mono">02</span><h3>Pending, due today, this week, extended, overdue, submitted</h3><p>Each counter is a filter. Click it and the Assignments page opens on exactly that slice.</p></article>
+            <article class="story-step" data-spot="20.5,53.5,75.5,44" data-label="Needs your attention"><span class="mono">03</span><h3>Everything open, nearest first</h3><p>Unsubmitted work sorted by deadline, each with its course and exact due time. No digging through six course pages.</p></article>
+            <article class="story-step" data-spot="1,2.5,17,96" data-label="Always a click away"><span class="mono">04</span><h3>Light or dark, tray or window</h3><p>Switch the theme any time. Close the window and it keeps running in the tray; the background checks run even when it doesn't.</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ features -->
     <section id="features">
       <div class="wrap">
         <div class="section-head" data-reveal>
-          <span class="eyebrow"><i></i> Features</span>
-          <h2>Built for one question: <span class="grad-text">what's next?</span></h2>
-          <p class="lede">Everything on the dashboard answers it. No feeds, no clutter, no logging in to six course pages to find out.</p>
+          <span class="mono">What it does</span>
+          <h2>Small tool. <span class="serif accent">Does the boring part.</span></h2>
+          <p class="lede">It does on your PC exactly what you would do by hand in a browser, on a schedule, and tells you only what matters.</p>
         </div>
-        <div class="bento">
-          <article class="card span-4 card-big" data-reveal>
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></div>
-            <h3>A dashboard that leads with your next deadline</h3>
-            <p>Next due item with a countdown, counters for pending, due today, due this week, extended, overdue and submitted, a needs-attention list sorted by date, and progress per course.</p>
-            <img class="card-shot" src="assets/shot-dashboard-light.png" alt="" loading="lazy" width="1280" height="840">
-          </article>
-          <article class="card span-2" data-reveal="2">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div>
-            <h3>Catches extended deadlines</h3>
-            <p>When a teacher moves a date, the LMS squashes old and new into one string. The app reads both and flags the change.</p>
-            <div class="datestr"><em>4 October 2026 - 11:50 am</em><s>13 September 2026-11:55 am</s></div>
-          </article>
-          <article class="card span-2" data-reveal>
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></div>
-            <h3>Reminds you out loud</h3>
-            <p>On the day something is due and still unsubmitted, you get a spoken reminder and a Windows notification every hour until it's done.</p>
-          </article>
-          <article class="card span-2" data-reveal="2">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-            <h3>Runs itself</h3>
-            <p>Three Windows tasks under your own account. No admin rights, no background service, and they work even when the app window is closed.</p>
-            <ul class="tasklist">
-              <li>Daily check <span>19:00</span></li>
-              <li>Catch-up check <span>2 min after sign-in</span></li>
-              <li>Due-today reminder <span>every hour</span></li>
-            </ul>
-          </article>
-          <article class="card span-2" data-reveal="3">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg></div>
-            <h3>Lives in the tray</h3>
-            <p>Close the window and it keeps running quietly. Right-click the tray icon to open, sync now, or quit. Optionally starts with Windows.</p>
-          </article>
-          <article class="card span-3" data-reveal>
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9c0-.5 0-1-.1-1.4A5 5 0 0 1 13.4 3.1 9 9 0 0 0 12 3z"/></svg></div>
-            <h3>Light and dark, both considered</h3>
-            <p>Warm neutral surfaces, one accent colour, a proper type scale. The theme switch restyles the live window and is remembered.</p>
-            <div class="theme-pair"><img src="assets/shot-assignments-light.png" alt="Assignments list in the light theme" loading="lazy" width="1280" height="840"><img src="assets/shot-assignments-dark.png" alt="Assignments list in the dark theme" loading="lazy" width="1280" height="840"></div>
-          </article>
-          <article class="card span-3" data-reveal="2">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg></div>
-            <h3>Updates itself, safely</h3>
-            <p>Checks the project's GitHub releases on start (switchable). One click downloads the new installer, closes the app, reinstalls and reopens. Your sign-in and data are kept.</p>
-          </article>
+        <div class="cards">
+          <article class="card" data-reveal><span class="mono">01 · Deadlines</span><h3>Catches extended deadlines</h3><p>When a teacher moves a date, the LMS squashes old and new into one string. The app reads both and flags the change.</p><div class="datestr"><em>4 October 2026 - 11:50 am</em><s>13 September 2026-11:55 am</s></div></article>
+          <article class="card" data-reveal><span class="mono">02 · Reminders</span><h3>Reminds you out loud</h3><p>On the day something is due and still unsubmitted, a spoken reminder and a Windows notification every hour until it's done. Pick the voice, volume and speed.</p></article>
+          <article class="card" data-reveal><span class="mono">03 · Automation</span><h3>Runs itself</h3><p>Three Windows tasks under your own account. No admin rights, no service, and they work with the window closed.</p><ul><li>Daily check <span>19:00</span></li><li>Catch-up check <span>2 min after sign-in</span></li><li>Due-today reminder <span>hourly</span></li></ul></article>
+          <article class="card" data-reveal><span class="mono">04 · Tray</span><h3>Lives in the tray</h3><p>Close the window and it keeps running quietly. Right-click the icon to open, sync now, or quit. Optionally starts with Windows.</p></article>
+          <article class="card" data-reveal><span class="mono">05 · Updates</span><h3>Updates itself, safely</h3><p>Checks the project's GitHub releases on start (switchable). One click downloads the new installer, closes, reinstalls and reopens. Your sign-in and data are kept.</p></article>
+          <article class="card" data-reveal><span class="mono">06 · Source</span><h3>Open, auditable, yours</h3><p>MIT licensed. Every release is built by GitHub Actions from the public repository, with tests and a dependency audit on every commit.</p></article>
         </div>
       </div>
     </section>
 
-    <!-- ============================================================ how it works -->
+    <!-- ================================================================ how -->
     <section id="how">
       <div class="wrap">
         <div class="section-head" data-reveal>
-          <span class="eyebrow"><i></i> How it works</span>
-          <h2>Three minutes, then <span class="serif grad-text">forget about it.</span></h2>
+          <span class="mono">Setup</span>
+          <h2>Three minutes, then <span class="serif accent">forget about it.</span></h2>
         </div>
         <div class="steps">
-          <div class="step" data-reveal><h3>Install</h3><p>Run the setup. It installs for your user account only, so no administrator password, and adds a Start Menu and Desktop icon.</p></div>
-          <div class="step" data-reveal="2"><h3>Sign in once</h3><p>Enter your enrollment number, CMS password and campus. The app verifies the sign-in live and reads every course of the current semester.</p></div>
-          <div class="step" data-reveal="3"><h3>Let it run</h3><p>Leave "Check automatically" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days.</p></div>
+          <svg class="steps-line" viewBox="0 0 1200 2" preserveAspectRatio="none" aria-hidden="true"><path d="M27 1 H1173"/></svg>
+          <div class="step" data-n="1" data-reveal><h3>Install</h3><p>Run the setup. It installs for your user account only, no administrator password, and adds a Start Menu and Desktop icon.</p></div>
+          <div class="step" data-n="2" data-reveal><h3>Sign in once</h3><p>Enrollment number, CMS password, campus. The app verifies the sign-in live and reads every course of the semester.</p></div>
+          <div class="step" data-n="3" data-reveal><h3>Let it run</h3><p>Leave "Check automatically" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days.</p></div>
         </div>
       </div>
     </section>
 
-    <!-- ============================================================ screens -->
+    <!-- ================================================================ screens -->
     <section id="screens">
       <div class="wrap gallery">
         <div class="section-head" data-reveal>
-          <span class="eyebrow"><i></i> Screens</span>
+          <span class="mono">Screens</span>
           <h2>Calm by design.</h2>
-          <p class="lede">Nothing blinks, nothing nags. The information you need is a glance away; the rest stays out of the way.</p>
+          <p class="lede">Nothing blinks, nothing nags. What you need is a glance away; the rest stays out of the way.</p>
         </div>
         <div class="gallery-controls" data-reveal>
           <div class="seg" role="tablist" aria-label="Screen">
             <button role="tab" data-screen="dashboard" data-caption="Dashboard: next deadline, counters, attention list, course progress.">Dashboard</button>
             <button role="tab" data-screen="assignments" data-caption="Assignments: filters, course picker, search, extension history and marks.">Assignments</button>
-            <button role="tab" data-screen="settings" data-caption="Settings: account, theme, tray, notifications, automatic checks, privacy.">Settings</button>
+            <button role="tab" data-screen="settings" data-caption="Settings: account, theme, tray, voice and notifications, automatic checks, privacy.">Settings</button>
             <button role="tab" data-screen="setup" data-caption="First run: sign in once, tick automatic checks, done.">Sign-in</button>
           </div>
-          <div class="seg" role="tablist" aria-label="Theme">
-            <button role="tab" data-theme="dark">Dark</button>
-            <button role="tab" data-theme="light">Light</button>
-          </div>
+          <div class="seg" role="tablist" aria-label="Theme"><button role="tab" data-theme="dark">Dark</button><button role="tab" data-theme="light">Light</button></div>
         </div>
-        <div class="window" data-reveal>
-          <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><b>Assignment Monitor</b></div>
+        <div class="win" data-reveal>
+          <div class="win-bar"><i></i><i></i><i></i><b>Assignment Monitor</b></div>
           <img class="gallery-img" src="assets/shot-dashboard-dark.png" alt="Dashboard screen, dark theme" width="1280" height="840" loading="lazy">
         </div>
         <p class="gallery-caption"></p>
       </div>
     </section>
 
-    <!-- ============================================================ privacy -->
+    <!-- ================================================================ privacy -->
     <section id="privacy">
       <div class="wrap">
         <div class="section-head" data-reveal>
-          <span class="eyebrow"><i></i> Privacy &amp; security</span>
-          <h2>Your password stays <span class="grad-text">on your PC.</span></h2>
-          <p class="lede">There is no server behind this app and no account to create. It does on your computer exactly what you would do by hand in a browser, nothing more.</p>
+          <span class="mono">Privacy &amp; security</span>
+          <h2>Your password stays <span class="serif accent">on your PC.</span></h2>
+          <p class="lede">There is no server behind this app and no account to create.</p>
         </div>
         <div class="privacy-grid">
-          <article class="card" data-reveal>
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
-            <h3>Encrypted by Windows</h3>
-            <p>Your portal password is protected with Windows Data Protection (DPAPI) for your user account. Another user or another PC cannot read it, and it is never written to the log.</p>
-          </article>
-          <article class="card" data-reveal="2">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
-            <h3>Talks only to the portal</h3>
-            <p>The only connections are to cms.bahria.edu.pk and lms.bahria.edu.pk over HTTPS, plus an optional, switchable check of GitHub for new versions. No analytics, no telemetry.</p>
-          </article>
-          <article class="card" data-reveal="3">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></div>
-            <h3>Open source, read it yourself</h3>
-            <p>MIT licensed. Every release is built by GitHub Actions straight from the public repository, with tests and a dependency audit on every commit. You can build it from source in one command.</p>
-          </article>
+          <article data-reveal><span class="mono">Encrypted by Windows</span><h3>DPAPI, your account only</h3><p>The portal password is protected with Windows Data Protection for your user account. Another user or another PC cannot read it, and it is never written to the log.</p></article>
+          <article data-reveal><span class="mono">Two hosts, HTTPS</span><h3>Talks only to the portal</h3><p>The only connections are to cms.bahria.edu.pk and lms.bahria.edu.pk, plus an optional, switchable check of GitHub for new versions. No analytics, no telemetry.</p></article>
+          <article data-reveal><span class="mono">Read the code</span><h3>Open source, built in public</h3><p>MIT licensed. Releases are built by GitHub Actions straight from the repository, and you can build the same thing yourself with one command.</p></article>
         </div>
         <div class="links" data-reveal>
           <a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy &amp; terms</a>
           <a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/SECURITY.md" target="_blank" rel="noopener">Security notes</a>
+          <a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/CODE_SIGNING_POLICY.md" target="_blank" rel="noopener">Code signing policy</a>
           <a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/THIRD_PARTY_LICENSES.md" target="_blank" rel="noopener">Third-party licenses</a>
           <a href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener">Source code</a>
         </div>
       </div>
     </section>
 
-    <!-- ============================================================ faq -->
+    <!-- ================================================================ faq -->
     <section id="faq">
       <div class="wrap">
-        <div class="section-head" data-reveal>
-          <span class="eyebrow"><i></i> FAQ</span>
-          <h2>Questions, answered.</h2>
-        </div>
+        <div class="section-head" data-reveal><span class="mono">FAQ</span><h2>Questions, answered.</h2></div>
         <div class="faq" data-reveal>
-          <details>
-            <summary>Windows says "Windows protected your PC". Is it safe?</summary>
-            <p>Yes. The warning appears because the installer is not code-signed, which costs money or a certificate programme the project is applying for. Click "More info", then "Run anyway". If you prefer, build it yourself from the source code with one command; the result is identical.</p>
-          </details>
-          <details>
-            <summary>Is this an official Bahria University app?</summary>
-            <p>No. Assignment Monitor is an independent student project. It is not affiliated with, endorsed by, or supported by Bahria University.</p>
-          </details>
-          <details>
-            <summary>What does it do with my account?</summary>
-            <p>It signs in with your own credentials and reads your own assignments page, the same way you would in a browser. It never submits, uploads or changes anything on the portal, and it never sends your data anywhere.</p>
-          </details>
-          <details>
-            <summary>Do I need Google Chrome?</summary>
-            <p>If Chrome is installed it is used in the background. If not, a browser engine is downloaded once automatically. You never see a browser window.</p>
-          </details>
-          <details>
-            <summary>Does my PC need to be on at 7 PM?</summary>
-            <p>For the 7 PM check, yes, but if it was off, a catch-up check runs two minutes after you next sign in to Windows. The hourly reminder only fires while something is due that day.</p>
-          </details>
-          <details>
-            <summary>How do I uninstall?</summary>
-            <p>Windows Settings → Apps → Assignment Monitor → Uninstall. That removes the app and its background tasks. To wipe everything, also delete the folder <code>%LOCALAPPDATA%\Assignment Monitor</code>.</p>
-          </details>
+          <details><summary>Windows says "Windows protected your PC". Is it safe?</summary><p>Yes. The warning appears because the installer is not yet code-signed; the project is applying for a free open-source certificate. Click "More info", then "Run anyway". If you prefer, build it yourself from the source code with one command; the result is identical.</p></details>
+          <details><summary>Is this an official Bahria University app?</summary><p>No. Assignment Monitor is an independent student project. It is not affiliated with, endorsed by, or supported by Bahria University.</p></details>
+          <details><summary>What does it do with my account?</summary><p>It signs in with your own credentials and reads your own assignments page, the same way you would in a browser. It never submits, uploads or changes anything on the portal, and it never sends your data anywhere.</p></details>
+          <details><summary>Do I need Google Chrome?</summary><p>If Chrome is installed it is used in the background. If not, a browser engine is downloaded once automatically. You never see a browser window.</p></details>
+          <details><summary>Does my PC need to be on at 7 PM?</summary><p>For the 7 PM check, yes, but if it was off a catch-up check runs two minutes after you next sign in to Windows. The hourly reminder only fires while something is due that day.</p></details>
+          <details><summary>How do I uninstall?</summary><p>Windows Settings → Apps → Assignment Monitor → Uninstall. That removes the app and its background tasks. To wipe everything, also delete <code>%LOCALAPPDATA%\Assignment Monitor</code>.</p></details>
         </div>
       </div>
     </section>
 
-    <!-- ============================================================ CTA -->
-    <section>
-      <div class="wrap">
-        <div class="cta-band" data-reveal>
-          <span class="eyebrow"><i></i> <span data-version>v1.0.0</span> · released <span data-published>recently</span></span>
-          <h2 style="margin-top:16px">Stop checking the LMS. <span class="serif grad-text">Start being told.</span></h2>
-          <p class="lede">Free, open source, three minutes to set up.</p>
-          <div class="hero-cta">
-            <a class="btn btn-primary btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-              Download for Windows
-            </a>
-            <a class="btn btn-ghost btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest" data-release-page target="_blank" rel="noopener">Release notes</a>
-          </div>
+    <!-- ================================================================ cta -->
+    <section class="cta">
+      <div class="wrap" data-reveal>
+        <span class="mono"><span data-version>v1.0.0</span> · released <span data-published>recently</span></span>
+        <h2>Stop checking the LMS. <span class="serif accent">Start being told.</span></h2>
+        <p class="lede">Free, open source, three minutes to set up.</p>
+        <div class="hero-cta">
+          <a class="btn btn-accent btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest/download/AssignmentMonitor-Setup.exe" data-download="setup">Download for Windows</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/Nobody243/Assignment_Monitor/releases/latest" data-release-page target="_blank" rel="noopener">Release notes</a>
         </div>
       </div>
     </section>
@@ -281,31 +232,29 @@
   <footer>
     <div class="wrap">
       <div>
-        <a class="brand" href="#top"><img src="assets/logo-64.png" alt="" width="30" height="30"><span>Assignment Monitor<small>for Bahria University LMS</small></span></a>
+        <a class="brand" href="#top"><img src="assets/logo-64.png" alt="" width="28" height="28"><span>Assignment Monitor<small>for Bahria University LMS</small></span></a>
         <p style="margin-top:14px;max-width:38ch">A small, honest tool that reads your LMS so you don't have to. Made by Nobody243.</p>
       </div>
-      <div>
-        <h4>Project</h4>
-        <ul>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener">GitHub</a></li>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/releases" target="_blank" rel="noopener">All releases</a></li>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/issues" target="_blank" rel="noopener">Report a problem</a></li>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/README.md#run-from-source" target="_blank" rel="noopener">Run from source</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Legal</h4>
-        <ul>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy &amp; terms</a></li>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a></li>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/THIRD_PARTY_LICENSES.md" target="_blank" rel="noopener">Third-party licenses</a></li>
-          <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
-        </ul>
-      </div>
+      <div><h4>Project</h4><ul>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/releases" target="_blank" rel="noopener">All releases</a></li>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/issues" target="_blank" rel="noopener">Report a problem</a></li>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/README.md#run-from-source" target="_blank" rel="noopener">Run from source</a></li>
+      </ul></div>
+      <div><h4>Legal</h4><ul>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy &amp; terms</a></li>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a></li>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/CODE_SIGNING_POLICY.md" target="_blank" rel="noopener">Code signing policy</a></li>
+        <li><a href="https://github.com/Nobody243/Assignment_Monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+      </ul></div>
       <p class="disclaimer">© <span id="year"></span> Nobody243. Assignment Monitor is an independent, open-source project and is not affiliated with, endorsed by, or supported by Bahria University. Use it with your own account only. Deadlines shown come from the portal and can be out of date; always confirm on the LMS.</p>
     </div>
   </footer>
 
+  <script src="vendor/gsap.min.js" defer></script>
+  <script src="vendor/ScrollTrigger.min.js" defer></script>
+  <script src="vendor/lenis.min.js" defer></script>
   <script src="app.js" defer></script>
+  <script type="module" src="scene.js"></script>
 </body>
 </html>
