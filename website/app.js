@@ -40,7 +40,7 @@
     if (!hasGsap) return;
     gsap.registerPlugin(ScrollTrigger);
     if (reduce || typeof window.Lenis === "undefined") return;
-    lenis = new Lenis({ duration: 1.05, smoothWheel: true, wheelMultiplier: 0.95 });
+    lenis = new Lenis({ lerp: 0.085, smoothWheel: true, wheelMultiplier: 0.9, touchMultiplier: 1.2 });
     lenis.on("scroll", ScrollTrigger.update);
     gsap.ticker.add((t) => lenis.raf(t * 1000));
     gsap.ticker.lagSmoothing(0);
@@ -72,7 +72,7 @@
     }
     const CIRC = 2 * Math.PI * 100;
     const stages = [[0, "Warming up the renderer"], [12, "Loading the planet"], [48, "Painting city lights"], [78, "Placing campuses"], [100, "Ready"]];
-    const t0 = performance.now(); let real = 0, shown = 0, ready = false, fontsOk = false, closing = false;
+    const t0 = performance.now(); let real = 0, shown = 0, ready = false, fontsOk = false, closing = false, last = t0;
     window.addEventListener("scene:progress", (e) => { real = Math.max(real, (e.detail && e.detail.p) || 0); });
     window.addEventListener("scene:ready", () => { ready = true; }, { once: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fontsOk = true; }); else fontsOk = true;
@@ -90,21 +90,24 @@
     const close = () => {
       closing = true; paint(1); el.classList.add("is-ready"); el.setAttribute("aria-busy", "false");
       const R = Math.hypot(window.innerWidth, window.innerHeight) * 0.62 + 80;
-      gsap.timeline()
-        .to([".intro-word", ".intro-status-wrap", ".intro-stages", ".intro-corner"], { opacity: 0, y: -8, duration: 0.3, ease: "power2.in", stagger: 0.03 }, 0.45)
-        .to(".intro-num", { scale: 0.86, opacity: 0, duration: 0.35, ease: "power2.in" }, 0.5)
-        .to(".intro-dial svg", { scale: 1.12, opacity: 0, duration: 0.5, ease: "power2.in" }, 0.5)
-        .add(release, 0.8)
-        .to(el, { "--r": R + "px", duration: 1.15, ease: "power4.inOut" }, 0.8)
+      gsap.timeline({ defaults: { overwrite: "auto" } })
+        .to(".intro-num", { scale: 1.06, duration: 0.3, ease: "power2.out" }, 0)                        // the number lands
+        .to(".intro-num", { scale: 1, duration: 0.5, ease: "power2.inOut" }, 0.3)
+        .to([".intro-word", ".intro-status-wrap", ".intro-stages", ".intro-corner"], { opacity: 0, y: -10, duration: 0.5, ease: "power2.inOut", stagger: 0.04 }, 0.4)
+        .to(".intro-num", { opacity: 0, scale: 0.9, duration: 0.6, ease: "power2.inOut" }, 0.7)
+        .to(".intro-dial svg", { scale: 1.1, opacity: 0, duration: 0.8, ease: "power2.inOut" }, 0.7)
+        .add(release, 0.85)                                                                             // planet starts rising as the iris opens
+        .to(el, { "--r": R + "px", duration: 1.6, ease: "expo.inOut" }, 0.85)
         .add(() => el.remove());
     };
     const tick = () => {
       if (closing) return;
-      const elapsed = (performance.now() - t0) / 1000;
+      const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const elapsed = (now - t0) / 1000;
       const floor = Math.min(0.9, elapsed / 5);                             // keeps moving even on a slow connection
       const done = ready && fontsOk;
       const target = done ? 1 : Math.min(0.96, Math.max(real, floor));
-      shown += (target - shown) * (done ? 0.12 : 0.07);
+      shown += (target - shown) * (1 - Math.exp(-dt * (done ? 7 : 4)));     // time-based easing: identical feel at any frame rate
       paint(shown);
       if ((done && elapsed > 1.6 && shown > 0.992) || elapsed > 6.5) { close(); return; }
       requestAnimationFrame(tick);
@@ -121,10 +124,13 @@
         span ? `<span class="w">${span}</span>` : `<span class="w">${word}</span>`);
       const rest = [".hero .eyebrow", ".hero .lede", ".hero-cta", ".hero-meta", ".hero-pins"];
       gsap.set(".hero h1 .w", { yPercent: 110, opacity: 0 }); gsap.set(rest, { y: 22, opacity: 0 }); gsap.set(".nav", { y: -14, opacity: 0 });
+      gsap.set(".hero-copy", { scale: 1.04, transformOrigin: "50% 60%" }); gsap.set("#space", { opacity: 0.55 });
       introDone.then(() => {
-        gsap.to(".nav", { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", delay: 0.2 });
-        gsap.to(".hero h1 .w", { yPercent: 0, opacity: 1, duration: 1.1, ease: "power4.out", stagger: 0.06, delay: 0.25 });
-        gsap.to(rest, { y: 0, opacity: 1, duration: 0.9, ease: "power3.out", stagger: 0.08, delay: 0.6 });
+        gsap.to("#space", { opacity: 1, duration: 1.8, ease: "power2.out" });
+        gsap.to(".hero-copy", { scale: 1, duration: 2.2, ease: "expo.out" });
+        gsap.to(".nav", { y: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.6 });
+        gsap.to(".hero h1 .w", { yPercent: 0, opacity: 1, duration: 1.3, ease: "power4.out", stagger: 0.055, delay: 0.45 });
+        gsap.to(rest, { y: 0, opacity: 1, duration: 1.1, ease: "power3.out", stagger: 0.09, delay: 0.85 });
       });
     }
     if (!hasGsap || reduce) return;
@@ -166,7 +172,7 @@
     const perStep = () => Math.round(window.innerHeight * 0.42);   // short scroll per step: the carousel should feel quick
     const st = ScrollTrigger.create({
       trigger: section, start: "top top", end: () => "+=" + perStep() * steps.length, pin: ".story-pin", pinSpacing: true,
-      anticipatePin: 1, scrub: true,
+      anticipatePin: 1, scrub: 0.35,
       onUpdate: (self) => setActive(Math.floor(self.progress * steps.length)),
     });
     dots.forEach((d, i) => d.querySelector("button").addEventListener("click", () => {
@@ -195,7 +201,7 @@
     const line = $(".steps-line path");
     if (line) {
       const len = line.getTotalLength(); line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
-      gsap.to(line, { strokeDashoffset: 0, ease: "none", scrollTrigger: { trigger: ".steps", start: "top 75%", end: "bottom 60%", scrub: true } });
+      gsap.to(line, { strokeDashoffset: 0, ease: "none", scrollTrigger: { trigger: ".steps", start: "top 75%", end: "bottom 60%", scrub: 0.5 } });
     }
     // pointer-following highlight on cards
     if (!coarse) $$(".card").forEach((c) => c.addEventListener("pointermove", (e) => {

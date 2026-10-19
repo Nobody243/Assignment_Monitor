@@ -74,10 +74,10 @@ float snoise(vec3 v){
 
 /* ---------- renderer / scene / camera */
 const renderer = new THREE.WebGL1Renderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.shadowMap.enabled = false;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -206,8 +206,8 @@ const uRes = { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
 const draco = new DRACOLoader(); draco.setDecoderPath("vendor/three143/draco/");
 const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco);
 const firstMesh = (root) => { let m = null; root.traverse((o) => { if (!m && o.isMesh) m = o; }); return m; };
-let planetMesh = null, nightTex = null, entryStart = -1;
-const ENTRY_DUR = 1.9, ENTRY_START_Y = -6.5;
+let planetMesh = null, nightTex = null, entryStart = -1, warmFrames = -1;
+const ENTRY_DUR = 2.6, ENTRY_START_Y = -6.5;
 
 /* loading progress for the intro screen, and the hand-off: the planet floats up only once the intro has lifted */
 const prog = { lights: 0, planet: 0, clouds: 0 }, weights = { lights: 0.15, planet: 0.7, clouds: 0.15 };
@@ -243,7 +243,7 @@ float cloudDay = 1.0 - smoothstep(0.30, -0.30, cloudNdl) * 0.9;
 gl_FragColor.a *= cloudMod * uOpacity * cloudDay;`);
     };
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.planetRadius * L.h, 64, 64), mat);
-    mesh.rotation.y = L.ry; mesh.renderOrder = 2; mesh.userData.spinKey = L.s; mesh.layers.set(LAYERS.ENTIRE_SCENE); cloudGroup.add(mesh);
+    mesh.rotation.y = L.ry; mesh.renderOrder = 2; mesh.frustumCulled = false; mesh.userData.spinKey = L.s; mesh.layers.set(LAYERS.ENTIRE_SCENE); cloudGroup.add(mesh);
   });
 });
 
@@ -312,9 +312,11 @@ float ndh = max(dot(normalizedNormal, halfDir) + ripple * 0.02, 0.0);
 float glint = pow(ndh, 140.0);
 gl_FragColor.rgb += glint * waterMask * dayAmt * oceanGlint * vec3(1.0, 0.97, 0.88);`);
   };
-  mesh.material = mat; mesh.layers.set(LAYERS.ENTIRE_SCENE);
+  mesh.material = mat; mesh.layers.set(LAYERS.ENTIRE_SCENE); mesh.frustumCulled = false;
   planetGroup.add(mesh); planetMesh = mesh; cloudGroup.visible = true;
-  prog.planet = 1; emit(); window.dispatchEvent(new Event("scene:ready"));
+  try { renderer.initTexture(mat.map); if (nightTex) renderer.initTexture(nightTex); renderer.compile(scene, camera); } catch (e) { /* warm-up is best effort */ }
+  warmFrames = 2;                                                   // "ready" is announced after two real frames with the planet in them
+  prog.planet = 1; emit();
   maybeStartEntry();
   try { buildMarkers(mesh); } catch (e) { console.warn("markers skipped", e); }
 }
@@ -363,11 +365,15 @@ function buildMarkers(mesh) {
 /* ---------- scroll choreography + loop */
 let curP = 0, curX = STOPS_X[0].v, curY = STOPS_Y[0].v, curS = STOPS_S[0].v, spinPhase = 0;
 window.__sceneState = { get p() { return curP; }, get loaded() { return !!planetMesh; } };
+const PR_STEPS = [1.25, 1.0, 0.8];                               // quality steps; the loop drops one when frames run long
+let quality = 0, emaDt = 1 / 60, lastDrop = 0;
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight, pr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const w = window.innerWidth, h = window.innerHeight, pr = Math.min(window.devicePixelRatio || 1, PR_STEPS[quality]);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.setPixelRatio(pr); renderer.setSize(w, h, false);
-  [torusComposer, bloomComposer, finalComposer].forEach((c) => { c.setPixelRatio(pr); c.setSize(w, h); });
+  finalComposer.setPixelRatio(pr); finalComposer.setSize(w, h);
+  bloomComposer.setPixelRatio(pr); bloomComposer.setSize(Math.round(w * 0.5), Math.round(h * 0.5));    // bloom is a blur: half res is invisible
+  torusComposer.setPixelRatio(pr); torusComposer.setSize(Math.round(w * 0.75), Math.round(h * 0.75));
   uRes.value.set(w, h); STOPS_Y[0].v = heroY();
 }
 window.addEventListener("resize", resize); resize();
@@ -378,15 +384,16 @@ function frame() {
   if (!document.hidden) {
     const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     const pTarget = reduce ? 0 : clamp(window.scrollY / max, 0, 1);
-    curP += (pTarget - curP) * Math.min(1, dt * 4.5);
+    const damp = (rate) => 1 - Math.exp(-dt * rate);                // frame-rate independent smoothing
+    curP += (pTarget - curP) * damp(5);
     const sideScale = clamp(window.innerWidth / 1200, 0.5, 1);
-    const k = Math.min(1, dt * 3.2);
+    const k = damp(3.6);
     curX += (sample(STOPS_X, curP) * sideScale - curX) * k;
     curY += (sample(STOPS_Y, curP) - curY) * k;
     const narrow = window.innerWidth < 760 ? 0.72 : 1;
     curS += (sample(STOPS_S, curP) * narrow - curS) * k;
     let entryY = 0;
-    if (entryStart >= 0) { const t = clamp((performance.now() / 1000 - entryStart) / ENTRY_DUR, 0, 1); entryY = ENTRY_START_Y * (1 - (1 - Math.pow(1 - t, 3))); }
+    if (entryStart >= 0) { const t = clamp((performance.now() / 1000 - entryStart) / ENTRY_DUR, 0, 1); entryY = ENTRY_START_Y * Math.pow(1 - t, 4); }   // quartic ease-out: fast lift, long soft settle
     else if (entryStart === -1) entryY = ENTRY_START_Y;       // not loaded yet: keep it below the fold
     worldGroup.position.set(curX, curY + entryY, 0); worldGroup.scale.setScalar(curS);
     if (!reduce) spinPhase += dt * CONFIG.spin;
@@ -400,6 +407,11 @@ function frame() {
     camera.layers.set(LAYERS.TORUS_SCENE); torusComposer.render();
     camera.layers.set(LAYERS.BLOOM_SCENE); bloomComposer.render();
     camera.layers.set(LAYERS.ENTIRE_SCENE); finalComposer.render();
+    if (warmFrames > 0 && --warmFrames === 0) window.dispatchEvent(new Event("scene:ready"));
+    // adaptive quality: if frames keep running long (>30 ms on average), render at a lower pixel ratio
+    emaDt = emaDt * 0.9 + dt * 0.1;
+    const now = performance.now();
+    if (planetMesh && emaDt > 0.03 && quality < PR_STEPS.length - 1 && now - lastDrop > 3000 && (!document.getElementById("intro"))) { quality++; lastDrop = now; emaDt = 1 / 60; resize(); }
   }
   requestAnimationFrame(frame);
 }
