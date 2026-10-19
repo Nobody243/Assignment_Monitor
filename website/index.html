@@ -93,27 +93,37 @@
       </div>
     </section>
 
-    <!-- ================================================================ story -->
-    <section id="story">
-      <div class="wrap">
-        <div class="section-head" data-reveal>
-          <span class="mono">Tour</span>
-          <h2>Back on the ground: <span class="serif accent">what's next?</span></h2>
-          <p class="lede">The dashboard answers one question. Everything on it is sorted by how soon it bites.</p>
-        </div>
-        <div class="story-grid">
-          <div class="story-visual" data-reveal>
-            <div class="win shot">
-              <div class="win-bar"><i></i><i></i><i></i><b>Dashboard</b></div>
-              <img src="assets/shot-dashboard-light.png" alt="The dashboard in the light theme" width="1280" height="840" loading="lazy">
-              <div class="spot"></div><div class="spot-label"></div>
-            </div>
+    <!-- ================================================================ story (pinned vertical carousel) -->
+    <section id="story" class="story">
+      <div class="story-pin">
+        <div class="wrap">
+          <div class="story-head">
+            <span class="mono">Tour</span>
+            <h2>Back on the ground: <span class="serif accent">what's next?</span></h2>
           </div>
-          <div class="story-steps">
-            <article class="story-step" data-spot="20.5,25,75.5,14.6" data-label="Next deadline"><span class="mono">01</span><h3>The next deadline, with a countdown</h3><p>Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet.</p></article>
-            <article class="story-step" data-spot="20.5,40.5,75.5,11.5" data-label="Six counters"><span class="mono">02</span><h3>Pending, due today, this week, extended, overdue, submitted</h3><p>Each counter is a filter. Click it and the Assignments page opens on exactly that slice.</p></article>
-            <article class="story-step" data-spot="20.5,53.5,75.5,44" data-label="Needs your attention"><span class="mono">03</span><h3>Everything open, nearest first</h3><p>Unsubmitted work sorted by deadline, each with its course and exact due time. No digging through six course pages.</p></article>
-            <article class="story-step" data-spot="1,2.5,17,96" data-label="Always a click away"><span class="mono">04</span><h3>Light or dark, tray or window</h3><p>Switch the theme any time. Close the window and it keeps running in the tray; the background checks run even when it doesn't.</p></article>
+          <div class="story-grid">
+            <div class="story-visual">
+              <div class="win shot">
+                <div class="win-bar"><i></i><i></i><i></i><b>Dashboard</b></div>
+                <img src="assets/shot-dashboard-light.png" alt="The dashboard in the light theme" width="1280" height="840" loading="lazy">
+                <div class="spot"></div><div class="spot-label"></div>
+              </div>
+            </div>
+            <div class="story-side">
+              <ol class="story-rail" aria-label="Tour steps">
+                <li><button type="button" data-go="0" aria-label="Step 1">01</button></li>
+                <li><button type="button" data-go="1" aria-label="Step 2">02</button></li>
+                <li><button type="button" data-go="2" aria-label="Step 3">03</button></li>
+                <li><button type="button" data-go="3" aria-label="Step 4">04</button></li>
+              </ol>
+              <div class="story-track">
+                <article class="story-step" data-spot="20.5,25,75.5,14.6" data-label="Next deadline"><span class="mono">01 / 04</span><h3>The next deadline, with a countdown</h3><p>Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet.</p></article>
+                <article class="story-step" data-spot="20.5,40.5,75.5,11.5" data-label="Six counters"><span class="mono">02 / 04</span><h3>Pending, due today, this week, extended, overdue, submitted</h3><p>Each counter is a filter. Click it and the Assignments page opens on exactly that slice.</p></article>
+                <article class="story-step" data-spot="20.5,53.5,75.5,44" data-label="Needs your attention"><span class="mono">03 / 04</span><h3>Everything open, nearest first</h3><p>Unsubmitted work sorted by deadline, each with its course and exact due time. No digging through six course pages.</p></article>
+                <article class="story-step" data-spot="1,2.5,17,96" data-label="Always a click away"><span class="mono">04 / 04</span><h3>Light or dark, tray or window</h3><p>Switch the theme any time. Close the window and it keeps running in the tray; the background checks run even when it doesn't.</p></article>
+              </div>
+              <p class="story-hint mono">Scroll to continue</p>
+            </div>
           </div>
         </div>
       </div>

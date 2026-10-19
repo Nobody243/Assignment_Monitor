@@ -79,21 +79,41 @@
     if (lenis) lenis.on("scroll", ({ velocity }) => speed(1 + Math.min(Math.abs(velocity) / 12, 5)));
   }
 
-  /* ------------------------------------------------------------ pinned walkthrough */
+  /* ------------------------------------------------------------ pinned tour: vertical carousel */
   function initStory() {
-    const visual = $(".story-visual .shot");
-    const steps = $$(".story-step");
-    if (!visual || !steps.length) return;
-    const set = (step) => {
+    const section = $(".story"), visual = $(".story-visual .shot"), steps = $$(".story-step"), dots = $$(".story-rail li"), hint = $(".story-hint");
+    if (!section || !visual || !steps.length) return;
+    let current = -1;
+    const setActive = (idx) => {
+      idx = Math.max(0, Math.min(steps.length - 1, idx));
+      if (idx === current) return;
+      current = idx;
+      const step = steps[idx];
       const [x, y, w, h] = step.dataset.spot.split(",").map(Number);
       visual.style.setProperty("--sx", x + "%"); visual.style.setProperty("--sy", y + "%");
       visual.style.setProperty("--sw", w + "%"); visual.style.setProperty("--sh", h + "%");
       $(".spot-label", visual).textContent = step.dataset.label;
-      steps.forEach((s) => s.classList.toggle("is-active", s === step));
+      steps.forEach((s, i) => { s.classList.toggle("is-active", i === idx); s.classList.toggle("is-past", i < idx); });
+      dots.forEach((d, i) => { d.classList.toggle("is-active", i === idx); d.classList.toggle("is-past", i < idx); });
+      if (hint) hint.classList.toggle("is-done", idx === steps.length - 1);
     };
-    set(steps[0]);
-    if (!hasGsap || window.matchMedia("(max-width: 900px)").matches) { steps.forEach((s) => s.classList.add("is-active")); return; }
-    steps.forEach((step) => ScrollTrigger.create({ trigger: step, start: "top 60%", end: "bottom 40%", onToggle: (st) => st.isActive && set(step) }));
+    setActive(0);
+    const space = $("#space");
+    if (space && hasGsap && !reduce) {   // the planet belongs to the hero and the reveal; fade it out before the tour
+      gsap.to(space, { opacity: 0, ease: "none", scrollTrigger: { trigger: section, start: "top 95%", end: "top 25%", scrub: true } });
+    }
+    const desktop = window.matchMedia("(min-width: 901px)").matches;
+    if (!hasGsap || reduce || !desktop) { if (!desktop) steps.forEach((s) => s.classList.add("is-active")); return; }
+    const perStep = () => Math.round(window.innerHeight * 0.85);
+    const st = ScrollTrigger.create({
+      trigger: section, start: "top top", end: () => "+=" + perStep() * steps.length, pin: ".story-pin", pinSpacing: true,
+      anticipatePin: 1, scrub: true,
+      onUpdate: (self) => setActive(Math.floor(self.progress * steps.length)),
+    });
+    dots.forEach((d, i) => d.querySelector("button").addEventListener("click", () => {
+      const target = st.start + perStep() * i + perStep() * 0.5;
+      if (lenis) lenis.scrollTo(target, { duration: 1 }); else window.scrollTo({ top: target, behavior: "smooth" });
+    }));
   }
 
   /* ------------------------------------------------------------ reveals, counters, drawn line */
