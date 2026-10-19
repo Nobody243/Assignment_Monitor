@@ -213,8 +213,17 @@ const firstMesh = (root) => { let m = null; root.traverse((o) => { if (!m && o.i
 let planetMesh = null, nightTex = null, entryStart = -1;
 const ENTRY_DUR = 1.9, ENTRY_START_Y = -6.5;
 
+/* loading progress for the intro screen, and the hand-off: the planet floats up only once the intro has lifted */
+const prog = { lights: 0, planet: 0, clouds: 0 }, weights = { lights: 0.15, planet: 0.7, clouds: 0.15 };
+const emit = () => window.dispatchEvent(new CustomEvent("scene:progress", { detail: { p: Object.keys(prog).reduce((a, k) => a + prog[k] * weights[k], 0) } }));
+const report = (key, e) => { prog[key] = Math.max(prog[key], e && e.total ? e.loaded / e.total : 0.5); emit(); };
+let introDone = !document.getElementById("intro");
+window.addEventListener("intro:done", () => { introDone = true; maybeStartEntry(); }, { once: true });
+function maybeStartEntry() { if (planetMesh && introDone && entryStart === -1) entryStart = reduce ? -2 : performance.now() / 1000; }
+
 /* ---------- cloud shells */
 new THREE.TextureLoader().load(CLOUDS_PNG, (tex) => {
+  prog.clouds = 1; emit();
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(5, 5);
   const layers = [
     { h: CONFIG.cloud1Height, o: CONFIG.cloud1Opacity, s: "cloud1Spin", ry: 0.0, phase: 0.0 },
@@ -244,9 +253,10 @@ gl_FragColor.a *= cloudMod * uOpacity * cloudDay;`);
 
 /* ---------- planet */
 gltfLoader.load(LIGHTS_GLB, (g) => {
+  prog.lights = 1; emit();
   const lm = firstMesh(g.scene); nightTex = lm && lm.material && lm.material.map;
-  gltfLoader.load(PLANET_GLB, onPlanet, undefined, (e) => console.warn("planet failed", e));
-}, undefined, () => gltfLoader.load(PLANET_GLB, onPlanet));
+  gltfLoader.load(PLANET_GLB, onPlanet, (e) => report("planet", e), (e) => console.warn("planet failed", e));
+}, (e) => report("lights", e), () => gltfLoader.load(PLANET_GLB, onPlanet, (e) => report("planet", e)));
 
 function onPlanet(g) {
   const mesh = firstMesh(g.scene); if (!mesh) return;
@@ -308,7 +318,8 @@ gl_FragColor.rgb += glint * waterMask * dayAmt * oceanGlint * vec3(1.0, 0.97, 0.
   };
   mesh.material = mat; mesh.layers.set(LAYERS.ENTIRE_SCENE);
   planetGroup.add(mesh); planetMesh = mesh; cloudGroup.visible = true;
-  entryStart = reduce ? -2 : performance.now() / 1000;
+  prog.planet = 1; emit(); window.dispatchEvent(new Event("scene:ready"));
+  maybeStartEntry();
   try { buildMarkers(mesh); } catch (e) { console.warn("markers skipped", e); }
 }
 

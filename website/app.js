@@ -50,14 +50,59 @@
     }));
   }
 
-  /* ------------------------------------------------------------ hero headline + app reveal */
+  /* ------------------------------------------------------------ intro: a short loading screen on the first visit of a session.
+     It waits for the planet (scene.js reports progress), runs the counter to 100, then lifts like a curtain while the
+     planet floats up underneath. It never blocks longer than 8 s and is skipped for reduced motion and repeat visits. */
+  const introDone = new Promise((resolve) => window.addEventListener("intro:done", resolve, { once: true }));
+  function initIntro() {
+    const el = $("#intro");
+    const release = () => { document.documentElement.classList.remove("is-intro"); if (lenis) lenis.start(); window.dispatchEvent(new Event("intro:done")); };
+    let seen = false; try { seen = sessionStorage.getItem("am-intro") === "1"; sessionStorage.setItem("am-intro", "1"); } catch (e) { /* storage off */ }
+    if (!el || !hasGsap || reduce || seen) { if (el) el.remove(); setTimeout(release, 0); return; }
+    document.documentElement.classList.add("is-intro"); window.scrollTo(0, 0); if (lenis) lenis.stop();
+    const pctEl = $(".intro-pct", el), statusEl = $(".intro-status", el), bar = $(".intro-bar b", el);
+    const stages = [[0, "Warming up"], [12, "Loading the planet"], [55, "Painting city lights"], [86, "Placing campuses"], [100, "Ready"]];
+    const t0 = performance.now(); let real = 0, shown = 0, ready = false, closing = false;
+    window.addEventListener("scene:progress", (e) => { real = Math.max(real, (e.detail && e.detail.p) || 0); });
+    window.addEventListener("scene:ready", () => { ready = true; }, { once: true });
+    const close = () => {
+      closing = true; pctEl.textContent = "100"; bar.style.transform = "scaleX(1)"; statusEl.textContent = "Ready"; el.setAttribute("aria-busy", "false");
+      gsap.timeline()
+        .to([".intro-center", ".intro-corner"], { opacity: 0, y: -10, duration: 0.35, ease: "power2.in", stagger: 0.02 }, 0.15)
+        .add(release, 0.45)
+        .to(el, { clipPath: "inset(0 0 100% 0)", duration: 0.95, ease: "power4.inOut" }, 0.45)
+        .add(() => el.remove());
+    };
+    const tick = () => {
+      if (closing) return;
+      const elapsed = (performance.now() - t0) / 1000;
+      const floor = Math.min(0.9, elapsed / 5);                         // keeps moving even on a slow connection
+      const target = ready ? 1 : Math.min(0.96, Math.max(real, floor));
+      shown += (target - shown) * 0.08;
+      const pct = Math.round(shown * 100);
+      pctEl.textContent = String(pct).padStart(2, "0");
+      bar.style.transform = "scaleX(" + shown + ")";
+      const stage = stages.filter((st) => pct >= st[0]).pop(); if (stage && statusEl.textContent !== stage[1]) statusEl.textContent = stage[1];
+      if ((ready && elapsed > 1.4 && shown > 0.985) || elapsed > 6.5) { close(); return; }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => { if (!closing) close(); }, 6500);               // hard cap even if frames stall while shaders compile
+  }
+
+  /* ------------------------------------------------------------ hero headline (plays once the intro has lifted) */
   function initHero() {
     const h1 = $(".hero h1");
     if (h1 && hasGsap && !reduce) {
       h1.innerHTML = h1.innerHTML.replace(/(<span class="serif">.*?<\/span>)|([^\s<]+)/g, (m, span, word) =>
         span ? `<span class="w">${span}</span>` : `<span class="w">${word}</span>`);
-      gsap.from(".hero h1 .w", { yPercent: 110, opacity: 0, duration: 1.1, ease: "power4.out", stagger: 0.06, delay: 0.15 });
-      gsap.from([".hero .eyebrow", ".hero .lede", ".hero-cta", ".hero-meta"], { y: 22, opacity: 0, duration: 0.9, ease: "power3.out", stagger: 0.08, delay: 0.5 });
+      const rest = [".hero .eyebrow", ".hero .lede", ".hero-cta", ".hero-meta", ".hero-pins"];
+      gsap.set(".hero h1 .w", { yPercent: 110, opacity: 0 }); gsap.set(rest, { y: 22, opacity: 0 }); gsap.set(".nav", { y: -14, opacity: 0 });
+      introDone.then(() => {
+        gsap.to(".nav", { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", delay: 0.2 });
+        gsap.to(".hero h1 .w", { yPercent: 0, opacity: 1, duration: 1.1, ease: "power4.out", stagger: 0.06, delay: 0.25 });
+        gsap.to(rest, { y: 0, opacity: 1, duration: 0.9, ease: "power3.out", stagger: 0.08, delay: 0.6 });
+      });
     }
     if (!hasGsap || reduce) return;
     gsap.to(".hero-copy", { yPercent: -14, opacity: 0, ease: "none", scrollTrigger: { trigger: ".hero", start: "12% top", end: "70% top", scrub: 0.6 } });
@@ -158,6 +203,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     $("#year").textContent = new Date().getFullYear();
-    initScroll(); initHero(); initTicker(); initStory(); initReveals(); initGallery(); initFaq(); initNav(); loadRelease();
+    initScroll(); initHero(); initTicker(); initStory(); initReveals(); initGallery(); initFaq(); initNav(); loadRelease(); initIntro();
   });
 })();

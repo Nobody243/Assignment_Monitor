@@ -21,6 +21,17 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- ================================================================ intro (first visit per session; app.js removes it, CSS hides it after 9s if scripts fail) -->
+  <div class="intro" id="intro" aria-busy="true">
+    <div class="intro-center">
+      <div class="intro-mark"><img src="assets/logo.svg" alt="" width="56" height="56"><i></i><i></i></div>
+      <div class="intro-word">Assignment Monitor<small>for Bahria University LMS</small></div>
+      <div class="intro-row mono"><span class="intro-status" aria-live="polite">Warming up</span><span class="intro-pct">00</span></div>
+      <div class="intro-bar"><b></b></div>
+    </div>
+    <div class="intro-corner intro-corner-l mono">Islamabad · Lahore · Karachi</div>
+    <div class="intro-corner intro-corner-r mono"><span data-version>v1.0.0</span> · Windows · free</div>
+  </div>
   <canvas id="space" aria-hidden="true"></canvas>
   <div class="grain" aria-hidden="true"></div>
 
