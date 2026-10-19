@@ -70,6 +70,7 @@ const globeMat = new THREE.ShaderMaterial({
     }`,
 });
 const globe = new THREE.Mesh(new THREE.SphereGeometry(2, 128, 128), globeMat);
+earth.scale.setScalar(1.1);
 earth.add(globe);
 
 const clouds = new THREE.Mesh(new THREE.SphereGeometry(2.022, 96, 96),
@@ -112,15 +113,21 @@ earth.rotation.z = 0.2;
 earth.position.set(0, -3.65, 0);
 
 /* ---------- scroll + pointer */
-const state = { sink: 0, mx: 0, my: 0 };
+const state = { sink: 0, mx: 0, my: 0, vel: 0 };
 if (window.gsap && window.ScrollTrigger && !reduce) {
   gsap.registerPlugin(ScrollTrigger);
-  gsap.to(state, { sink: 1, ease: "none", scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 0.8 } });
+  // the planet keeps moving all the way through the dashboard reveal, like the template
+  gsap.to(state, { sink: 1, ease: "none", scrollTrigger: { trigger: ".hero", start: "top top", endTrigger: ".reveal", end: "bottom 40%", scrub: 0.9 } });
+  ScrollTrigger.create({ start: 0, end: "max", onUpdate: (st) => { state.vel = st.getVelocity() / 1000; } });
 }
 if (!coarse) window.addEventListener("pointermove", (e) => { state.mx = e.clientX / innerWidth - 0.5; state.my = e.clientY / innerHeight - 0.5; }, { passive: true });
 
 let visible = true;
-new IntersectionObserver(([e]) => (visible = e.isIntersecting), { threshold: 0 }).observe(document.querySelector(".hero"));
+// render while the planet can still be on screen (hero + reveal), not only while the hero is
+const reveal = document.querySelector(".reveal") || document.querySelector(".hero");
+new IntersectionObserver(([e]) => (visible = e.isIntersecting), { threshold: 0, rootMargin: "40% 0px 40% 0px" }).observe(reveal);
+let heroSeen = true;
+new IntersectionObserver(([e]) => (heroSeen = e.isIntersecting), { threshold: 0, rootMargin: "60% 0px 60% 0px" }).observe(document.querySelector(".hero"));
 function resize() {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
@@ -134,19 +141,23 @@ let base = earth.position.y;
 const stars = scene.children.find((o) => o.isPoints);
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
-  if (visible && !document.hidden) {
+  if ((visible || heroSeen) && !document.hidden) {
+    state.vel *= 0.92;
     if (!reduce) {
-      globe.rotation.y += dt * 0.11;            // one turn in about a minute: clearly alive, never distracting
+      globe.rotation.y += dt * (0.11 + Math.min(Math.abs(state.vel), 6) * 0.08);   // scrolling spins it up            // one turn in about a minute: clearly alive, never distracting
       clouds.rotation.y += dt * 0.145;
       if (stars) stars.rotation.y += dt * 0.004;
-      earth.rotation.z = 0.2 + state.sink * 0.55 + Math.sin(t * 0.25) * 0.012;
+      earth.rotation.z = 0.2 + state.sink * 0.75 + Math.sin(t * 0.25) * 0.012;
     }
     const s = state.sink;
     const narrow = window.innerWidth < 760;
     base = narrow ? -4.9 : -3.65;
-    earth.position.y = base - s * 0.9;
-    earth.position.x = s * 0.9;
-    earth.rotation.x = s * 0.35;
+    const ease = s * s * (3 - 2 * s);
+    const up = Math.min(s / 0.45, 1); const rise = up * up * (3 - 2 * up);   // first it rises into the space the copy leaves...
+    earth.position.y = base + rise * 1.15 - ease * 1.05;                      // ...then sinks and swings away under the dashboard
+    earth.position.x = ease * 1.45;
+    earth.position.z = -ease * 0.6;
+    earth.rotation.x = s * 0.5;
     const driftX = Math.sin(t * 0.18) * 0.06, driftY = Math.cos(t * 0.14) * 0.04;
     camera.position.x += ((state.mx * 0.35 + driftX) - camera.position.x) * 0.04;
     camera.position.y += ((0.15 - state.my * 0.2 + driftY) - camera.position.y) * 0.04;

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Assignment Monitor">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1e26"/>
+      <stop offset="1" stop-color="#0c0d11"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d9d7cf"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff6a3d" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff6a3d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- tile -->
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#bg)"/>
+  <rect x="1.5" y="1.5" width="509" height="509" rx="114.5" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="3"/>
+  <!-- dial: the day you are watching -->
+  <circle cx="246" cy="276" r="122" fill="none" stroke="url(#ring)" stroke-width="36" stroke-linecap="round"/>
+  <!-- hand pointing at the deadline -->
+  <path d="M246 276 L246 196" stroke="#f2f1ec" stroke-width="26" stroke-linecap="round"/>
+  <path d="M246 276 L318 234" stroke="#f2f1ec" stroke-width="26" stroke-linecap="round" stroke-opacity="0.9"/>
+  <circle cx="246" cy="276" r="20" fill="#f2f1ec"/>
+  <!-- the deadline: a ping on the rim -->
+  <circle cx="344" cy="170" r="92" fill="url(#glow)"/>
+  <circle cx="344" cy="170" r="40" fill="#ff6a3d"/>
+  <path d="M296 170 a48 48 0 0 1 96 0" fill="none" stroke="#ff6a3d" stroke-width="14" stroke-linecap="round" transform="rotate(-45 344 170)"/>
+  <path d="M272 170 a72 72 0 0 1 144 0" fill="none" stroke="#ff6a3d" stroke-width="10" stroke-linecap="round" stroke-opacity="0.45" transform="rotate(-45 344 170)"/>
+</svg>
