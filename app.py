@@ -571,7 +571,7 @@ class DashboardView(ctk.CTkScrollableFrame):
             cell = ctk.CTkFrame(strip, fg_color="transparent")
             cell.grid(row=0, column=i, sticky="nsew")
             if i:
-                ctk.CTkFrame(cell, fg_color=C["line"], width=1, corner_radius=0).pack(side="left", fill="y", pady=14)
+                ctk.CTkFrame(cell, fg_color=C["line"], width=1, height=2, corner_radius=0).pack(side="left", fill="y", pady=16)
             inner = ctk.CTkFrame(cell, fg_color="transparent")
             inner.pack(side="left", fill="x", expand=True, padx=18, pady=14)
             ctk.CTkLabel(inner, text=str(value), font=F(26, "bold", display=True),
