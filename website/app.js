@@ -60,7 +60,7 @@
       gsap.from([".hero .eyebrow", ".hero .lede", ".hero-cta", ".hero-meta"], { y: 22, opacity: 0, duration: 0.9, ease: "power3.out", stagger: 0.08, delay: 0.5 });
     }
     if (!hasGsap || reduce) return;
-    gsap.to(".hero-copy", { yPercent: -12, opacity: 0.25, ease: "none", scrollTrigger: { trigger: ".hero", start: "top top", end: "60% top", scrub: 0.6 } });
+    gsap.to(".hero-copy", { yPercent: -14, opacity: 0, ease: "none", scrollTrigger: { trigger: ".hero", start: "12% top", end: "70% top", scrub: 0.6 } });
     const win = $(".reveal-win");
     if (win) {
       gsap.fromTo(win, { scale: 0.88, yPercent: 10, opacity: 0.6 }, { scale: 1, yPercent: 0, opacity: 1, ease: "none",
@@ -99,9 +99,15 @@
   /* ------------------------------------------------------------ reveals, counters, drawn line */
   function initReveals() {
     const items = $$("[data-reveal]");
-    if (!hasGsap || reduce) { items.forEach((el) => el.classList.add("is-visible")); return; }
-    ScrollTrigger.batch(items, { start: "top 88%", onEnter: (b) => gsap.to(b, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", stagger: 0.08, overwrite: true }) });
-    gsap.set(items, { opacity: 0, y: 26 });
+    // IntersectionObserver, not the scroll library, decides visibility: content can never stay hidden.
+    if (reduce || !("IntersectionObserver" in window)) { items.forEach((el) => el.classList.add("is-visible")); }
+    else {
+      const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-visible"); io.unobserve(e.target); } }),
+        { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+      items.forEach((el) => io.observe(el));
+      setTimeout(() => items.forEach((el) => { const r = el.getBoundingClientRect(); if (r.top < innerHeight) el.classList.add("is-visible"); }), 1500);
+    }
+    if (!hasGsap || reduce) return;
     $$("[data-count]").forEach((el) => {
       const end = parseFloat(el.dataset.count), suffix = el.dataset.suffix || "";
       const obj = { v: 0 };

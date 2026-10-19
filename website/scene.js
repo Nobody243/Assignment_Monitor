@@ -109,7 +109,7 @@ const pings = [];
 globe.rotation.y = -((70 + 180) * Math.PI / 180) + Math.PI / 2;
 clouds.rotation.y = globe.rotation.y + 0.4;
 earth.rotation.z = 0.2;
-earth.position.set(0, -3.15, 0);
+earth.position.set(0, -3.65, 0);
 
 /* ---------- scroll + pointer */
 const state = { sink: 0, mx: 0, my: 0 };
@@ -125,25 +125,31 @@ function resize() {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
   const narrow = window.innerWidth < 760;
-  earth.position.y = narrow ? -4.0 : -3.15; camera.position.z = narrow ? 7.4 : 6.4;
+  earth.position.y = narrow ? -4.9 : -3.65; camera.position.z = narrow ? 7.4 : 6.4;
 }
 window.addEventListener("resize", resize); resize();
 
 const clock = new THREE.Clock();
 let base = earth.position.y;
+const stars = scene.children.find((o) => o.isPoints);
 function frame() {
-  const t = clock.getElapsedTime();
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   if (visible && !document.hidden) {
-    if (!reduce) { globe.rotation.y += 0.00055; clouds.rotation.y += 0.00068; }
+    if (!reduce) {
+      globe.rotation.y += dt * 0.11;            // one turn in about a minute: clearly alive, never distracting
+      clouds.rotation.y += dt * 0.145;
+      if (stars) stars.rotation.y += dt * 0.004;
+      earth.rotation.z = 0.2 + state.sink * 0.55 + Math.sin(t * 0.25) * 0.012;
+    }
     const s = state.sink;
     const narrow = window.innerWidth < 760;
-    base = narrow ? -4.0 : -3.15;
+    base = narrow ? -4.9 : -3.65;
     earth.position.y = base - s * 0.9;
     earth.position.x = s * 0.9;
-    earth.rotation.z = 0.2 + s * 0.55;
     earth.rotation.x = s * 0.35;
-    camera.position.x += ((state.mx * 0.35) - camera.position.x) * 0.04;
-    camera.position.y += ((0.15 - state.my * 0.2) - camera.position.y) * 0.04;
+    const driftX = Math.sin(t * 0.18) * 0.06, driftY = Math.cos(t * 0.14) * 0.04;
+    camera.position.x += ((state.mx * 0.35 + driftX) - camera.position.x) * 0.04;
+    camera.position.y += ((0.15 - state.my * 0.2 + driftY) - camera.position.y) * 0.04;
     camera.lookAt(0, -0.25, 0);
     pings.forEach(({ ring, phase }) => {
       const k = ((t * 0.55 + phase) % 1.6) / 1.6;
@@ -151,6 +157,6 @@ function frame() {
     });
     renderer.render(scene, camera);
   }
-  if (!reduce) requestAnimationFrame(frame); else if (visible) requestAnimationFrame(frame);
+  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
