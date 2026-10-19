@@ -1,0 +1,23 @@
+# user data and secrets (never commit)
+.env
+settings.env
+data/
+chrome_profile/
+browsers/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# build output
+build/
+dist/
+*.spec
+
+# editors / os
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
