@@ -72,7 +72,9 @@
     }
     const CIRC = 2 * Math.PI * 100;
     const stages = [[0, "Warming up the renderer"], [12, "Loading the planet"], [48, "Painting city lights"], [78, "Placing campuses"], [100, "Ready"]];
-    const t0 = performance.now(); let real = 0, shown = 0, ready = false, fontsOk = false, closing = false, last = t0;
+    const tStart = performance.now(); let t0 = tStart, real = 0, shown = 0, ready = false, fontsOk = false, closing = false, warm = false, last = tStart;
+    const onWarm = () => { if (!warm) { warm = true; t0 = performance.now(); last = t0; } };
+    window.addEventListener("scene:warm", onWarm, { once: true }); setTimeout(onWarm, 1500);
     window.addEventListener("scene:progress", (e) => { real = Math.max(real, (e.detail && e.detail.p) || 0); });
     window.addEventListener("scene:ready", () => { ready = true; }, { once: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fontsOk = true; }); else fontsOk = true;
@@ -102,14 +104,16 @@
     };
     const tick = () => {
       if (closing) return;
+      if (!warm) { requestAnimationFrame(tick); return; }                 // shaders still compiling: hold at 00 under "Warming up"
       const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
       const elapsed = (now - t0) / 1000;
       const floor = Math.min(0.9, elapsed / 5);                             // keeps moving even on a slow connection
       const done = ready && fontsOk;
       const target = done ? 1 : Math.min(0.96, Math.max(real, floor));
-      shown += (target - shown) * (1 - Math.exp(-dt * (done ? 7 : 4)));     // time-based easing: identical feel at any frame rate
+      const eased = shown + (target - shown) * (1 - Math.exp(-dt * (done ? 7 : 4)));   // time-based easing: identical feel at any frame rate
+      shown = Math.min(eased, shown + dt * (done ? 1.0 : 0.6));          // and never faster than 60 %/s (100 %/s to finish), so catching up never reads as a jump
       paint(shown);
-      if ((done && elapsed > 1.6 && shown > 0.992) || elapsed > 6.5) { close(); return; }
+      if ((done && elapsed > 1.6 && shown > 0.992) || (now - tStart) / 1000 > 6.5) { close(); return; }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);

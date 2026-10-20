@@ -73,7 +73,7 @@ float snoise(vec3 v){
 }`;
 
 /* ---------- renderer / scene / camera */
-const renderer = new THREE.WebGL1Renderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -104,6 +104,9 @@ bloomComposer.addPass(new UnrealBloomPass(size.clone(), 0.3, 0.45, 0));
 bloomComposer.addPass(new ShaderPass(GammaCorrectionShader));
 
 const blackTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); blackTex.needsUpdate = true;
+const placeholderMap = new THREE.DataTexture(new Uint8Array([14, 30, 70, 255]), 1, 1); placeholderMap.encoding = THREE.sRGBEncoding; placeholderMap.flipY = false; placeholderMap.needsUpdate = true;
+const placeholderNight = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); placeholderNight.encoding = THREE.sRGBEncoding; placeholderNight.flipY = false; placeholderNight.needsUpdate = true;
+const placeholderClouds = new THREE.DataTexture(new Uint8Array([255, 255, 255, 0]), 1, 1); placeholderClouds.wrapS = placeholderClouds.wrapT = THREE.RepeatWrapping; placeholderClouds.repeat.set(5, 5); placeholderClouds.needsUpdate = true;
 const FinalPass = {
   uniforms: {
     iTime: { value: 0 }, tDiffuse: { value: null }, torusTexture: { value: null }, bloomTexture: { value: null }, haloTexture: { value: blackTex },
@@ -208,7 +211,9 @@ const uResT = { value: new THREE.Vector2(window.innerWidth * 0.75, window.innerH
 const draco = new DRACOLoader(); draco.setDecoderPath("vendor/three143/draco/");
 const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco);
 const firstMesh = (root) => { let m = null; root.traverse((o) => { if (!m && o.isMesh) m = o; }); return m; };
-let planetMesh = null, nightTex = null, entryStart = -1, warmFrames = -1;
+let planetMesh = null, nightTex = null, entryStart = -1, warmFrames = -1, readySent = false, readyAfterWarm = false, warmQueue = [];
+const marks = (window.__sceneMarks = []);                          // [label, start ms, duration ms] for each one-off job; handy when profiling the intro
+const timed = (label, fn) => () => { const t = performance.now(); fn(); marks.push([label, Math.round(t), Math.round(performance.now() - t)]); };
 const ENTRY_DUR = 2.6, ENTRY_START_Y = -6.5;
 
 /* loading progress for the intro screen, and the hand-off: the planet floats up only once the intro has lifted */
@@ -219,22 +224,19 @@ let introDone = !document.getElementById("intro");
 window.addEventListener("intro:done", () => { introDone = true; maybeStartEntry(); }, { once: true });
 function maybeStartEntry() { if (planetMesh && introDone && entryStart === -1) entryStart = reduce ? -2 : performance.now() / 1000; }
 
-/* ---------- cloud shells */
-new THREE.TextureLoader().load(CLOUDS_PNG, (tex) => {
-  prog.clouds = 1; emit();
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(5, 5);
-  const layers = [
-    { h: CONFIG.cloud1Height, o: CONFIG.cloud1Opacity, s: "cloud1Spin", ry: 0.0, phase: 0.0 },
-    { h: CONFIG.cloud2Height, o: CONFIG.cloud2Opacity, s: "cloud2Spin", ry: 2.2, phase: 13.0 },
-    { h: CONFIG.cloud3Height, o: CONFIG.cloud3Opacity, s: "cloud3Spin", ry: 4.3, phase: 27.0 },
-  ];
-  layers.forEach((L) => {
-    const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false });
-    mat.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, { uTime: cloudTime, noiseScale: { value: 20 }, uSpeedX: { value: 1 }, uSpeedY: { value: 2 }, uSpeedZ: { value: 2 }, uOpacity: { value: L.o }, uPhase: { value: L.phase } });
-      sh.vertexShader = "varying vec2 vCloudUv;\n" + sh.vertexShader.replace("void main() {", "void main() {\n vCloudUv = uv;");
-      sh.fragmentShader = "uniform float uTime; uniform float noiseScale; uniform float uSpeedX; uniform float uSpeedY; uniform float uSpeedZ; uniform float uOpacity; uniform float uPhase; varying vec2 vCloudUv;\n" + SNOISE + "\n" +
-        sh.fragmentShader.replace("#include <dithering_fragment>", `#include <dithering_fragment>
+/* ---------- cloud shells (built up front with a transparent placeholder so their shaders compile before the intro counts) */
+const cloudMats = [];
+[
+  { h: CONFIG.cloud1Height, o: CONFIG.cloud1Opacity, s: "cloud1Spin", ry: 0.0, phase: 0.0 },
+  { h: CONFIG.cloud2Height, o: CONFIG.cloud2Opacity, s: "cloud2Spin", ry: 2.2, phase: 13.0 },
+  { h: CONFIG.cloud3Height, o: CONFIG.cloud3Opacity, s: "cloud3Spin", ry: 4.3, phase: 27.0 },
+].forEach((L) => {
+  const mat = new THREE.MeshStandardMaterial({ map: placeholderClouds, transparent: true, depthWrite: false });
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { uTime: cloudTime, noiseScale: { value: 20 }, uSpeedX: { value: 1 }, uSpeedY: { value: 2 }, uSpeedZ: { value: 2 }, uOpacity: { value: L.o }, uPhase: { value: L.phase } });
+    sh.vertexShader = "varying vec2 vCloudUv;\n" + sh.vertexShader.replace("void main() {", "void main() {\n vCloudUv = uv;");
+    sh.fragmentShader = "uniform float uTime; uniform float noiseScale; uniform float uSpeedX; uniform float uSpeedY; uniform float uSpeedZ; uniform float uOpacity; uniform float uPhase; varying vec2 vCloudUv;\n" + SNOISE + "\n" +
+      sh.fragmentShader.replace("#include <dithering_fragment>", `#include <dithering_fragment>
 gl_FragColor.rgb = vec3(1.0);
 float cloudNoise = snoise(vec3(vCloudUv.x * noiseScale + uTime * uSpeedX + uPhase, vCloudUv.y * noiseScale - uTime * uSpeedY + uPhase, uTime * uSpeedZ + uPhase));
 float cloudNdv = max(dot(normalize(vNormal), normalize(vViewPosition)), 0.0);
@@ -243,10 +245,15 @@ float cloudMod = cloudNoise * (1.0 - cloudEdge * 0.9);   /* clouds thin out at t
 float cloudNdl = dot(normalize(vNormal), normalize(vec3(-0.9, 0.18, 0.4)));
 float cloudDay = 1.0 - smoothstep(0.30, -0.30, cloudNdl) * 0.9;
 gl_FragColor.a *= cloudMod * uOpacity * cloudDay;`);
-    };
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.planetRadius * L.h, 64, 64), mat);
-    mesh.rotation.y = L.ry; mesh.renderOrder = 2; mesh.frustumCulled = false; mesh.userData.spinKey = L.s; mesh.layers.set(LAYERS.ENTIRE_SCENE); cloudGroup.add(mesh);
-  });
+  };
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.planetRadius * L.h, 64, 64), mat);
+  mesh.rotation.y = L.ry; mesh.renderOrder = 2; mesh.frustumCulled = false; mesh.userData.spinKey = L.s; mesh.layers.set(LAYERS.ENTIRE_SCENE); cloudGroup.add(mesh); cloudMats.push(mat);
+});
+let cloudTexLoaded = null;
+new THREE.TextureLoader().load(CLOUDS_PNG, (tex) => {
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(5, 5); cloudTexLoaded = tex;
+  prog.clouds = 1; emit();
+  warmQueue.push(timed("clouds upload+swap", () => { renderer.initTexture(tex); cloudMats.forEach((m) => { m.map = tex; m.needsUpdate = true; }); }));
 });
 
 /* ---------- planet */
@@ -256,19 +263,17 @@ gltfLoader.load(LIGHTS_GLB, (g) => {
   gltfLoader.load(PLANET_GLB, onPlanet, (e) => report("planet", e), (e) => console.warn("planet failed", e));
 }, (e) => report("lights", e), () => gltfLoader.load(PLANET_GLB, onPlanet, (e) => report("planet", e)));
 
-function onPlanet(g) {
-  const mesh = firstMesh(g.scene); if (!mesh) return;
-  mesh.geometry.computeBoundingSphere();
-  mesh.scale.setScalar(CONFIG.planetRadius / mesh.geometry.boundingSphere.radius);
-  const mat = mesh.material.clone(); mat.metalness = 0; mat.roughness = 1; mat.envMapIntensity = 0;
-  mat.extensions = { derivatives: true };
-  mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { time: planetTime, noiseScale: { value: 30 }, speedX: { value: 1.5 }, speedY: { value: 2.0 }, speedZ: { value: 2.5 },
-      rimColor: { value: hexToVec3(CONFIG.rimColor) }, rimPower: { value: CONFIG.rimPower }, nightBlendTexture: { value: nightTex || blackTex }, nightLights: { value: CONFIG.nightLights },
-      terrainDepth: { value: CONFIG.terrainDepth }, terrainShade: { value: CONFIG.terrainShade }, oceanGlint: { value: CONFIG.oceanGlint }, oceanDeep: { value: CONFIG.oceanDeep },
-      oceanFlow: { value: CONFIG.oceanFlow }, oceanFlowSpeed: { value: CONFIG.oceanFlowSpeed }, oceanFlowScale: { value: CONFIG.oceanFlowScale } });
-    sh.vertexShader = "varying vec2 vCustomUv;\n" + sh.vertexShader.replace("void main() {", "void main() {\n vCustomUv = uv;");
-    sh.fragmentShader = `uniform float time; uniform float noiseScale; uniform float speedX; uniform float speedY; uniform float speedZ; uniform vec3 rimColor; uniform float rimPower;
+/* ---------- planet material (built up front so its shader compiles before the intro counts) */
+const planetUniforms = { nightBlendTexture: { value: placeholderNight } };
+const planetMat = new THREE.MeshStandardMaterial({ map: placeholderMap, metalness: 0, roughness: 1 });
+planetMat.extensions = { derivatives: true };
+planetMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, { time: planetTime, noiseScale: { value: 30 }, speedX: { value: 1.5 }, speedY: { value: 2.0 }, speedZ: { value: 2.5 },
+    rimColor: { value: hexToVec3(CONFIG.rimColor) }, rimPower: { value: CONFIG.rimPower }, nightBlendTexture: planetUniforms.nightBlendTexture, nightLights: { value: CONFIG.nightLights },
+    terrainDepth: { value: CONFIG.terrainDepth }, terrainShade: { value: CONFIG.terrainShade }, oceanGlint: { value: CONFIG.oceanGlint }, oceanDeep: { value: CONFIG.oceanDeep },
+    oceanFlow: { value: CONFIG.oceanFlow }, oceanFlowSpeed: { value: CONFIG.oceanFlowSpeed }, oceanFlowScale: { value: CONFIG.oceanFlowScale } });
+  sh.vertexShader = "varying vec2 vCustomUv;\n" + sh.vertexShader.replace("void main() {", "void main() {\n vCustomUv = uv;");
+  sh.fragmentShader = `uniform float time; uniform float noiseScale; uniform float speedX; uniform float speedY; uniform float speedZ; uniform vec3 rimColor; uniform float rimPower;
 uniform sampler2D nightBlendTexture; uniform float nightLights; uniform float terrainDepth; uniform float terrainShade; uniform float oceanGlint; uniform float oceanDeep;
 uniform float oceanFlow; uniform float oceanFlowSpeed; uniform float oceanFlowScale; varying vec2 vCustomUv;
 ` + SNOISE + "\n" + sh.fragmentShader.replace("#include <dithering_fragment>", `#include <dithering_fragment>
@@ -313,20 +318,35 @@ float ripple = snoise(vec3(vCustomUv * 240.0, time * 4.0));
 float ndh = max(dot(normalizedNormal, halfDir) + ripple * 0.02, 0.0);
 float glint = pow(ndh, 140.0);
 gl_FragColor.rgb += glint * waterMask * dayAmt * oceanGlint * vec3(1.0, 0.97, 0.88);`);
-  };
-  mesh.material = mat; mesh.layers.set(LAYERS.ENTIRE_SCENE); mesh.frustumCulled = false;
+};
+const warmSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), planetMat);   // never drawn (layer 0); exists so compile() sees the material
+warmSphere.layers.set(LAYERS.NONE); scene.add(warmSphere);
+
+function onPlanet(g) {
+  const mesh = firstMesh(g.scene); if (!mesh) return;
+  mesh.geometry.computeBoundingSphere();
+  mesh.scale.setScalar(CONFIG.planetRadius / mesh.geometry.boundingSphere.radius);
+  const gltfMap = mesh.material && mesh.material.map;
+  mesh.material = planetMat; mesh.layers.set(LAYERS.ENTIRE_SCENE); mesh.frustumCulled = false;
   planetGroup.add(mesh); planetMesh = mesh; cloudGroup.visible = true;
-  try { renderer.initTexture(mat.map); if (nightTex) renderer.initTexture(nightTex); renderer.compile(scene, camera); } catch (e) { /* warm-up is best effort */ }
-  warmFrames = 2;                                                   // "ready" is announced after two real frames with the planet in them
   prog.planet = 1; emit();
   maybeStartEntry();
-  try { buildMarkers(mesh); } catch (e) { console.warn("markers skipped", e); }
+  // hand-over, one step per frame so the intro's counter keeps ticking between them: upload the textures,
+  // swap them into the already-compiled material, place the markers, then render two real frames before "ready"
+  warmQueue.push(
+    timed("planet map upload", () => { if (gltfMap) renderer.initTexture(gltfMap); }),
+    timed("planet map swap", () => { if (gltfMap) { planetMat.map = gltfMap; planetMat.needsUpdate = true; } }),
+    timed("night map upload", () => { if (nightTex) { renderer.initTexture(nightTex); planetUniforms.nightBlendTexture.value = nightTex; } }),
+    timed("markers", () => { try { buildMarkers(mesh); } catch (e) { console.warn("markers skipped", e); } }),
+    timed("compile (after swap)", () => { camera.layers.set(LAYERS.ENTIRE_SCENE); renderer.compile(scene, camera); }),
+    () => { readyAfterWarm = true; warmFrames = 2; },
+  );
 }
 
 /* ---------- land markers (radar pings on land) */
 function buildMarkers(mesh) {
   const map = mesh.material.map; if (!map || !map.image) return;
-  const img = map.image, cw = img.width || 1024, ch = img.height || 512;
+  const img = map.image, cw = 512, ch = 512;                       // a small copy is enough to tell land from ocean
   const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
   const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0, cw, ch);
   const data = ctx.getImageData(0, 0, cw, ch).data;
@@ -380,6 +400,13 @@ function resize() {
 }
 window.addEventListener("resize", resize); resize();
 
+// first frames: render each pass once and compile every material (planet + clouds with placeholder textures) so the
+// expensive shader builds happen while the intro is still fading in, not while its counter is running
+warmQueue.push(
+  () => { warmFrames = 1; },
+  timed("compile (startup)", () => { camera.layers.set(LAYERS.ENTIRE_SCENE); renderer.compile(scene, camera); }),
+  () => { window.dispatchEvent(new Event("scene:warm")); },
+);
 const clock = new THREE.Clock();
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -406,10 +433,16 @@ function frame() {
     glowMesh.material.uniforms.uIntensity.value = CONFIG.glowIntensity * Math.min(1, 1.1 / Math.max(0.3, curS));   // a close-up planet gets a quieter halo so the hero copy stays readable
     if (!reduce) { planetTime.value += dt / 12; cloudTime.value += dt / 20; starTime.value += dt; markerTime.value += dt; }
     controls.update();
-    camera.layers.set(LAYERS.TORUS_SCENE); torusComposer.render();
-    camera.layers.set(LAYERS.BLOOM_SCENE); bloomComposer.render();
-    camera.layers.set(LAYERS.ENTIRE_SCENE); finalComposer.render();
-    if (warmFrames > 0 && --warmFrames === 0) window.dispatchEvent(new Event("scene:ready"));
+    if (warmQueue.length) { try { warmQueue.shift()(); } catch (e) { console.warn("warm-up step failed", e); } }
+    const introUp = !readySent && !!document.getElementById("intro");
+    if (!introUp || warmFrames > 0) {                                 // the intro hides the canvas: skip rendering until warm-up frames are due
+      const tr = performance.now();
+      camera.layers.set(LAYERS.TORUS_SCENE); torusComposer.render();
+      camera.layers.set(LAYERS.BLOOM_SCENE); bloomComposer.render();
+      camera.layers.set(LAYERS.ENTIRE_SCENE); finalComposer.render();
+      if (warmFrames > 0) marks.push(["warm frame", Math.round(tr), Math.round(performance.now() - tr)]);
+      if (warmFrames > 0 && --warmFrames === 0 && readyAfterWarm) { readySent = true; window.dispatchEvent(new Event("scene:ready")); }
+    }
     // adaptive quality: if frames keep running long (>30 ms on average), render at a lower pixel ratio
     emaDt = emaDt * 0.9 + dt * 0.1;
     const now = performance.now();
