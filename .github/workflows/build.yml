@@ -90,6 +90,15 @@ jobs:
           cp -f dist/signed/AssignmentMonitor-portable.zip dist/AssignmentMonitor-portable.zip
           echo "SIGNED_NOTE=Signed with a SignPath Foundation certificate (see CODE_SIGNING_POLICY.md)." >> "$GITHUB_ENV"
 
+      - name: Release notes from CHANGELOG.md (version tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          # the section for this tag (between its "## x.y.z" heading and the next one)
+          awk -v ver="${GITHUB_REF_NAME#v}" '/^## /{p = index($0, "## " ver " ") == 1 || $0 == "## " ver} p' CHANGELOG.md > dist/notes.md
+          [ -s dist/notes.md ] || echo "## ${GITHUB_REF_NAME}" > dist/notes.md
+          cat dist/notes.md
+
       - name: Publish numbered release (version tags)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -97,6 +106,8 @@ jobs:
           files: |
             dist/AssignmentMonitor-Setup.exe
             dist/AssignmentMonitor-portable.zip
+          body_path: dist/notes.md
+          append_body: true
           generate_release_notes: true
           body: |
             **Download:** `AssignmentMonitor-Setup.exe` (installer, recommended) or `AssignmentMonitor-portable.zip`.
