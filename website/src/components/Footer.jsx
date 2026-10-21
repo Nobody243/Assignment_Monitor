@@ -1,0 +1,58 @@
+import React from "react";
+import { Link } from "react-router-dom";
+import { useRelease } from "../lib/release.jsx";
+import { useScroll } from "../lib/scroll.jsx";
+import { LINKS } from "../data/content.js";
+
+const Ext = ({ href, children }) => <a href={href} target="_blank" rel="noopener">{children}</a>;
+
+export default function Footer() {
+  const rel = useRelease();
+  const { scrollTo } = useScroll();
+  return (
+    <footer className="footer">
+      <div className="footer-mark" aria-hidden="true">Assignment Monitor</div>
+      <div className="wrap">
+        <div className="footer-top">
+          <div className="footer-brand">
+            <Link className="brand" to="/"><img src="/assets/logo.svg" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
+            <p>A small, honest tool that reads your LMS so you don't have to. Built by a Bahria student, for Bahria students. Free forever, open source, and it never phones home.</p>
+            <div className="footer-cta">
+              <a className="btn btn-accent" href={rel.setupUrl} data-download="setup">Download <small>v{rel.version}</small></a>
+              <a className="btn btn-ghost" href={LINKS.repo} target="_blank" rel="noopener">Star on GitHub</a>
+            </div>
+          </div>
+          <nav className="footer-cols" aria-label="Footer">
+            <div><h4>Get it</h4><ul>
+              <li><a href={rel.setupUrl} data-download="setup">Installer for Windows</a></li>
+              <li><a href={rel.zipUrl} data-download="zip">Portable zip</a></li>
+              <li><Link to="/download">Download guide</Link></li>
+              <li><Ext href={LINKS.releases}>All releases</Ext></li>
+              <li><Ext href={LINKS.readmeSource}>Run from source</Ext></li>
+            </ul></div>
+            <div><h4>Explore</h4><ul>
+              <li><Link to="/#story">Tour</Link></li><li><Link to="/#features">Features</Link></li><li><Link to="/#screens">Screens</Link></li>
+              <li><Link to="/faq">FAQ</Link></li><li><Link to="/changelog">Changelog</Link></li>
+            </ul></div>
+            <div><h4>Project</h4><ul>
+              <li><Ext href={LINKS.repo}>Source code</Ext></li>
+              <li><Ext href={LINKS.issues}>Report a problem</Ext></li>
+              <li><Ext href={LINKS.signing}>Code signing policy</Ext></li>
+              <li><Ext href={LINKS.thirdParty}>Third-party licenses</Ext></li>
+            </ul></div>
+            <div><h4>Legal</h4><ul>
+              <li><Link to="/privacy">Privacy &amp; security</Link></li>
+              <li><Ext href={LINKS.privacy}>Terms</Ext></li>
+              <li><Ext href={LINKS.license}>MIT license</Ext></li>
+            </ul></div>
+          </nav>
+        </div>
+        <div className="footer-bottom">
+          <p>© {new Date().getFullYear()} Nobody243 · MIT · Made in Pakistan</p>
+          <p className="footer-note">Independent, open-source project. Not affiliated with, endorsed by, or supported by Bahria University. Use it with your own account only; deadlines come from the portal and can be out of date, so always confirm on the LMS.</p>
+          <button type="button" className="footer-top-link mono" onClick={() => scrollTo(0)}>Back to top ↑</button>
+        </div>
+      </div>
+    </footer>
+  );
+}

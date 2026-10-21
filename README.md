@@ -121,7 +121,10 @@ config.py       paths, settings, logging
 build.py        PyInstaller + Inno Setup build
 installer.iss   installer definition
 tests/          pytest suite
+website/        the site (React + Vite; three.js planet, GSAP, Lenis, Framer Motion), deployed to Vercel from this folder
 ```
+
+The website lives in `website/`: `npm install`, `npm run dev` for a dev server, `npm run build` for the static bundle in `website/dist`. Vercel builds it from the `website` root directory on every push to `main`.
 
 ## Troubleshooting
 

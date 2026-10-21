@@ -1,0 +1,45 @@
+/* ============================================================ design tokens
+   One tonal scale for neutrals (cold space background, warm off-white ink), one accent scale (the colour of a
+   deadline), semantic aliases on top. Every component reads the aliases, never the raw steps. */
+:root {
+  color-scheme: dark;
+
+  /* neutral steps: 0 is the sky behind the planet, 5 is the lightest surface */
+  --n-0: #07080d; --n-1: #0a0b10; --n-2: #0f1016; --n-3: #15171f; --n-4: #1d1f29; --n-5: #2a2d3a;
+  /* ink steps: 1 is headline white, 4 is the quietest caption that still passes contrast on --n-1 */
+  --ink-1: #f3f2ed; --ink-2: #cfcdc5; --ink-3: #9b9892; --ink-4: #6b6963;
+  /* accent steps */
+  --accent-2: #ffd3c0; --accent-3: #ffb08a; --accent-4: #ff8a5c; --accent-5: #ff6a3d; --accent-6: #e4532b; --accent-7: #b43d1d;
+  --accent-ink: #140905;
+  --accent-a08: rgba(255, 106, 61, 0.08); --accent-a14: rgba(255, 106, 61, 0.14); --accent-a24: rgba(255, 106, 61, 0.24); --accent-a45: rgba(255, 106, 61, 0.45);
+  --cool-4: #8fa6ff; --cool-5: #3a6cff; --cool-a12: rgba(58, 108, 255, 0.12);
+  --ok: #5ad19a; --warn: #ffc46b;
+
+  /* semantic */
+  --bg: var(--n-1); --bg-space: var(--n-0);
+  --accent: var(--accent-5); --accent-hover: var(--accent-4); --accent-press: var(--accent-6);
+  --line: rgba(243, 242, 237, 0.09); --line-2: rgba(243, 242, 237, 0.16); --line-3: rgba(243, 242, 237, 0.28);
+  --surface: rgba(255, 255, 255, 0.035);
+  --glass: rgba(12, 13, 18, 0.58); --glass-2: rgba(16, 17, 24, 0.72); --glass-3: rgba(20, 21, 30, 0.88);
+  --shadow-1: 0 10px 30px -12px rgba(0, 0, 0, 0.6); --shadow-2: 0 30px 80px -30px rgba(0, 0, 0, 0.75); --shadow-win: 0 40px 100px -30px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --focus: var(--accent-4);
+
+  /* type */
+  --font: "Manrope", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --t-xs: 11px; --t-sm: 13px; --t-base: 16px;
+  --t-md: clamp(17px, 1.5vw, 19px); --t-lg: clamp(20px, 2vw, 24px); --t-xl: clamp(26px, 3vw, 34px);
+  --t-2xl: clamp(34px, 4.6vw, 58px); --t-3xl: clamp(42px, 6.6vw, 96px);
+  --lh-tight: 1.02; --lh-body: 1.6;
+
+  /* space, radius, layout */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+  --section: clamp(72px, 10vw, 120px);
+  --gutter: clamp(16px, 4vw, 40px); --max: 1200px; --nav-h: 72px;
+  --r-1: 8px; --r-2: 12px; --r-3: 16px; --r-4: 22px; --r-5: 28px; --r-pill: 999px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-inout: cubic-bezier(0.65, 0, 0.35, 1); --ease-std: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --d-1: 0.2s; --d-2: 0.45s; --d-3: 0.9s;
+}
