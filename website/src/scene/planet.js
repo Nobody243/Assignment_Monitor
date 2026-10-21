@@ -21,13 +21,13 @@ const PLANET_GLB = `${ASSETS}/planet.glb`, LIGHTS_GLB = `${ASSETS}/planet-lights
 const CONFIG = {
   rimColor: "#c1faff", rimPower: 2.4, nightLights: 10, terrainDepth: 0.33, terrainShade: 1.3,
   oceanGlint: 0.45, oceanDeep: 0.12, oceanFlow: 3, oceanFlowSpeed: 0.8, oceanFlowScale: 2.1,
-  glowColor: "#3a6cff", glowIntensity: 1.3, planetRadius: 1.95, spin: 0.03, initRotation: 2.07, tilt: 0.37,
+  glowColor: "#3a6cff", glowIntensity: 1.05, planetRadius: 1.95, spin: 0.03, initRotation: 2.07, tilt: 0.37,
   cloud1Height: 1.004, cloud1Opacity: 0.6, cloud1Spin: 0.06,
   cloud2Height: 1.014, cloud2Opacity: 0.5, cloud2Spin: 0.14,
   cloud3Height: 1.028, cloud3Opacity: 0.5, cloud3Spin: 0.1,
   bgColor: "#07080d",
-  atmoColor: "#9fc4ff", atmoCount: 320, atmoSize: 22, atmoSpeed: 0.8,
-  starColor: "#cfe0ff", starCount: 1400, starSize: 1.6, starFlicker: 1,
+  atmoColor: "#9fc4ff", atmoCount: 140, atmoSize: 14, atmoSpeed: 0.3,
+  starColor: "#cfe0ff", starCount: 1400, starSize: 1.6, starFlicker: 0.35,
   markerColor: "#ffb48a", markerCount: 60, markerSize: 16, markerSpeed: 0.5,
 };
 const LAYERS = { NONE: 0, TORUS_SCENE: 1, BLOOM_SCENE: 2, ENTIRE_SCENE: 3 };
@@ -90,14 +90,16 @@ export function createPlanet(canvas, handlers = {}) {
 
   /* ---------- composers */
   const size = new THREE.Vector2(window.innerWidth, window.innerHeight);
-  const torusComposer = new EffectComposer(renderer); torusComposer.renderToScreen = false;
+  const floatTarget = (w, h) => new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+  const floatBloom = (pass) => { [pass.renderTargetBright, ...pass.renderTargetsHorizontal, ...pass.renderTargetsVertical].forEach((rt) => { rt.texture.type = THREE.HalfFloatType; }); return pass; };
+  const torusComposer = new EffectComposer(renderer, floatTarget(size.x, size.y)); torusComposer.renderToScreen = false;
   torusComposer.addPass(new RenderPass(scene, camera));
   torusComposer.addPass(new ShaderPass(GammaCorrectionShader));
-  torusComposer.addPass(new UnrealBloomPass(size.clone(), 0.22, 0.2, 0));
+  torusComposer.addPass(floatBloom(new UnrealBloomPass(size.clone(), 0.22, 0.2, 0)));
   torusComposer.addPass(new ShaderPass(CopyShader));
-  const bloomComposer = new EffectComposer(renderer); bloomComposer.renderToScreen = false;
+  const bloomComposer = new EffectComposer(renderer, floatTarget(size.x, size.y)); bloomComposer.renderToScreen = false;
   bloomComposer.addPass(new RenderPass(scene, camera));
-  bloomComposer.addPass(new UnrealBloomPass(size.clone(), 0.3, 0.45, 0));
+  bloomComposer.addPass(floatBloom(new UnrealBloomPass(size.clone(), 0.26, 0.5, 0)));
   bloomComposer.addPass(new ShaderPass(GammaCorrectionShader));
 
   const blackTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); blackTex.needsUpdate = true;
@@ -117,14 +119,16 @@ export function createPlanet(canvas, handlers = {}) {
         vec2 uv = 2.*vUv - 1.;
         float low = smoothstep(1.1, -0.9, uv.y) * (1.0 - 0.35 * abs(uv.x));
         vec3 bg = mix(uBg * 0.75, uBgLow, low * 0.9);
-        float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+        float n1 = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+        float n2 = fract(sin(dot(gl_FragCoord.xy + 17.0, vec2(39.3468, 11.135))) * 24634.6345);
+        float n = (n1 + n2) - 1.0;                                   /* triangular dither: smoother than a flat hash */
         vec3 col = bg + texture2D(bloomTexture, vUv).xyz + texture2D(torusTexture, vUv).xyz + texture2D(tDiffuse, vUv).xyz;
-        gl_FragColor = vec4(col + n / 255.0, 1.0);
+        gl_FragColor = vec4(col + n * 1.5 / 255.0, 1.0);
       }`,
   });
   finalPass.uniforms.bloomTexture.value = bloomComposer.renderTarget1.texture;
   finalPass.uniforms.torusTexture.value = torusComposer.renderTarget1.texture;
-  const finalComposer = new EffectComposer(renderer);
+  const finalComposer = new EffectComposer(renderer, floatTarget(size.x, size.y));
   finalComposer.addPass(new RenderPass(scene, camera));
   finalComposer.addPass(finalPass);
 
@@ -149,13 +153,13 @@ export function createPlanet(canvas, handlers = {}) {
       void main(){ float d = length(vUv - 0.5) * 2.0;
         float disc = 1.0 / 2.3;                                    /* planet limb in plane units (half-extent = 2.3 radii) */
         float x = clamp((d - disc) / (1.0 - disc), 0.0, 1.0);
-        float outer = exp(-x * 6.0) * (1.0 - x);
-        float inner = smoothstep(disc - 0.015, disc + 0.01, d);
+        float outer = exp(-x * 4.2) * (1.0 - x) * (1.0 - x);     /* soft, long falloff, no shoulder */
+        float inner = smoothstep(disc - 0.02, disc + 0.02, d);
         float a = outer * inner;
         vec3 col = mix(uGlowEdge, uGlow, smoothstep(0.0, 0.3, x));
         gl_FragColor = vec4(col * a * uIntensity, a); }`,
   }));
-  glowMesh.scale.setScalar(CONFIG.planetRadius * 2.3); glowMesh.layers.set(LAYERS.BLOOM_SCENE); worldGroup.add(glowMesh);
+  glowMesh.scale.setScalar(CONFIG.planetRadius * 2.3); glowMesh.renderOrder = 1; glowMesh.layers.set(LAYERS.ENTIRE_SCENE); worldGroup.add(glowMesh);
 
   /* ---------- shared uniforms */
   const planetTime = { value: 0 }, cloudTime = { value: 0 }, starTime = { value: 0 }, markerTime = { value: 0 };
@@ -177,7 +181,7 @@ export function createPlanet(canvas, handlers = {}) {
           float r = length(v); float farF = 1.0 - smoothstep(5.0, 6.5, r); float nearF = smoothstep(0.0, 0.5, -mv.z); vA = farF * nearF;
           gl_PointSize = size * uRes.y / 900.0 / -mv.z; gl_PointSize = max(gl_PointSize, 1.0); gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `uniform vec3 uColor; varying float vA; void main(){ vec2 p = gl_PointCoord - 0.5; float l = length(p); if (l > 0.5) discard;
-        float tex = smoothstep(0.5, 0.0, l); gl_FragColor = vec4(uColor * tex, tex * vA * 0.55); }` });
+        float tex = smoothstep(0.5, 0.0, l); gl_FragColor = vec4(uColor * tex, tex * vA * 0.32); }` });
     const motes = new THREE.Points(g, m); motes.frustumCulled = false; motes.layers.set(LAYERS.BLOOM_SCENE);
     motes.onBeforeRender = () => { m.uniforms.uTime.value = (performance.now() / 1000) * CONFIG.atmoSpeed * 8; motes.position.copy(camera.position); };
     scene.add(motes); return m;
@@ -375,7 +379,7 @@ gl_FragColor.rgb += glint * waterMask * dayAmt * oceanGlint * vec3(1.0, 0.97, 0.
   let curP = 0, curX = STOPS_X[0].v, curY = STOPS_Y[0].v, curS = STOPS_S[0].v, spinPhase = 0;
   window.__sceneState = { get p() { return curP; }, get loaded() { return !!planetMesh; } };
   const PR_STEPS = [1.25, 1.0, 0.8];
-  let quality = 0, emaDt = 1 / 60, lastDrop = 0;
+  let quality = 0, emaDt = 1 / 60, lastDrop = 0, lastScrollY = 0, movingUntil = 0;
   function resize() {
     const w = window.innerWidth, h = window.innerHeight, pr = Math.min(window.devicePixelRatio || 1, PR_STEPS[quality]);
     camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -431,7 +435,9 @@ gl_FragColor.rgb += glint * waterMask * dayAmt * oceanGlint * vec3(1.0, 0.97, 0.
       }
       emaDt = emaDt * 0.9 + dt * 0.1;
       const now = performance.now();
-      if (planetMesh && emaDt > 0.03 && quality < PR_STEPS.length - 1 && now - lastDrop > 3000 && !state.introActive) { quality++; lastDrop = now; emaDt = 1 / 60; resize(); }
+      if (Math.abs(window.scrollY - lastScrollY) > 0.5) movingUntil = now + 1200;
+      lastScrollY = window.scrollY;
+      if (planetMesh && emaDt > 0.03 && quality < PR_STEPS.length - 1 && now - lastDrop > 3000 && now > movingUntil && !state.introActive) { quality++; lastDrop = now; emaDt = 1 / 60; resize(); }
     }
     raf = requestAnimationFrame(frame);
   }

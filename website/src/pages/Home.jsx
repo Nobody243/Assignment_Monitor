@@ -7,6 +7,8 @@ import Hero from "../components/home/Hero.jsx";
 import Ticker from "../components/home/Ticker.jsx";
 import Numbers from "../components/home/Numbers.jsx";
 import Tour from "../components/home/Tour.jsx";
+import TourMobile from "../components/home/TourMobile.jsx";
+import { useIsMobile } from "../lib/useMedia.js";
 import Features from "../components/home/Features.jsx";
 import Steps from "../components/home/Steps.jsx";
 import Gallery from "../components/home/Gallery.jsx";
@@ -21,6 +23,7 @@ export default function Home() {
   const { hash } = useLocation();
   const { scrollTo } = useScroll();
   const { introDone } = useScene();
+  const mobile = useIsMobile();
   /* /#features and friends: scroll to the section once the page (and, on first load, the intro) is ready. */
   useEffect(() => {
     if (!hash || !introDone) return undefined;
@@ -34,7 +37,7 @@ export default function Home() {
       <Hero />
       <Ticker />
       <Numbers />
-      <Tour />
+      {mobile ? <TourMobile /> : <Tour />}
       <Features />
       <Steps />
       <Gallery />
@@ -42,7 +45,7 @@ export default function Home() {
       <section id="faq">
         <div className="wrap">
           <SectionHead kicker="FAQ" title="Questions, answered." />
-          <Reveal><FaqList items={FAQ.slice(0, 6)} /></Reveal>
+          <Reveal><FaqList items={FAQ.slice(0, mobile ? 4 : 6)} /></Reveal>
           <Reveal className="links"><Link to="/faq">All questions</Link></Reveal>
         </div>
       </section>

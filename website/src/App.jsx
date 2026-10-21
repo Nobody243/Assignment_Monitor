@@ -31,7 +31,6 @@ export default function App() {
       <ReleaseProvider>
         <SceneProvider>
           <Scene />
-          <div className="grain" aria-hidden="true" />
           <Intro />
           <Nav />
           <ScrollToTop />

@@ -58,7 +58,7 @@
 .win-bar b { margin-left: 8px; font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0.04em; }
 
 /* ============================================================ cards + panels */
-.cta-card { max-width: 860px; padding: clamp(40px, 7vw, 80px) clamp(24px, 5vw, 64px); border-radius: var(--r-5); border: 1px solid var(--line-2); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+.cta-card { max-width: 860px; padding: clamp(40px, 7vw, 80px) clamp(24px, 5vw, 64px); border-radius: var(--r-5); border: 1px solid var(--line-2);
   background: radial-gradient(120% 140% at 50% 0%, var(--accent-a14), transparent 55%), var(--glass-2); box-shadow: var(--shadow-2); text-align: center; }
 .cta-card.compact { max-width: none; text-align: left; padding: clamp(28px, 4vw, 44px); }
 .cta-card.compact .hero-cta { justify-content: flex-start; margin-top: 22px; }
@@ -72,7 +72,7 @@
 .plain-list + .mono { display: block; margin-top: 28px; }
 @media (max-width: 560px) { .plain-list li { grid-template-columns: 1fr; gap: 4px; } }
 
-.table-card { overflow: auto; border-radius: var(--r-4); border: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.table-card { overflow: auto; border-radius: var(--r-4); border: 1px solid var(--line); background: var(--glass); }
 .data-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
 .data-table th, .data-table td { text-align: left; padding: 16px 20px; vertical-align: top; border-bottom: 1px solid var(--line); }
 .data-table th { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }

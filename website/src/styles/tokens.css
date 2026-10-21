@@ -20,7 +20,7 @@
   --accent: var(--accent-5); --accent-hover: var(--accent-4); --accent-press: var(--accent-6);
   --line: rgba(243, 242, 237, 0.09); --line-2: rgba(243, 242, 237, 0.16); --line-3: rgba(243, 242, 237, 0.28);
   --surface: rgba(255, 255, 255, 0.035);
-  --glass: rgba(12, 13, 18, 0.58); --glass-2: rgba(16, 17, 24, 0.72); --glass-3: rgba(20, 21, 30, 0.88);
+  --glass: rgba(12, 13, 18, 0.74); --glass-2: rgba(16, 17, 24, 0.84); --glass-3: rgba(20, 21, 30, 0.92);
   --shadow-1: 0 10px 30px -12px rgba(0, 0, 0, 0.6); --shadow-2: 0 30px 80px -30px rgba(0, 0, 0, 0.75); --shadow-win: 0 40px 100px -30px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   --focus: var(--accent-4);
 
