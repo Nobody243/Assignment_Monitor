@@ -15,7 +15,7 @@ export default function Footer() {
       <div className="wrap">
         <div className="footer-top">
           <div className="footer-brand">
-            <Link className="brand" to="/"><img src="/assets/logo.svg" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
+            <Link className="brand footer-brand-link" to="/"><img src="/assets/logo.svg" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
             <p>A small, honest tool that reads your LMS so you don't have to. Built by a Bahria student, for Bahria students. Free forever, open source, and it never phones home.</p>
             <div className="footer-cta">
               <a className="btn btn-accent" href={rel.setupUrl} data-download="setup">Download <small>v{rel.version}</small></a>
@@ -23,24 +23,24 @@ export default function Footer() {
             </div>
           </div>
           <nav className="footer-cols" aria-label="Footer">
-            <div><h4>Get it</h4><ul>
+            <div><h3>Get it</h3><ul>
               <li><a href={rel.setupUrl} data-download="setup">Installer for Windows</a></li>
               <li><a href={rel.zipUrl} data-download="zip">Portable zip</a></li>
               <li><Link to="/download">Download guide</Link></li>
               <li><Ext href={LINKS.releases}>All releases</Ext></li>
               <li><Ext href={LINKS.readmeSource}>Run from source</Ext></li>
             </ul></div>
-            <div><h4>Explore</h4><ul>
+            <div><h3>Explore</h3><ul>
               <li><Link to="/#story">Tour</Link></li><li><Link to="/#features">Features</Link></li><li><Link to="/#screens">Screens</Link></li>
               <li><Link to="/faq">FAQ</Link></li><li><Link to="/changelog">Changelog</Link></li>
             </ul></div>
-            <div><h4>Project</h4><ul>
+            <div><h3>Project</h3><ul>
               <li><Ext href={LINKS.repo}>Source code</Ext></li>
               <li><Ext href={LINKS.issues}>Report a problem</Ext></li>
               <li><Ext href={LINKS.signing}>Code signing policy</Ext></li>
               <li><Ext href={LINKS.thirdParty}>Third-party licenses</Ext></li>
             </ul></div>
-            <div><h4>Legal</h4><ul>
+            <div><h3>Legal</h3><ul>
               <li><Link to="/privacy">Privacy &amp; security</Link></li>
               <li><Ext href={LINKS.privacy}>Terms</Ext></li>
               <li><Ext href={LINKS.license}>MIT license</Ext></li>

@@ -34,6 +34,7 @@ export default function Privacy() {
 
       <section>
         <div className="wrap">
+          <h2 className="sr-only">In short</h2>
           <Stagger className="privacy-grid" step={0.1}>
             {PRIVACY_CARDS.map((c) => <Item as="article" key={c.title}><span className="mono">{c.tag}</span><h3>{c.title}</h3><p>{c.text}</p></Item>)}
           </Stagger>
@@ -46,7 +47,7 @@ export default function Privacy() {
           <Reveal className="table-card">
             <table className="data-table">
               <thead><tr><th>Data</th><th>Where it lives</th><th>Protection</th></tr></thead>
-              <tbody>{DATA.map((r) => <tr key={r[0]}><td>{r[0]}</td><td><code>{r[1]}</code></td><td>{r[2]}</td></tr>)}</tbody>
+              <tbody>{DATA.map((r) => <tr key={r[0]}><td data-label="Data">{r[0]}</td><td data-label="Where it lives"><code>{r[1]}</code></td><td data-label="Protection">{r[2]}</td></tr>)}</tbody>
             </table>
           </Reveal>
         </div>

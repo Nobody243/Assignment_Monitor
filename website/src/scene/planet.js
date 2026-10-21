@@ -134,7 +134,7 @@ export function createPlanet(canvas, handlers = {}) {
 
   /* ---------- groups + scroll keyframes */
   const STOPS_X = [{ p: 0, v: 0 }, { p: 0.32, v: -3.1 }, { p: 0.64, v: 3.2 }, { p: 1, v: 0 }];
-  const heroY = () => (window.innerWidth < 760 ? -5.15 : -5.3);   // phones render the planet at 0.72 scale, so it sits higher to keep a horizon in view
+  const heroY = () => (window.innerWidth < 760 ? -5.15 : window.innerHeight > window.innerWidth ? -4.55 : -5.3);   // portrait tablets: higher, no dead band under the hero   // phones render the planet at 0.72 scale, so it sits higher to keep a horizon in view
   const STOPS_Y = [{ p: 0, v: heroY() }, { p: 0.32, v: 0.55 }, { p: 0.64, v: 0.45 }, { p: 1, v: 0.15 }];
   const STOPS_S = [{ p: 0, v: 2.15 }, { p: 0.32, v: 1.0 }, { p: 0.64, v: 0.92 }, { p: 1, v: 1.12 }];
   const worldGroup = new THREE.Group();
@@ -402,8 +402,11 @@ gl_FragColor.rgb += glint * waterMask * dayAmt * oceanGlint * vec3(1.0, 0.97, 0.
     if (state.disposed) return;
     const dt = Math.min(clock.getDelta(), 0.05);
     if (!document.hidden) {
+      // progress is scroll distance in viewports, so a short page gets the first part of the same journey instead of
+      // squeezing the whole swing into a few hundred pixels; the home page (long) still reaches the end
       const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      const pTarget = reduce ? 0 : clamp(window.scrollY / max, 0, 1);
+      const journey = Math.max(max, window.innerHeight * 6);
+      const pTarget = reduce ? 0 : clamp(window.scrollY / journey, 0, 1);
       const damp = (rate) => 1 - Math.exp(-dt * rate);
       curP += (pTarget - curP) * damp(5);
       const sideScale = clamp(window.innerWidth / 1200, 0.5, 1);

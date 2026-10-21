@@ -24,7 +24,7 @@ export default function Download() {
           <Stagger className="option-grid" step={0.12}>
             <Item as="article" className="option is-recommended">
               <span className="mono">Recommended</span>
-              <h3>Installer</h3>
+              <h2>Installer</h2>
               <p className="option-size">AssignmentMonitor-Setup.exe{rel.setupSize ? ` · ${fmtMB(rel.setupSize)}` : ""}</p>
               <ul>
                 <li>Installs for your user account only; no administrator password</li>
@@ -36,7 +36,7 @@ export default function Download() {
             </Item>
             <Item as="article" className="option">
               <span className="mono">No installer</span>
-              <h3>Portable zip</h3>
+              <h2>Portable zip</h2>
               <p className="option-size">AssignmentMonitor-portable.zip{rel.zipSize ? ` · ${fmtMB(rel.zipSize)}` : ""}</p>
               <ul>
                 <li>Unzip anywhere and run AssignmentMonitor.exe</li>

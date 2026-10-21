@@ -30,12 +30,12 @@
 @keyframes intro-swap { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: none; } }
 .intro-caret { width: 7px; height: 12px; background: var(--accent); animation: intro-caret 1s steps(2) infinite; }
 @keyframes intro-caret { to { opacity: 0; } }
-.intro-stages { list-style: none; margin: 6px 0 0; padding: 0; display: flex; gap: 26px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
+.intro-stages { list-style: none; margin: 6px 0 0; padding: 0; display: flex; gap: 26px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
 .intro-stages li { position: relative; padding-top: 10px; transition: color 0.6s ease; }
 .intro-stages li::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--line-2); }
 .intro-stages li::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.6s var(--ease-std); }
 .intro-stages li b { display: block; margin-bottom: 3px; font-weight: 500; color: var(--ink-4); }
 .intro-stages li.is-on { color: var(--ink-2); } .intro-stages li.is-on b { color: var(--accent); } .intro-stages li.is-on::after { transform: scaleX(1); }
-.intro-corner { position: absolute; bottom: 22px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
+.intro-corner { position: absolute; bottom: 22px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); }
 .intro-corner-l { left: 24px; } .intro-corner-r { right: 24px; } .intro-corner-c { left: 50%; transform: translateX(-50%); white-space: nowrap; }
 @media (max-width: 640px) { .intro-stages { gap: 14px; } .intro-corner-l, .intro-corner-r { display: none; } }

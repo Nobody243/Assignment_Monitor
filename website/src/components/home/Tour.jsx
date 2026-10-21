@@ -43,7 +43,7 @@ export default function Tour() {
         <div className="wrap">
           <div className="story-head">
             <span className="mono">Tour</span>
-            <h2>Back on the ground: <span className="serif accent">what's next?</span></h2>
+            <h2>One screen tells you <span className="serif accent">what's due.</span></h2>
           </div>
           <div className="story-grid">
             <div className="story-visual">

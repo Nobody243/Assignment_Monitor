@@ -37,7 +37,7 @@ export default function TourMobile() {
       <div className="wrap">
         <div className="story-head">
           <span className="mono">Tour</span>
-          <h2>Back on the ground: <span className="serif accent">what's next?</span></h2>
+          <h2>One screen tells you <span className="serif accent">what's due.</span></h2>
         </div>
       </div>
       <div className="tour-m-track" ref={track} role="list" aria-label="Tour steps">

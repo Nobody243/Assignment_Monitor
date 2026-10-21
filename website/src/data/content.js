@@ -14,8 +14,8 @@ export const LINKS = {
 };
 
 export const TICKER = [
-  "Synced 19:00", "16 assignments across 6 courses", "4 pending · 1 due today", "Extension caught: Test Plan Review +7 days",
-  "Next: Lab 9 tonight 23:55", "Hourly reminder armed", "Islamabad · Lahore · Karachi campuses", "Nothing sent anywhere but the portal",
+  "Checks every evening at 19:00", "Catch-up check after you sign in", "Hourly voice reminder on due days", "Catches extended deadlines",
+  "Reads every course, not just one", "Runs in the tray, no window needed", "Islamabad · Lahore · Karachi campuses", "Nothing sent anywhere but the portal",
 ];
 
 export const NUMBERS = [

@@ -7,7 +7,7 @@
   /* neutral steps: 0 is the sky behind the planet, 5 is the lightest surface */
   --n-0: #07080d; --n-1: #0a0b10; --n-2: #0f1016; --n-3: #15171f; --n-4: #1d1f29; --n-5: #2a2d3a;
   /* ink steps: 1 is headline white, 4 is the quietest caption that still passes contrast on --n-1 */
-  --ink-1: #f3f2ed; --ink-2: #cfcdc5; --ink-3: #9b9892; --ink-4: #6b6963;
+  --ink-1: #f3f2ed; --ink-2: #cfcdc5; --ink-3: #9b9892; --ink-4: #8a8780;
   /* accent steps */
   --accent-2: #ffd3c0; --accent-3: #ffb08a; --accent-4: #ff8a5c; --accent-5: #ff6a3d; --accent-6: #e4532b; --accent-7: #b43d1d;
   --accent-ink: #140905;
