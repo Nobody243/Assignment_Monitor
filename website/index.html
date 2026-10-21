@@ -21,9 +21,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="preload" href="/assets/ascend/planet.glb" as="fetch" crossorigin>
+  <style>
+    /* painted before any script runs: the intro's sky and a quiet placeholder for its dial, replaced by React */
+    /* on body, not html: the body background propagates to the viewport and stays beneath the fixed canvas (z-index -3) */
+    body { margin: 0; background: radial-gradient(900px 600px at 50% 115%, #0c1332 0%, #07080d 55%, #050506 100%) #07080d; }
+    .boot { position: fixed; inset: 0; display: grid; place-items: center; color: #f3f2ed; font: 700 17px/1 "Manrope", "Segoe UI", system-ui, sans-serif; }
+    .boot i { display: block; width: clamp(200px, 30vmin, 260px); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(243,242,237,0.1); margin: 0 auto 26px; }
+    .boot span { display: block; text-align: center; letter-spacing: -0.02em; }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div class="boot" aria-hidden="true"><div><i></i><span>Assignment Monitor</span></div></div></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

@@ -130,7 +130,7 @@ export function createPlanet(canvas, handlers = {}) {
 
   /* ---------- groups + scroll keyframes */
   const STOPS_X = [{ p: 0, v: 0 }, { p: 0.32, v: -3.1 }, { p: 0.64, v: 3.2 }, { p: 1, v: 0 }];
-  const heroY = () => (window.innerWidth < 760 ? -6.6 : -5.3);
+  const heroY = () => (window.innerWidth < 760 ? -5.15 : -5.3);   // phones render the planet at 0.72 scale, so it sits higher to keep a horizon in view
   const STOPS_Y = [{ p: 0, v: heroY() }, { p: 0.32, v: 0.55 }, { p: 0.64, v: 0.45 }, { p: 1, v: 0.15 }];
   const STOPS_S = [{ p: 0, v: 2.15 }, { p: 0.32, v: 1.0 }, { p: 0.64, v: 0.92 }, { p: 1, v: 1.12 }];
   const worldGroup = new THREE.Group();
