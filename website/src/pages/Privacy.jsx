@@ -26,7 +26,7 @@ export default function Privacy() {
   usePageMeta("Privacy & security", "What Assignment Monitor stores, where, how it is protected, and the only hosts it talks to.");
   return (
     <>
-      <PageHero kicker="Privacy & security" title={<>No server. No account. <span className="serif accent">Nothing leaves your PC.</span></>}
+      <PageHero kicker="Privacy & security" title={<>No server. No account. <span className="heading-accent">Nothing leaves your PC.</span></>}
         lede="Assignment Monitor is an independent, open-source student project. It is not affiliated with, endorsed by, or supported by Bahria University. Here is exactly what it keeps and who it talks to.">
         <Button href={LINKS.privacy} external>Full privacy &amp; terms</Button>
         <Button href={LINKS.security} external variant="quiet">Security notes</Button>
@@ -36,7 +36,7 @@ export default function Privacy() {
         <div className="wrap">
           <h2 className="sr-only">In short</h2>
           <Stagger className="privacy-grid" step={0.1}>
-            {PRIVACY_CARDS.map((c) => <Item as="article" key={c.title}><span className="mono">{c.tag}</span><h3>{c.title}</h3><p>{c.text}</p></Item>)}
+            {PRIVACY_CARDS.map((c) => <Item as="article" key={c.title}><p className="mono">{c.tag}</p><h3>{c.title}</h3><p>{c.text}</p></Item>)}
           </Stagger>
         </div>
       </section>
@@ -56,15 +56,15 @@ export default function Privacy() {
       <section>
         <div className="wrap two-col">
           <Reveal>
-            <span className="mono">Network</span>
+            <p className="mono">Network</p>
             <h2 className="h-md">Two hosts, plus two optional ones.</h2>
             <ol className="plain-list">{NETWORK.map(([t, d]) => <li key={t}><b>{t}</b><span>{d}</span></li>)}</ol>
           </Reveal>
           <Reveal delay={0.1}>
-            <span className="mono">What it does not do</span>
+            <p className="mono">What it does not do</p>
             <h2 className="h-md">Read-only, by design.</h2>
             <ul className="plain-list ticks">{NOT.map((t) => <li key={t}><span>{t}</span></li>)}</ul>
-            <span className="mono">Your side</span>
+            <p className="mono">Your side</p>
             <ul className="plain-list ticks">
               <li><span>Use it only with your own account.</span></li>
               <li><span>Anyone who can sign in to your Windows account can open the app, so keep your PC secure.</span></li>
@@ -77,7 +77,7 @@ export default function Privacy() {
       <section>
         <div className="wrap">
           <Reveal className="cta-card compact">
-            <span className="mono">Deleting your data</span>
+            <p className="mono">Deleting your data</p>
             <h2 className="h-md">Uninstall asks you.</h2>
             <p className="lede">Uninstalling closes the app, removes the background tasks and the program, and asks whether to delete your saved sign-in and cached data as well. Say yes and nothing remains.</p>
             <div className="hero-cta"><Button to="/download">Download guide</Button><Button href={LINKS.repo} external variant="quiet">Read the source</Button></div>

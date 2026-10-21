@@ -10,7 +10,6 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 export default defineConfig({
   plugins: [react()],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
-  server: { fs: { allow: [".."] } },     // CHANGELOG.md lives one level up and is bundled with ?raw
   build: {
     target: "es2020",
     sourcemap: false,

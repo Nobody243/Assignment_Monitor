@@ -11,6 +11,7 @@ Assignment Monitor is MIT licensed. The installed app bundles these open-source 
 | [Pillow](https://python-pillow.org/) | loads the tray icon image | MIT-CMU (HPND) |
 | [lxml](https://lxml.de/) | parses the assignments table | BSD 3-Clause |
 | [winotify](https://github.com/versa-syahptr/winotify) | Windows notifications | MIT |
+| [Inter](https://rsms.me/inter/) | user-interface typeface, bundled unmodified in `assets/fonts` | SIL Open Font License 1.1 (`assets/fonts/LICENSE-Inter.txt`) |
 | [PyInstaller](https://pyinstaller.org/) | builds the executable (build-time only) | GPL with bootloader exception; the built app is not affected |
 | [Inno Setup](https://jrsoftware.org/isinfo.php) | builds the installer (build-time only) | Inno Setup License |
 | Google Chrome / Chromium | the browser that opens the portal (Chrome if installed, otherwise Chromium downloaded by Playwright) | Google Chrome ToS / BSD |

@@ -160,22 +160,51 @@ from notifier import alert_assignments, send_toast, speak_voice, list_voices    
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
 
 # ---------------------------------------------------------------------------- design tokens
-# Direction: calm and editorial. Warm neutral surfaces, one accent, two type weights, a fixed
-# type scale, hairline dividers instead of nested cards, no decorative icons.
-# Every colour is a (light, dark) pair so the theme switch restyles the live window.
+# Direction: calm and editorial. Warm neutral surfaces, one accent, three type weights (regular, medium, semibold;
+# never bold), hairline dividers instead of nested cards, no decorative icons.
+# Golden ratio, twice: the accent sits at oklch hue 265 (blue) and every other hue is one golden angle (137.5°)
+# further round the wheel, so they are as far apart as colours can be (red 42 · green 180 · violet 317 · amber 95 ·
+# sky 232); and the type scale is 13px × φ^(n/4). Every colour is a (light, dark) pair so the theme switch restyles
+# the live window: inks sit at L≈.50 on the light surfaces and L≈.78 on the dark ones (AA on both), tints are the
+# same hue at L .955 / .26.
 C = {
     "bg": ("#f4f4f1", "#121314"), "surface": ("#ffffff", "#1a1c1e"), "surface2": ("#eeeeea", "#232629"),
     "field": ("#fafaf8", "#202326"), "line": ("#e3e3de", "#2c2f33"), "line2": ("#d6d6d0", "#3a3e43"),
     "ink": ("#1b1b1a", "#ececea"), "muted": ("#62625e", "#a0a39e"), "dim": ("#9a9a94", "#6a6d69"),
-    "accent": ("#1f4fd8", "#7aa2ff"), "accent_h": ("#183fae", "#93b4ff"), "on_accent": ("#ffffff", "#0e1320"),
-    "red": ("#c0392b", "#ff7b6b"), "amber": ("#a85f00", "#f0b35c"), "green": ("#1e7d3e", "#5ccf7a"),
-    "sky": ("#0b6e99", "#5fb8e0"), "violet": ("#5b3fb5", "#b7a3ff"),
-    "red_t": ("#fbe9e6", "#2a1c1a"), "amber_t": ("#fbf0dc", "#2a2418"), "green_t": ("#e4f3e8", "#182820"),
-    "sky_t": ("#e2f0f7", "#16242b"), "violet_t": ("#ece7f8", "#221e2e"), "grey_t": ("#eeeeea", "#232629"),
+    "accent": ("#2955d3", "#95b6fe"), "accent_h": ("#1a41be", "#adc7ff"), "on_accent": ("#ffffff", "#0e1320"),
+    "red": ("#af4000", "#fd9a73"), "amber": ("#806a00", "#dec358"), "green": ("#007465", "#36d2ba"),
+    "sky": ("#006c94", "#5dc4f7"), "violet": ("#893ba1", "#d99cee"),
+    "red_t": ("#ffebe4", "#321e16"), "amber_t": ("#f6f0da", "#29240f"), "green_t": ("#dcf7f1", "#0e2a25"),
+    "sky_t": ("#e0f4ff", "#112732"), "violet_t": ("#f9eafe", "#2b1f2f"), "grey_t": ("#eeeeea", "#232629"),
 }
 URGENCY = {"today": "red", "missed": "red", "soon": "amber", "week": "sky", "later": "dim",
            "submitted": "green", "unknown": "dim"}
-FONTS = {"body": "Segoe UI", "display": "Segoe UI", "mono": "Consolas"}
+
+# type scale: 13px × φ^(n/4) → 11 caption · 12 small · 13 body · 15 lead · 17 · 21 · 24 page · 27 · 30 display
+XS, SM, MD, LG, XL, H3, H2, H1, D1 = 11, 12, 13, 15, 17, 21, 24, 27, 30
+
+# Inter (bundled, SIL OFL) with Segoe UI as the fallback. Weight lives in the family name because Tk only knows
+# normal/bold; "bold" deliberately maps to semibold.
+FONTS = {"normal": "Segoe UI", "medium": "Segoe UI", "semibold": "Segoe UI", "bold": "Segoe UI", "display": "Segoe UI",
+         "mono": "Consolas"}
+WEIGHTS = {"normal": "normal", "medium": "normal", "semibold": "bold", "bold": "bold", "display": "bold"}
+
+
+def load_fonts():
+    """Register the bundled Inter faces for this process only (FR_PRIVATE: nothing is installed, no admin rights,
+    and they vanish when the app exits). Must run before Tk creates its first font."""
+    folder = ASSETS_DIR / "fonts"
+    if os.name != "nt" or not folder.is_dir():
+        return 0
+    loaded = 0
+    try:
+        gdi = ctypes.windll.gdi32
+        for path in sorted(folder.glob("*.ttf")):
+            if gdi.AddFontResourceExW(str(path), 0x10, 0):
+                loaded += 1
+    except Exception:
+        log.debug("font registration failed", exc_info=True)
+    return loaded
 
 
 def pick_fonts():
@@ -183,19 +212,25 @@ def pick_fonts():
         fams = set(tkfont.families())
     except Exception:
         return
-    if "Segoe UI Variable Text" in fams:
-        FONTS["body"] = "Segoe UI Variable Text"
-    if "Segoe UI Variable Display" in fams:
-        FONTS["display"] = "Segoe UI Variable Display"
+    if {"Inter", "Inter Medium", "Inter SemiBold", "Inter Display SemiBold"} <= fams:
+        FONTS.update(normal="Inter", medium="Inter Medium", semibold="Inter SemiBold", bold="Inter SemiBold",
+                     display="Inter Display SemiBold")
+        WEIGHTS.update(semibold="normal", bold="normal", display="normal")
+    else:
+        if "Segoe UI Variable Text" in fams:
+            FONTS.update(normal="Segoe UI Variable Text", medium="Segoe UI Variable Text")
+        if "Segoe UI Semibold" in fams:
+            FONTS.update(semibold="Segoe UI Semibold", bold="Segoe UI Semibold")
+            WEIGHTS.update(semibold="normal", bold="normal")
+        if "Segoe UI Variable Display" in fams:
+            FONTS["display"] = "Segoe UI Variable Display"
     if "Cascadia Mono" in fams:
         FONTS["mono"] = "Cascadia Mono"
 
 
-def F(size=13, weight="normal", display=False):
-    return ctk.CTkFont(family=FONTS["display" if display else "body"], size=size, weight=weight)
-
-
-# type scale: 11 caption · 13 body · 14 lead · 17 section · 22 page · 30 display
+def F(size=MD, weight="normal", display=False):
+    key = "display" if display else weight
+    return ctk.CTkFont(family=FONTS[key], size=size, weight=WEIGHTS[key])
 
 
 def urgency_color(key):
@@ -210,7 +245,7 @@ def urgency_tint(key):
 def pill(parent, text, key_or_color, size=11):
     color = C[URGENCY[key_or_color]] if key_or_color in URGENCY else key_or_color
     tint = urgency_tint(key_or_color) if key_or_color in URGENCY else C["surface2"]
-    return ctk.CTkLabel(parent, text=f"  {text}  ", font=F(size, "bold"), fg_color=tint, text_color=color,
+    return ctk.CTkLabel(parent, text=f"  {text}  ", font=F(size, "semibold"), fg_color=tint, text_color=color,
                         corner_radius=6, height=24)
 
 
@@ -226,21 +261,21 @@ def hairline(parent, padx=20):
 
 def heading(parent, text, sub=None, size=17):
     box = ctk.CTkFrame(parent, fg_color="transparent")
-    ctk.CTkLabel(box, text=text, font=F(size, "bold", display=True), text_color=C["ink"]).pack(anchor="w")
+    ctk.CTkLabel(box, text=text, font=F(size, "semibold", display=True), text_color=C["ink"]).pack(anchor="w")
     if sub:
-        ctk.CTkLabel(box, text=sub, font=F(12), text_color=C["muted"]).pack(anchor="w", pady=(1, 0))
+        ctk.CTkLabel(box, text=sub, font=F(SM), text_color=C["muted"]).pack(anchor="w", pady=(1, 0))
     return box
 
 
 def soft_button(parent, text, cmd, width=None):
     kw = dict(width=width) if width else {}
-    return ctk.CTkButton(parent, text=text, font=F(12, "bold"), height=34, fg_color=C["surface2"],
+    return ctk.CTkButton(parent, text=text, font=F(SM, "semibold"), height=34, fg_color=C["surface2"],
                          hover_color=C["line2"], text_color=C["ink"], corner_radius=8, command=cmd, **kw)
 
 
 def primary_button(parent, text, cmd, height=38, width=None):
     kw = dict(width=width) if width else {}
-    return ctk.CTkButton(parent, text=text, font=F(13, "bold"), height=height, fg_color=C["accent"],
+    return ctk.CTkButton(parent, text=text, font=F(MD, "semibold"), height=height, fg_color=C["accent"],
                          hover_color=C["accent_h"], text_color=C["on_accent"], corner_radius=8, command=cmd, **kw)
 
 
@@ -270,7 +305,7 @@ def open_doc(name, fallback_url=None):
 
 
 def theme_switch(parent, app):
-    sw = ctk.CTkSwitch(parent, text="Dark theme", font=F(12), text_color=C["muted"], progress_color=C["accent"],
+    sw = ctk.CTkSwitch(parent, text="Dark theme", font=F(SM), text_color=C["muted"], progress_color=C["accent"],
                        command=lambda: app.set_theme("dark" if sw.get() else "light"))
     sw.select() if app.theme == "dark" else sw.deselect()
     return sw
@@ -309,10 +344,10 @@ class SetupView(ctk.CTkFrame):
 
         if self.app.logo:
             ctk.CTkLabel(inner, text="", image=self.app.logo).pack(anchor="w")
-        ctk.CTkLabel(inner, text=APP_NAME, font=F(30, "bold", display=True), text_color=C["ink"]).pack(anchor="w", pady=(14, 0))
-        ctk.CTkLabel(inner, text=TAGLINE, font=F(14), text_color=C["accent"]).pack(anchor="w", pady=(0, 10))
+        ctk.CTkLabel(inner, text=APP_NAME, font=F(D1, "semibold", display=True), text_color=C["ink"]).pack(anchor="w", pady=(14, 0))
+        ctk.CTkLabel(inner, text=TAGLINE, font=F(LG), text_color=C["accent"]).pack(anchor="w", pady=(0, 10))
         ctk.CTkLabel(inner, text="Your assignments, deadlines and reminders in one place.\nSet it up once; it runs on its own.",
-                     font=F(14), text_color=C["muted"], justify="left").pack(anchor="w", pady=(0, 28))
+                     font=F(LG), text_color=C["muted"], justify="left").pack(anchor="w", pady=(0, 28))
 
         for title, desc in [
             ("Checks the LMS for you", "Signs in every evening at 7 PM and whenever your PC starts, then tells you what is pending."),
@@ -325,8 +360,8 @@ class SetupView(ctk.CTkFrame):
             ctk.CTkFrame(row, fg_color=C["accent"], width=3, height=2, corner_radius=2).pack(side="left", fill="y", pady=3)
             txt = ctk.CTkFrame(row, fg_color="transparent")
             txt.pack(side="left", fill="x", expand=True, padx=(14, 0))
-            ctk.CTkLabel(txt, text=title, font=F(14, "bold"), text_color=C["ink"]).pack(anchor="w")
-            ctk.CTkLabel(txt, text=desc, font=F(12), text_color=C["muted"], justify="left", wraplength=340).pack(anchor="w")
+            ctk.CTkLabel(txt, text=title, font=F(LG, "semibold"), text_color=C["ink"]).pack(anchor="w")
+            ctk.CTkLabel(txt, text=desc, font=F(SM), text_color=C["muted"], justify="left", wraplength=340).pack(anchor="w")
 
     def _build_right(self):
         right = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
@@ -336,35 +371,35 @@ class SetupView(ctk.CTkFrame):
         box.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.72)
         pad = {"padx": 32}
 
-        ctk.CTkLabel(box, text="Sign in to your student portal", font=F(22, "bold", display=True),
+        ctk.CTkLabel(box, text="Sign in to your student portal", font=F(H2, "semibold", display=True),
                      text_color=C["ink"]).pack(anchor="w", pady=(28, 2), **pad)
         ctk.CTkLabel(box, text="The same enrollment number and password you use on cms.bahria.edu.pk.",
-                     font=F(12), text_color=C["muted"]).pack(anchor="w", pady=(0, 18), **pad)
+                     font=F(SM), text_color=C["muted"]).pack(anchor="w", pady=(0, 18), **pad)
 
         env = self.app.env
         self.enroll = self._field(box, "Enrollment number", "01-123456-001", pad)
         if env.get("ENROLLMENT"):
             self.enroll.insert(0, env["ENROLLMENT"])
 
-        ctk.CTkLabel(box, text="Portal password", font=F(12, "bold"), text_color=C["muted"]).pack(anchor="w", **pad)
+        ctk.CTkLabel(box, text="Portal password", font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w", **pad)
         pw_row = ctk.CTkFrame(box, fg_color="transparent")
         pw_row.pack(fill="x", pady=(2, 12), **pad)
-        self.password = ctk.CTkEntry(pw_row, placeholder_text="Password", show="•", height=40, font=F(13),
+        self.password = ctk.CTkEntry(pw_row, placeholder_text="Password", show="•", height=40, font=F(MD),
                                      fg_color=C["field"], border_color=C["line2"], text_color=C["ink"])
         self.password.pack(side="left", fill="x", expand=True)
-        self.show_pw = ctk.CTkCheckBox(pw_row, text="Show", font=F(12), width=70, text_color=C["muted"],
+        self.show_pw = ctk.CTkCheckBox(pw_row, text="Show", font=F(SM), width=70, text_color=C["muted"],
                                        command=self._toggle_pw)
         self.show_pw.pack(side="left", padx=(10, 0))
 
-        ctk.CTkLabel(box, text="Campus", font=F(12, "bold"), text_color=C["muted"]).pack(anchor="w", **pad)
-        self.campus = ctk.CTkOptionMenu(box, values=CAMPUS_NAMES, height=40, font=F(13), fg_color=C["field"],
+        ctk.CTkLabel(box, text="Campus", font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w", **pad)
+        self.campus = ctk.CTkOptionMenu(box, values=CAMPUS_NAMES, height=40, font=F(MD), fg_color=C["field"],
                                         text_color=C["ink"], button_color=C["accent"], button_hover_color=C["accent_h"],
-                                        dropdown_font=F(12))
+                                        dropdown_font=F(SM))
         self.campus.set(campus_name(env.get("INSTITUTE_ID", "1")))
         self.campus.pack(fill="x", pady=(2, 14), **pad)
 
         self.automation = ctk.CTkCheckBox(box, text="Check automatically (daily at 7 PM, at sign-in, hourly on due days)",
-                                          font=F(12), text_color=C["ink"])
+                                          font=F(SM), text_color=C["ink"])
         self.automation.select()
         self.automation.pack(anchor="w", pady=(0, 16), **pad)
 
@@ -376,22 +411,22 @@ class SetupView(ctk.CTkFrame):
         legal = ctk.CTkFrame(box, fg_color="transparent")
         legal.pack(fill="x", pady=(10, 0), **pad)
         ctk.CTkLabel(legal, text="Unofficial app, not affiliated with Bahria University. Use your own account only.",
-                     font=F(11), text_color=C["dim"], wraplength=440, justify="left").pack(anchor="w")
-        link = ctk.CTkLabel(legal, text="Privacy & terms", font=F(11, "bold"), text_color=C["accent"], cursor="hand2")
+                     font=F(XS), text_color=C["dim"], wraplength=440, justify="left").pack(anchor="w")
+        link = ctk.CTkLabel(legal, text="Privacy & terms", font=F(XS, "semibold"), text_color=C["accent"], cursor="hand2")
         link.pack(anchor="w")
         link.bind("<Button-1>", lambda e: open_doc("PRIVACY.md", f"{REPO_URL}/blob/main/PRIVACY.md"))
 
         self.progress = ctk.CTkProgressBar(box, mode="indeterminate", height=4, progress_color=C["accent"],
                                            fg_color=C["surface2"])
-        self.status = ctk.CTkLabel(box, text="", font=F(12), text_color=C["muted"], wraplength=430, justify="left")
+        self.status = ctk.CTkLabel(box, text="", font=F(SM), text_color=C["muted"], wraplength=430, justify="left")
         self.status.pack(anchor="w", pady=(10, 0), **pad)
-        self.console = ctk.CTkTextbox(box, height=90, font=ctk.CTkFont(family=FONTS["mono"], size=11),
+        self.console = ctk.CTkTextbox(box, height=90, font=ctk.CTkFont(family=FONTS["mono"], size=XS),
                                       fg_color=C["bg"], text_color=C["muted"], state="disabled")
         ctk.CTkLabel(box, text="", height=12).pack()
 
     def _field(self, parent, label, placeholder, pad):
-        ctk.CTkLabel(parent, text=label, font=F(12, "bold"), text_color=C["muted"]).pack(anchor="w", **pad)
-        entry = ctk.CTkEntry(parent, placeholder_text=placeholder, height=40, font=F(13), fg_color=C["field"],
+        ctk.CTkLabel(parent, text=label, font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w", **pad)
+        entry = ctk.CTkEntry(parent, placeholder_text=placeholder, height=40, font=F(MD), fg_color=C["field"],
                              border_color=C["line2"], text_color=C["ink"])
         entry.pack(fill="x", pady=(2, 12), **pad)
         return entry
@@ -476,18 +511,18 @@ class DashboardView(ctk.CTkScrollableFrame):
         hour = now.hour
         greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
         first_name = (meta.get("student_name") or "").split(" ")[0].title() or "there"
-        ctk.CTkLabel(self, text=f"{greeting}, {first_name}.", font=F(22, "bold", display=True),
+        ctk.CTkLabel(self, text=f"{greeting}, {first_name}.", font=F(H2, "semibold", display=True),
                      text_color=C["ink"]).pack(anchor="w", pady=(2, 0))
         bits = [meta.get("semester"), f"{len(meta.get('courses', []))} courses" if meta.get("courses") else None,
                 campus_name(self.app.env.get("INSTITUTE_ID", "1"))]
-        ctk.CTkLabel(self, text="  ·  ".join(b for b in bits if b), font=F(13), text_color=C["muted"]).pack(anchor="w", pady=(0, 18))
+        ctk.CTkLabel(self, text="  ·  ".join(b for b in bits if b), font=F(MD), text_color=C["muted"]).pack(anchor="w", pady=(0, 18))
 
         if not data:
             box = surface(self)
             box.pack(fill="x")
-            ctk.CTkLabel(box, text="Nothing here yet", font=F(17, "bold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
+            ctk.CTkLabel(box, text="Nothing here yet", font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
             ctk.CTkLabel(box, text="Press Sync now (or F5) to read your assignments from the LMS.",
-                         font=F(13), text_color=C["muted"]).pack(pady=(0, 28))
+                         font=F(MD), text_color=C["muted"]).pack(pady=(0, 28))
             return
 
         infos = {id(a): classify(a, now) for a in data}
@@ -508,7 +543,7 @@ class DashboardView(ctk.CTkScrollableFrame):
         box.pack(fill="x", pady=(14, 0))
         heading(box, "Needs your attention", "Unsubmitted work, nearest deadline first").pack(anchor="w", padx=20, pady=(18, 12))
         if not open_items:
-            ctk.CTkLabel(box, text="All caught up. Nothing is waiting for a submission.", font=F(14),
+            ctk.CTkLabel(box, text="All caught up. Nothing is waiting for a submission.", font=F(LG),
                          text_color=C["muted"]).pack(anchor="w", padx=20, pady=(0, 20))
         else:
             for i, a in enumerate(open_items[:8]):
@@ -532,11 +567,11 @@ class DashboardView(ctk.CTkScrollableFrame):
         for idx, (name_, c) in enumerate(sorted(courses.items())):
             cc = surface(grid)
             cc.grid(row=idx // cols, column=idx % cols, padx=(0 if idx % cols == 0 else 10, 0), pady=(0, 10), sticky="nsew")
-            ctk.CTkLabel(cc, text=name_, font=F(13, "bold"), text_color=C["ink"], anchor="w", wraplength=250,
+            ctk.CTkLabel(cc, text=name_, font=F(MD, "semibold"), text_color=C["ink"], anchor="w", wraplength=250,
                          justify="left").pack(anchor="w", padx=16, pady=(14, 2))
             ratio = c["submitted"] / c["total"] if c["total"] else 0
             ctk.CTkLabel(cc, text=f"{c['submitted']} of {c['total']} submitted" + (f"  ·  {c['open']} pending" if c["open"] else ""),
-                         font=F(12), text_color=C["amber"] if c["open"] else C["muted"]).pack(anchor="w", padx=16)
+                         font=F(SM), text_color=C["amber"] if c["open"] else C["muted"]).pack(anchor="w", padx=16)
             bar = ctk.CTkProgressBar(cc, height=4, progress_color=C["green"] if ratio == 1 else C["accent"],
                                      fg_color=C["surface2"], corner_radius=2)
             bar.set(ratio)
@@ -547,8 +582,8 @@ class DashboardView(ctk.CTkScrollableFrame):
         if item is None:
             box = surface(self, fg_color=C["green_t"], border_color=C["green_t"])
             box.pack(fill="x")
-            ctk.CTkLabel(box, text="ALL CAUGHT UP", font=F(11, "bold"), text_color=C["green"]).pack(anchor="w", padx=20, pady=(18, 0))
-            ctk.CTkLabel(box, text="No pending assignments right now.", font=F(20, "bold", display=True),
+            ctk.CTkLabel(box, text="ALL CAUGHT UP", font=F(XS, "semibold"), text_color=C["green"]).pack(anchor="w", padx=20, pady=(18, 0))
+            ctk.CTkLabel(box, text="No pending assignments right now.", font=F(H3, "semibold", display=True),
                          text_color=C["ink"]).pack(anchor="w", padx=20, pady=(2, 18))
             return
         info = infos[id(item)]
@@ -558,16 +593,16 @@ class DashboardView(ctk.CTkScrollableFrame):
         box.grid_columnconfigure(0, weight=1)
         left = ctk.CTkFrame(box, fg_color="transparent")
         left.grid(row=0, column=0, sticky="w", padx=20, pady=18)
-        ctk.CTkLabel(left, text="NEXT DEADLINE", font=F(11, "bold"), text_color=color).pack(anchor="w")
-        ctk.CTkLabel(left, text=item.get("title", ""), font=F(20, "bold", display=True), text_color=C["ink"],
+        ctk.CTkLabel(left, text="NEXT DEADLINE", font=F(XS, "semibold"), text_color=color).pack(anchor="w")
+        ctk.CTkLabel(left, text=item.get("title", ""), font=F(H3, "semibold", display=True), text_color=C["ink"],
                      wraplength=640, justify="left").pack(anchor="w", pady=(2, 2))
-        ctk.CTkLabel(left, text=f"{item.get('course', '')}   ·   {fmt_due(item)}", font=F(13), text_color=C["muted"]).pack(anchor="w")
+        ctk.CTkLabel(left, text=f"{item.get('course', '')}   ·   {fmt_due(item)}", font=F(MD), text_color=C["muted"]).pack(anchor="w")
         right = ctk.CTkFrame(box, fg_color="transparent")
         right.grid(row=0, column=1, sticky="e", padx=20)
         days = info["days"]
         big = "Today" if days == 0 else "Tomorrow" if days == 1 else f"{days} days" if days is not None else "—"
-        ctk.CTkLabel(right, text=big, font=F(30, "bold", display=True), text_color=color).pack(anchor="e")
-        ctk.CTkLabel(right, text=info["label"], font=F(12), text_color=C["muted"]).pack(anchor="e")
+        ctk.CTkLabel(right, text=big, font=F(D1, "semibold", display=True), text_color=color).pack(anchor="e")
+        ctk.CTkLabel(right, text=info["label"], font=F(SM), text_color=C["muted"]).pack(anchor="e")
         bind_click(box, lambda: self.app.navigate("assignments", filter_name="Pending"))
 
     def _stats(self, counts):
@@ -581,9 +616,9 @@ class DashboardView(ctk.CTkScrollableFrame):
                 ctk.CTkFrame(cell, fg_color=C["line"], width=1, height=2, corner_radius=0).pack(side="left", fill="y", pady=16)
             inner = ctk.CTkFrame(cell, fg_color="transparent")
             inner.pack(side="left", fill="x", expand=True, padx=18, pady=14)
-            ctk.CTkLabel(inner, text=str(value), font=F(26, "bold", display=True),
+            ctk.CTkLabel(inner, text=str(value), font=F(H1, "semibold", display=True),
                          text_color=C["ink"] if value else C["dim"]).pack(anchor="w")
-            ctk.CTkLabel(inner, text=label, font=F(12), text_color=C["muted"]).pack(anchor="w")
+            ctk.CTkLabel(inner, text=label, font=F(SM), text_color=C["muted"]).pack(anchor="w")
             bind_click(cell, lambda f=flt: self.app.navigate("assignments", filter_name=f))
 
     def _attention_row(self, parent, a, info):
@@ -592,8 +627,8 @@ class DashboardView(ctk.CTkScrollableFrame):
         ctk.CTkFrame(row, fg_color=urgency_color(info["key"]), width=8, height=8, corner_radius=4).pack(side="left", pady=6)
         txt = ctk.CTkFrame(row, fg_color="transparent")
         txt.pack(side="left", fill="x", expand=True, padx=(12, 0))
-        ctk.CTkLabel(txt, text=a.get("title", ""), font=F(14, "bold"), text_color=C["ink"], anchor="w").pack(anchor="w")
-        ctk.CTkLabel(txt, text=f"{a.get('course', '')}   ·   {fmt_due(a)}", font=F(12), text_color=C["muted"], anchor="w").pack(anchor="w")
+        ctk.CTkLabel(txt, text=a.get("title", ""), font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(anchor="w")
+        ctk.CTkLabel(txt, text=f"{a.get('course', '')}   ·   {fmt_due(a)}", font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w")
         pill(row, info["label"], info["key"]).pack(side="right")
         bind_click(row, lambda: self.app.navigate("assignments", filter_name="Pending"))
 
@@ -612,23 +647,23 @@ class AssignmentsView(ctk.CTkFrame):
 
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.pack(fill="x", pady=(2, 10))
-        self.seg = ctk.CTkSegmentedButton(bar, values=FILTERS, font=F(12, "bold"), height=34, corner_radius=8,
+        self.seg = ctk.CTkSegmentedButton(bar, values=FILTERS, font=F(SM, "semibold"), height=34, corner_radius=8,
                                           selected_color=C["accent"], selected_hover_color=C["accent_h"],
                                           unselected_color=C["surface"], unselected_hover_color=C["surface2"],
                                           text_color=C["ink"], fg_color=C["line"], command=self._set_filter)
         self.seg.set("All")
         self.seg.pack(side="left")
-        self.search = ctk.CTkEntry(bar, placeholder_text="Search  (Ctrl+F)", height=34, width=220, font=F(12),
+        self.search = ctk.CTkEntry(bar, placeholder_text="Search  (Ctrl+F)", height=34, width=220, font=F(SM),
                                    fg_color=C["surface"], border_color=C["line2"], text_color=C["ink"])
         self.search.pack(side="right")
         self.search.bind("<KeyRelease>", lambda e: self._set_query(self.search.get()))
         self.search.bind("<Escape>", lambda e: (self.search.delete(0, "end"), self._set_query("")))
-        self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=250, font=F(12),
+        self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=250, font=F(SM),
                                              fg_color=C["surface"], text_color=C["ink"], button_color=C["surface2"],
-                                             button_hover_color=C["line2"], dropdown_font=F(12), command=self._set_course)
+                                             button_hover_color=C["line2"], dropdown_font=F(SM), command=self._set_course)
         self.course_menu.pack(side="right", padx=(0, 10))
 
-        self.summary = ctk.CTkLabel(self, text="", font=F(12), text_color=C["muted"], anchor="w")
+        self.summary = ctk.CTkLabel(self, text="", font=F(SM), text_color=C["muted"], anchor="w")
         self.summary.pack(fill="x", pady=(0, 6))
         self.list = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.list.pack(fill="both", expand=True)
@@ -690,7 +725,7 @@ class AssignmentsView(ctk.CTkFrame):
             w.destroy()
         self.summary.configure(text=f"{len(rows)} of {len(data)} assignments")
         if not rows:
-            ctk.CTkLabel(self.list, text="Nothing matches this filter.", font=F(14), text_color=C["dim"]).pack(pady=50)
+            ctk.CTkLabel(self.list, text="Nothing matches this filter.", font=F(LG), text_color=C["dim"]).pack(pady=50)
             return
         box = surface(self.list)
         box.pack(fill="x")
@@ -705,7 +740,7 @@ class AssignmentsView(ctk.CTkFrame):
         ctk.CTkFrame(row, fg_color=urgency_color(info["key"]), width=8, height=8, corner_radius=4).pack(side="left", pady=6)
         body = ctk.CTkFrame(row, fg_color="transparent")
         body.pack(side="left", fill="x", expand=True, padx=(12, 0))
-        ctk.CTkLabel(body, text=a.get("title", ""), font=F(14, "bold"), text_color=C["ink"], anchor="w").pack(anchor="w")
+        ctk.CTkLabel(body, text=a.get("title", ""), font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(anchor="w")
         meta = f"{a.get('course', '')}   ·   #{a.get('assign_no', '')}   ·   Due {fmt_due(a)}"
         if a.get("is_extended") and a.get("original_due_date"):
             meta += f"   ·   extended from {a['original_due_date']}"
@@ -714,7 +749,7 @@ class AssignmentsView(ctk.CTkFrame):
         marks = a.get("marks", "")
         if marks and marks.lower() != "not marked yet":
             meta += f"   ·   {marks}"
-        ctk.CTkLabel(body, text=meta, font=F(12), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(body, text=meta, font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(2, 0))
         pill(row, info["label"], info["key"]).pack(side="right")
 
 
@@ -728,16 +763,16 @@ class SettingsView(ctk.CTkScrollableFrame):
         acc = self._section("Portal account", "Changing these re-verifies the sign-in when you save.")
         self.enroll = self._entry(acc, "Enrollment number", env.get("ENROLLMENT", ""))
         self.password = self._entry(acc, "Portal password", env.get("PASSWORD", ""), show="•")
-        ctk.CTkLabel(acc, text="Campus", font=F(12, "bold"), text_color=C["muted"]).pack(anchor="w", padx=20)
-        self.campus = ctk.CTkOptionMenu(acc, values=CAMPUS_NAMES, height=38, font=F(13), fg_color=C["field"],
+        ctk.CTkLabel(acc, text="Campus", font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w", padx=20)
+        self.campus = ctk.CTkOptionMenu(acc, values=CAMPUS_NAMES, height=38, font=F(MD), fg_color=C["field"],
                                         text_color=C["ink"], button_color=C["accent"], button_hover_color=C["accent_h"],
-                                        dropdown_font=F(12))
+                                        dropdown_font=F(SM))
         self.campus.set(campus_name(env.get("INSTITUTE_ID", "1")))
         self.campus.pack(fill="x", padx=20, pady=(2, 12))
         row = ctk.CTkFrame(acc, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
         primary_button(row, "Save and verify sign-in", self._save_account).pack(side="left")
-        self.acc_msg = ctk.CTkLabel(row, text="", font=F(12), text_color=C["muted"])
+        self.acc_msg = ctk.CTkLabel(row, text="", font=F(SM), text_color=C["muted"])
         self.acc_msg.pack(side="left", padx=14)
         soft_button(row, "Switch account", lambda: self.app.show_setup()).pack(side="right")
 
@@ -749,7 +784,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.tray_sw = self._switch(bg, "Keep running in the tray when the window is closed", env.get("CLOSE_TO_TRAY", True))
         self.updates_sw = self._switch(bg, "Check for updates when the app starts (asks api.github.com)",
                                        env.get("CHECK_UPDATES", True))
-        self.startup_sw = ctk.CTkSwitch(bg, text="Start with Windows, minimized to the tray", font=F(13),
+        self.startup_sw = ctk.CTkSwitch(bg, text="Start with Windows, minimized to the tray", font=F(MD),
                                         text_color=C["ink"], progress_color=C["accent"], command=self._toggle_startup)
         self.startup_sw.select() if automation.starts_with_windows() else self.startup_sw.deselect()
         self.startup_sw.pack(anchor="w", padx=20, pady=(4, 18))
@@ -759,40 +794,40 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.toast = self._switch(notif, "Windows desktop notifications", env.get("ENABLE_WINDOWS_TOAST", True))
         days_row = ctk.CTkFrame(notif, fg_color="transparent")
         days_row.pack(fill="x", padx=20, pady=(6, 4))
-        ctk.CTkLabel(days_row, text="Mention assignments due within", font=F(13), text_color=C["ink"]).pack(side="left")
-        self.days = ctk.CTkOptionMenu(days_row, values=["1", "2", "3", "5", "7", "14"], width=80, height=32, font=F(12),
+        ctk.CTkLabel(days_row, text="Mention assignments due within", font=F(MD), text_color=C["ink"]).pack(side="left")
+        self.days = ctk.CTkOptionMenu(days_row, values=["1", "2", "3", "5", "7", "14"], width=80, height=32, font=F(SM),
                                       fg_color=C["field"], text_color=C["ink"], button_color=C["line2"],
                                       button_hover_color=C["dim"], command=lambda v: self._save_prefs())
         self.days.set(str(env.get("NOTIFY_DAYS_AHEAD", 3)))
         self.days.pack(side="left", padx=10)
-        ctk.CTkLabel(days_row, text="days", font=F(13), text_color=C["ink"]).pack(side="left")
+        ctk.CTkLabel(days_row, text="days", font=F(MD), text_color=C["ink"]).pack(side="left")
         voice_row = ctk.CTkFrame(notif, fg_color="transparent")
         voice_row.pack(fill="x", padx=20, pady=(10, 4))
-        ctk.CTkLabel(voice_row, text="Voice", font=F(13), text_color=C["ink"], width=60, anchor="w").pack(side="left")
-        self.voice_menu = ctk.CTkOptionMenu(voice_row, values=["Default"], width=260, height=32, font=F(12),
+        ctk.CTkLabel(voice_row, text="Voice", font=F(MD), text_color=C["ink"], width=60, anchor="w").pack(side="left")
+        self.voice_menu = ctk.CTkOptionMenu(voice_row, values=["Default"], width=260, height=32, font=F(SM),
                                             fg_color=C["field"], text_color=C["ink"], button_color=C["line2"],
-                                            button_hover_color=C["dim"], dropdown_font=F(12), command=lambda v: self._save_prefs())
+                                            button_hover_color=C["dim"], dropdown_font=F(SM), command=lambda v: self._save_prefs())
         self.voice_menu.set(env.get("VOICE_NAME") or "Default")
         self.voice_menu.pack(side="left", padx=(10, 0))
         self.after(400, lambda: threading.Thread(target=self._load_voices, daemon=True).start())
 
         vol_row = ctk.CTkFrame(notif, fg_color="transparent")
         vol_row.pack(fill="x", padx=20, pady=(6, 4))
-        ctk.CTkLabel(vol_row, text="Volume", font=F(13), text_color=C["ink"], width=60, anchor="w").pack(side="left")
+        ctk.CTkLabel(vol_row, text="Volume", font=F(MD), text_color=C["ink"], width=60, anchor="w").pack(side="left")
         self.volume = ctk.CTkSlider(vol_row, from_=0, to=100, number_of_steps=20, width=260, height=16,
                                     progress_color=C["accent"], button_color=C["accent"], button_hover_color=C["accent_h"],
                                     fg_color=C["surface2"], command=self._volume_changed)
         self.volume.set(int(env.get("VOICE_VOLUME", 100)))
         self.volume.pack(side="left", padx=(10, 10))
-        self.volume_lbl = ctk.CTkLabel(vol_row, text=f"{int(env.get('VOICE_VOLUME', 100))}%", font=F(12),
+        self.volume_lbl = ctk.CTkLabel(vol_row, text=f"{int(env.get('VOICE_VOLUME', 100))}%", font=F(SM),
                                        text_color=C["muted"], width=40, anchor="w")
         self.volume_lbl.pack(side="left")
         self.volume.bind("<ButtonRelease-1>", lambda e: self._save_prefs())
 
         rate_row = ctk.CTkFrame(notif, fg_color="transparent")
         rate_row.pack(fill="x", padx=20, pady=(6, 4))
-        ctk.CTkLabel(rate_row, text="Speed", font=F(13), text_color=C["ink"], width=60, anchor="w").pack(side="left")
-        self.rate = ctk.CTkSegmentedButton(rate_row, values=["Slow", "Normal", "Fast"], font=F(12, "bold"), height=30,
+        ctk.CTkLabel(rate_row, text="Speed", font=F(MD), text_color=C["ink"], width=60, anchor="w").pack(side="left")
+        self.rate = ctk.CTkSegmentedButton(rate_row, values=["Slow", "Normal", "Fast"], font=F(SM, "semibold"), height=30,
                                            selected_color=C["accent"], selected_hover_color=C["accent_h"],
                                            unselected_color=C["surface"], unselected_hover_color=C["surface2"],
                                            text_color=C["ink"], fg_color=C["line"], command=lambda v: self._save_prefs())
@@ -809,7 +844,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                              "reminder while something is due today. These run even when the app is closed.")
         row = ctk.CTkFrame(auto, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
-        self.auto_status = ctk.CTkLabel(row, text="Checking…", font=F(13, "bold"), text_color=C["muted"])
+        self.auto_status = ctk.CTkLabel(row, text="Checking…", font=F(MD, "semibold"), text_color=C["muted"])
         self.auto_status.pack(side="left")
         self.auto_btn = soft_button(row, "…", self._toggle_automation, width=140)
         self.auto_btn.configure(state="disabled")
@@ -826,7 +861,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         about = self._section("About", f"{APP_NAME} {APP_VERSION} {TAGLINE}  ·  "
                               f"{'installed build' if FROZEN else 'running from source'}  ·  made by Nobody243  ·  MIT license")
         ctk.CTkLabel(about, text="Unofficial app. Not affiliated with, endorsed by, or supported by Bahria University.",
-                     font=F(12), text_color=C["dim"]).pack(anchor="w", padx=20, pady=(0, 10))
+                     font=F(SM), text_color=C["dim"]).pack(anchor="w", padx=20, pady=(0, 10))
         row = ctk.CTkFrame(about, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
         docs = [("Check for updates", lambda: self.app.check_for_updates(quiet=False)),
@@ -846,15 +881,15 @@ class SettingsView(ctk.CTkScrollableFrame):
         return box
 
     def _entry(self, parent, label, value, show=None):
-        ctk.CTkLabel(parent, text=label, font=F(12, "bold"), text_color=C["muted"]).pack(anchor="w", padx=20)
-        e = ctk.CTkEntry(parent, height=38, font=F(13), fg_color=C["field"], border_color=C["line2"],
+        ctk.CTkLabel(parent, text=label, font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w", padx=20)
+        e = ctk.CTkEntry(parent, height=38, font=F(MD), fg_color=C["field"], border_color=C["line2"],
                          text_color=C["ink"], show=show or "")
         e.insert(0, value)
         e.pack(fill="x", padx=20, pady=(2, 12))
         return e
 
     def _switch(self, parent, text, value):
-        sw = ctk.CTkSwitch(parent, text=text, font=F(13), text_color=C["ink"], progress_color=C["accent"],
+        sw = ctk.CTkSwitch(parent, text=text, font=F(MD), text_color=C["ink"], progress_color=C["accent"],
                            command=self._save_prefs)
         sw.select() if value else sw.deselect()
         sw.pack(anchor="w", padx=20, pady=4)
@@ -973,7 +1008,7 @@ class ActivityView(ctk.CTkFrame):
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.pack(fill="x", pady=(2, 10))
         ctk.CTkLabel(bar, text="Everything the app did, newest at the bottom, including the scheduled background runs.",
-                     font=F(12), text_color=C["muted"]).pack(side="left")
+                     font=F(SM), text_color=C["muted"]).pack(side="left")
         soft_button(bar, "Open log file", lambda: os.startfile(LOG_PATH) if LOG_PATH.exists() else None, width=110).pack(side="right")
         soft_button(bar, "Reload", self.refresh, width=80).pack(side="right", padx=(0, 8))
         self.box = ctk.CTkTextbox(self, font=ctk.CTkFont(family=FONTS["mono"], size=12), fg_color=C["surface"],
@@ -1011,6 +1046,7 @@ class App(ctk.CTk):
         self.env = load_env()
         self.theme = self.env.get("THEME", "dark")
         ctk.set_appearance_mode(self.theme)
+        load_fonts()
         super().__init__(fg_color=C["bg"])
         pick_fonts()
         self.title(APP_NAME)
@@ -1193,8 +1229,8 @@ class App(ctk.CTk):
             ctk.CTkLabel(brand, text="", image=small).pack(side="left", padx=(0, 10))
         bt = ctk.CTkFrame(brand, fg_color="transparent")
         bt.pack(side="left")
-        ctk.CTkLabel(bt, text=APP_NAME, font=F(15, "bold", display=True), text_color=C["ink"]).pack(anchor="w")
-        ctk.CTkLabel(bt, text="Bahria University LMS", font=F(11), text_color=C["muted"]).pack(anchor="w")
+        ctk.CTkLabel(bt, text=APP_NAME, font=F(LG, "semibold", display=True), text_color=C["ink"]).pack(anchor="w")
+        ctk.CTkLabel(bt, text="Bahria University LMS", font=F(XS), text_color=C["muted"]).pack(anchor="w")
 
         self.nav_buttons = {}
         for key, label in self.NAV:
@@ -1202,7 +1238,7 @@ class App(ctk.CTk):
             item.pack(fill="x", padx=(0, 12), pady=1)
             bar = ctk.CTkFrame(item, fg_color="transparent", width=3, height=2, corner_radius=2)
             bar.pack(side="left", fill="y", pady=8)
-            b = ctk.CTkButton(item, text=label, font=F(14), height=40, anchor="w", corner_radius=8,
+            b = ctk.CTkButton(item, text=label, font=F(LG), height=40, anchor="w", corner_radius=8,
                               fg_color="transparent", hover_color=C["surface2"], text_color=C["muted"],
                               command=lambda k=key: self.navigate(k))
             b.pack(side="left", fill="x", expand=True, padx=(9, 0))
@@ -1215,12 +1251,12 @@ class App(ctk.CTk):
         user.pack(fill="x")
         name = self.meta.get("student_name") or "Student"
         initials = "".join(p[0] for p in name.split()[:2]).upper() or "S"
-        ctk.CTkLabel(user, text=initials, font=F(12, "bold"), width=34, height=34, fg_color=C["accent"],
+        ctk.CTkLabel(user, text=initials, font=F(SM, "semibold"), width=34, height=34, fg_color=C["accent"],
                      text_color=C["on_accent"], corner_radius=17).pack(side="left", padx=10, pady=10)
         ut = ctk.CTkFrame(user, fg_color="transparent")
         ut.pack(side="left", pady=10)
-        ctk.CTkLabel(ut, text=name, font=F(12, "bold"), text_color=C["ink"], anchor="w").pack(anchor="w")
-        ctk.CTkLabel(ut, text=self.env.get("ENROLLMENT", ""), font=F(11), text_color=C["muted"]).pack(anchor="w")
+        ctk.CTkLabel(ut, text=name, font=F(SM, "semibold"), text_color=C["ink"], anchor="w").pack(anchor="w")
+        ctk.CTkLabel(ut, text=self.env.get("ENROLLMENT", ""), font=F(XS), text_color=C["muted"]).pack(anchor="w")
 
         content = ctk.CTkFrame(self.container, fg_color="transparent")
         content.grid(row=0, column=1, sticky="nsew")
@@ -1231,13 +1267,13 @@ class App(ctk.CTk):
         top.grid(row=0, column=0, sticky="ew", padx=32, pady=(20, 6))
         tt = ctk.CTkFrame(top, fg_color="transparent")
         tt.pack(side="left")
-        self.page_title = ctk.CTkLabel(tt, text="", font=F(22, "bold", display=True), text_color=C["ink"])
+        self.page_title = ctk.CTkLabel(tt, text="", font=F(H2, "semibold", display=True), text_color=C["ink"])
         self.page_title.pack(anchor="w")
-        self.last_sync_lbl = ctk.CTkLabel(tt, text="", font=F(12), text_color=C["muted"])
+        self.last_sync_lbl = ctk.CTkLabel(tt, text="", font=F(SM), text_color=C["muted"])
         self.last_sync_lbl.pack(anchor="w")
         self.sync_btn = primary_button(top, "Sync now", self.start_sync, width=120)
         self.sync_btn.pack(side="right")
-        self.update_lbl = ctk.CTkLabel(top, text="", font=F(12, "bold"), text_color=C["accent"], cursor="hand2")
+        self.update_lbl = ctk.CTkLabel(top, text="", font=F(SM, "semibold"), text_color=C["accent"], cursor="hand2")
         self.update_lbl.pack(side="right", padx=14)
         self.update_lbl.bind("<Button-1>", lambda e: self.install_update())
         if self.update_info and self.update_info.get("newer"):
@@ -1254,9 +1290,9 @@ class App(ctk.CTk):
         status = ctk.CTkFrame(content, fg_color=C["surface"], corner_radius=0, height=28)
         status.grid(row=3, column=0, sticky="ew")
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
-        self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(11), text_color=C["muted"], anchor="w")
+        self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")
         self.status_lbl.pack(side="left", padx=32, pady=4)
-        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–4 pages  ·  v{APP_VERSION}", font=F(11),
+        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–4 pages  ·  v{APP_VERSION}", font=F(XS),
                      text_color=C["dim"]).pack(side="right", padx=32)
 
         self.views = {
@@ -1277,7 +1313,7 @@ class App(ctk.CTk):
             active = k == key
             b.configure(fg_color=C["surface2"] if active else "transparent",
                         text_color=C["ink"] if active else C["muted"],
-                        font=F(14, "bold" if active else "normal"))
+                        font=F(LG, "semibold" if active else "normal"))
             bar.configure(fg_color=C["accent"] if active else "transparent")
         if self.current:
             self.views[self.current].pack_forget()

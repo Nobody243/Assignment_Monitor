@@ -9,7 +9,7 @@ export default function Faq() {
   usePageMeta("FAQ", "Answers about SmartScreen, accounts, Chrome, schedules, uninstalling and running Assignment Monitor from source.");
   return (
     <>
-      <PageHero kicker="FAQ" title={<>Questions, <span className="serif accent">answered.</span></>} lede="Short answers. For anything else, open an issue on GitHub and include the app version from Settings → About." />
+      <PageHero kicker="FAQ" title={<>Questions, <span className="heading-accent">answered.</span></>} lede="Short answers. For anything else, open an issue on GitHub and include the app version from Settings → About." />
       <section className="faq-page">
         <div className="wrap">
           <Reveal><FaqList items={FAQ} /></Reveal>

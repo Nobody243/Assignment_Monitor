@@ -16,9 +16,9 @@ export default function Ticker() {
   }, [velocity]);
   return (
     <div className="ticker" aria-hidden="true">
-      <div className="ticker-track" ref={track}>
-        {[...TICKER, ...TICKER].map((t, i) => <span key={i}>{t}</span>)}
-      </div>
+      <ul className="ticker-track" ref={track}>
+        {[...TICKER, ...TICKER].map((t, i) => <li key={i}>{t}</li>)}
+      </ul>
     </div>
   );
 }

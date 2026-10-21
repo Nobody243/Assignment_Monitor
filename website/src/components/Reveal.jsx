@@ -27,21 +27,22 @@ export function Item({ as = "div", className, children, ...rest }) {
 export function SectionHead({ kicker, title, lede, className = "" }) {
   return (
     <Reveal className={`section-head ${className}`}>
-      {kicker && <span className="mono">{kicker}</span>}
+      {kicker && <p className="mono">{kicker}</p>}
       <h2>{title}</h2>
       {lede && <p className="lede">{lede}</p>}
     </Reveal>
   );
 }
 
-export function PageHero({ kicker, title, lede, children }) {
+export function PageHero({ kicker, title, lede, notice, children }) {
   return (
     <section className="page-hero">
       <div className="wrap">
         <Stagger>
-          {kicker && <Item as="span" className="eyebrow mono">{kicker}</Item>}
+          {kicker && <Item as="p" className="eyebrow mono">{kicker}</Item>}
           <Item as="h1">{title}</Item>
           {lede && <Item as="p" className="lede">{lede}</Item>}
+          {notice && <Item>{notice}</Item>}
           {children && <Item className="page-hero-actions">{children}</Item>}
         </Stagger>
       </div>

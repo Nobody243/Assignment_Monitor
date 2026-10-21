@@ -4,26 +4,29 @@ html { -webkit-text-size-adjust: 100%; overflow-x: hidden; scroll-padding-top: c
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 html.is-intro, html.is-intro body, html.is-menu, html.is-menu body { overflow: hidden; }
-body { margin: 0; -webkit-user-select: none; user-select: none; font-family: var(--font); font-size: var(--t-base); line-height: var(--lh-body); color: var(--ink-1); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { margin: 0; -webkit-user-select: none; user-select: none; font-family: var(--font); font-size: var(--t-base); font-weight: var(--w-body); line-height: var(--lh-body); color: var(--ink-1); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-optical-sizing: auto; font-feature-settings: "cv11", "ss03"; }
 a { color: inherit; text-decoration: none; }
 img { max-width: 100%; height: auto; display: block; -webkit-user-drag: none; user-select: none; pointer-events: none; }
 a img, button img { pointer-events: auto; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
 code { font-family: var(--mono); font-size: 0.86em; color: var(--ink-2); }
+em, i, cite, dfn, address { font-style: normal; }   /* the site sets no italics: emphasis is colour or weight */
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
-::selection { background: var(--accent-a45); color: var(--ink-1); }
+::selection { background: var(--accent-a5); color: var(--ink-1); }
 
-.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
-.serif { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: 0; }
+.mono { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-3); }
 .accent { color: var(--accent); }
+.heading-accent { color: var(--heading-accent); font-style: normal; font-weight: inherit; }
+.hero-accent { color: var(--hero-accent); }
 .wrap { width: min(var(--max), calc(100% - var(--gutter) * 2)); margin: 0 auto; }
 section { position: relative; padding: var(--section) 0; max-width: 100%; }
-h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -0.03em; font-weight: 800; text-wrap: balance; }
-h2 { font-size: var(--t-2xl); }
-h3 { font-size: 20px; letter-spacing: -0.015em; font-weight: 700; }
-.h-md { font-size: var(--t-xl); margin: 14px 0 18px; }
+h1, h2, h3 { margin: 0; font-weight: var(--w-head); text-wrap: balance; }
+h1 { font-size: var(--h-page); line-height: var(--lh-tight); letter-spacing: var(--track-hero); }
+h2 { font-size: var(--h-section); line-height: var(--lh-head); letter-spacing: var(--track-head); }
+h3 { font-size: var(--h-card); line-height: var(--lh-sub); letter-spacing: var(--track-sub); font-weight: var(--w-strong); }
+.h-md { font-size: var(--h-sub); line-height: var(--lh-head); letter-spacing: var(--track-sub); margin: 14px 0 18px; }
 p { margin: 0; }
-.lede { font-size: var(--t-md); color: var(--ink-3); max-width: 58ch; text-wrap: pretty; }
+.lede { font-size: var(--lede); line-height: 1.5; color: var(--ink-3); max-width: 58ch; text-wrap: pretty; }
 .section-head { margin-bottom: clamp(32px, 5vw, 52px); max-width: 820px; }
 .section-head h2 { margin: 18px 0 16px; }
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; }
@@ -32,7 +35,7 @@ p { margin: 0; }
 /* copy floats over the planet: headings get a soft shadow, panels get glass */
 .section-head h2, .story-head h2, .cta h2, .hero h1, .page-hero h1 { text-shadow: 0 2px 40px rgba(0, 0, 0, 0.65); }
 .section-head p, .lede { text-shadow: 0 1px 24px rgba(0, 0, 0, 0.55); }
-.hero-meta, .hero-pins, .section-head .mono, .story-head .mono, .gallery-caption, .page-hero .eyebrow { text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9); }
+.hero-meta, .hero-pins, .platform-note, .section-head .mono, .story-head .mono, .gallery-caption, .page-hero .eyebrow { text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9); }
 .glass { background: var(--glass); border: 1px solid var(--line); }
 
 /* ============================================================ canvas + texture */
@@ -43,7 +46,7 @@ p { margin: 0; }
 /* ============================================================ page shell */
 .page { position: relative; min-height: 60vh; }
 .page-hero { padding: calc(var(--nav-h) + clamp(56px, 9vw, 110px)) 0 clamp(36px, 5vw, 64px); }
-.page-hero h1 { font-size: clamp(38px, 5.6vw, 76px); max-width: 16ch; margin: 18px 0 20px; }
+.page-hero h1 { max-width: 16ch; margin: 18px 0 20px; }
 .page-hero .lede { max-width: 62ch; }
 .page-hero .wrap > div { position: relative; }
 .page-hero .wrap > div::before { content: ""; position: absolute; inset: -30% -28% -24%; z-index: -1; pointer-events: none; background: radial-gradient(ellipse closest-side at 42% 52%, rgba(7, 8, 13, 0.72), rgba(7, 8, 13, 0.4) 55%, rgba(7, 8, 13, 0) 100%); }
@@ -52,6 +55,14 @@ p { margin: 0; }
 .two-col > * { padding: clamp(22px, 3vw, 34px); border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
 .two-col .mono { display: block; }
 @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ============================================================ platform-aware download actions */
+.platform-note { margin-top: 16px; font-size: var(--t-sm); color: var(--ink-2); max-width: 44ch; }
+.hero .platform-note { margin-left: auto; margin-right: auto; }
+.platform-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 24px; padding: 14px 16px 14px 18px; border-radius: var(--r-3); border: 1px solid var(--accent-a5); background: linear-gradient(90deg, var(--accent-a2), transparent 70%), var(--glass-2); }
+.platform-banner p { font-size: var(--t-sm); color: var(--ink-1); max-width: 52ch; }
+.platform-banner .btn { flex: none; }
+@media (max-width: 640px) { .platform-banner .btn { width: 100%; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }

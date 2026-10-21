@@ -6,7 +6,7 @@ export default function Steps() {
   return (
     <section id="how">
       <div className="wrap">
-        <SectionHead kicker="Setup" title={<>Three minutes, then <span className="serif accent">forget about it.</span></>} />
+        <SectionHead kicker="Setup" title={<>Three minutes, then <span className="heading-accent">forget about it.</span></>} />
         <Stagger className="steps" step={0.1}>
           {STEPS.map((s, i) => (
             <Item className="step" key={s.title} data-n={i + 1}><h3>{s.title}</h3><p>{s.text}</p></Item>

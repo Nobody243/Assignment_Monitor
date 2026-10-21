@@ -13,7 +13,6 @@ import Home from "./pages/Home.jsx";
 import Download from "./pages/Download.jsx";
 import Privacy from "./pages/Privacy.jsx";
 import Faq from "./pages/Faq.jsx";
-import Changelog from "./pages/Changelog.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 /* Every route change starts at the top (unless the URL carries a hash, which the page scrolls to itself). */
@@ -40,7 +39,6 @@ export default function App() {
               <Route path="/download" element={<Page><Download /></Page>} />
               <Route path="/privacy" element={<Page><Privacy /></Page>} />
               <Route path="/faq" element={<Page><Faq /></Page>} />
-              <Route path="/changelog" element={<Page><Changelog /></Page>} />
               <Route path="*" element={<Page><NotFound /></Page>} />
             </Routes>
           </AnimatePresence>

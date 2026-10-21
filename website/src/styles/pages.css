@@ -3,21 +3,17 @@
 .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .option { position: relative; padding: 30px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; transition: border-color var(--d-2), transform var(--d-2) var(--ease-out); }
 .option:hover { border-color: var(--line-2); transform: translateY(-3px); }
-.option.is-recommended { border-color: var(--accent-a45); background: radial-gradient(120% 100% at 0% 0%, var(--accent-a08), transparent 60%), var(--glass-2); }
+.option.is-recommended { border-color: var(--accent-a5); background: radial-gradient(120% 100% at 0% 0%, var(--accent-a2), transparent 60%), var(--glass-2); }
 .option .mono { color: var(--accent); }
-.option h2 { font-size: var(--t-xl); letter-spacing: -0.03em; }
-.option-size { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
-.option ul { margin: 8px 0 18px; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--ink-3); font-size: 15px; }
+.option h2 { font-size: var(--h-sub); line-height: var(--lh-head); letter-spacing: var(--track-sub); }
+.option-size { font-family: var(--mono); font-size: var(--t-xs); color: var(--ink-3); }
+.option ul { margin: 8px 0 18px; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--ink-3); font-size: var(--t-sm); }
 .option ul li { padding-left: 22px; position: relative; }
-.option ul li::before { content: ""; position: absolute; left: 0; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-a14); }
+.option ul li::before { content: ""; position: absolute; left: 0; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-a3); }
 .option .btn { align-self: flex-start; margin-top: auto; }
+.dl-hint { margin-top: 18px; font-size: var(--t-sm); color: var(--ink-3); max-width: 72ch; text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9); }
 .dl-smartscreen { padding-top: 0; }
 .dl-details .plain-list { margin-top: 10px; }
-.notes-card { padding: clamp(24px, 4vw, 40px); border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
-.notes-card ul { margin: 0 0 24px; padding: 0; list-style: none; display: grid; gap: 12px; color: var(--ink-2); font-size: 16px; }
-.notes-card li { padding-left: 24px; position: relative; }
-.notes-card li::before { content: "◆"; position: absolute; left: 0; top: 2px; color: var(--accent); font-size: 9px; }
-.notes-card .hero-cta { justify-content: flex-start; margin-top: 0; }
 .dl-foot { padding-top: 0; }
 @media (max-width: 860px) { .option-grid { grid-template-columns: 1fr; } }
 
@@ -25,14 +21,3 @@
 .faq-page { padding-top: 0; }
 .faq-page .faq { max-width: 960px; }
 .faq-page .cta-card { margin-top: 48px; }
-
-/* ============================================================ changelog */
-.changelog { padding-top: 0; }
-.timeline { display: grid; gap: 18px; max-width: 900px; }
-.release { position: relative; padding: 28px 30px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
-.release:first-child { border-color: var(--accent-a45); background: radial-gradient(120% 100% at 0% 0%, var(--accent-a08), transparent 60%), var(--glass-2); }
-.release-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-.release h2 { font-size: var(--t-xl); letter-spacing: -0.03em; }
-.release ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; color: var(--ink-2); font-size: 15px; }
-.release li { padding-left: 22px; position: relative; }
-.release li::before { content: "◆"; position: absolute; left: 0; top: 2px; color: var(--accent); font-size: 9px; }

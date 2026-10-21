@@ -4,12 +4,13 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useScroll } from "../lib/scroll.jsx";
 import { useScene } from "../lib/scene.jsx";
-import { useRelease } from "../lib/release.jsx";
 import { LINKS } from "../data/content.js";
 import { EASE } from "../lib/motion.js";
+import DownloadMenu from "./DownloadMenu.jsx";
+import { DownloadActions, PlatformNote } from "./DownloadActions.jsx";
 
 const SECTIONS = [["story", "Tour"], ["features", "Features"], ["screens", "Screens"]];
-const PAGES = [["/download", "Download"], ["/privacy", "Privacy"], ["/faq", "FAQ"], ["/changelog", "Changelog"]];
+const PAGES = [["/download", "Download"], ["/privacy", "Privacy"], ["/faq", "FAQ"]];
 
 const GitHubIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.9 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z" /></svg>
@@ -20,7 +21,6 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const { scrollTo } = useScroll();
   const { introDone } = useScene();
-  const rel = useRelease();
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -50,7 +50,7 @@ export default function Nav() {
         </nav>
         <div className="nav-cta">
           <a className="icon-btn" href={LINKS.repo} target="_blank" rel="noopener" aria-label="Source on GitHub"><GitHubIcon /></a>
-          <a className="btn btn-primary" href={rel.setupUrl} data-download="setup">Download <small>v{rel.version}</small></a>
+          <DownloadMenu />
           <button type="button" className={`burger${open ? " is-open" : ""}`} aria-expanded={open} aria-controls="menu" aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((v) => !v)}>
             <i /><i />
           </button>
@@ -70,8 +70,9 @@ export default function Nav() {
               ))}
             </motion.nav>
             <div className="menu-foot">
-              <a className="btn btn-accent btn-lg" href={rel.setupUrl} data-download="setup">Download for Windows <small>v{rel.version}</small></a>
+              <DownloadActions size="lg" />
               <a className="btn btn-ghost btn-lg" href={LINKS.repo} target="_blank" rel="noopener">GitHub</a>
+              <PlatformNote className="menu-note" />
             </div>
           </motion.div>
         )}

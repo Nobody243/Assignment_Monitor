@@ -13,7 +13,7 @@ function Counter({ value }) {
     const c = animate(0, value, { duration: 1.4, ease: [0.16, 1, 0.3, 1], onUpdate: (v) => setN(Math.round(v)) });
     return () => c.stop();
   }, [inView, value]);
-  return <i ref={ref}>{n}</i>;
+  return <span className="n" ref={ref}>{n}</span>;
 }
 
 export default function Numbers() {
@@ -22,7 +22,7 @@ export default function Numbers() {
       <div className="wrap">
         <Stagger className="numbers-grid" step={0.1}>
           {NUMBERS.map((x) => (
-            <Item className="num" key={x.text}><b><Counter value={x.value} />{x.suffix}</b><span>{x.text}</span></Item>
+            <Item as="article" className="num" key={x.text}><p className="num-v"><Counter value={x.value} />{x.suffix}</p><p className="num-t">{x.text}</p></Item>
           ))}
         </Stagger>
       </div>

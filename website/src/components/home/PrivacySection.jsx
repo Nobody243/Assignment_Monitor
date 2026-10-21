@@ -7,10 +7,10 @@ export default function PrivacySection() {
   return (
     <section id="privacy">
       <div className="wrap">
-        <SectionHead kicker="Privacy & security" title={<>Your password stays <span className="serif accent">on your PC.</span></>} lede="There is no server behind this app and no account to create." />
+        <SectionHead kicker="Privacy & security" title={<>Your password stays <span className="heading-accent">on your PC.</span></>} lede="There is no server behind this app and no account to create." />
         <Stagger className="privacy-grid" step={0.1}>
           {PRIVACY_CARDS.map((c) => (
-            <Item as="article" key={c.title}><span className="mono">{c.tag}</span><h3>{c.title}</h3><p>{c.text}</p></Item>
+            <Item as="article" key={c.title}><p className="mono">{c.tag}</p><h3>{c.title}</h3><p>{c.text}</p></Item>
           ))}
         </Stagger>
         <Reveal className="links">

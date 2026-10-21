@@ -42,15 +42,15 @@ export default function Tour() {
       <div className="story-pin" ref={pin}>
         <div className="wrap">
           <div className="story-head">
-            <span className="mono">Tour</span>
-            <h2>One screen tells you <span className="serif accent">what's due.</span></h2>
+            <p className="mono">Tour</p>
+            <h2>One screen tells you <span className="heading-accent">what's due.</span></h2>
           </div>
           <div className="story-grid">
             <div className="story-visual">
               <Window title="Dashboard" className="shot">
                 <img src="/assets/shot-dashboard-light.png" alt="The dashboard in the light theme" width="1280" height="840" loading="lazy" />
                 <div className="spot" style={{ "--sx": `${sx}%`, "--sy": `${sy}%`, "--sw": `${sw}%`, "--sh": `${sh}%` }} />
-                <div className="spot-label" style={{ "--sx": `${sx}%`, "--sy": `${sy}%` }}>{step.label}</div>
+                <span className="spot-label" style={{ "--sx": `${sx}%`, "--sy": `${sy}%` }}>{step.label}</span>
               </Window>
             </div>
             <div className="story-side">
@@ -64,7 +64,7 @@ export default function Tour() {
               <div className="story-track">
                 {TOUR.map((s, i) => (
                   <article key={s.title} className={`story-step${i === active ? " is-active" : i < active ? " is-past" : ""}`} aria-hidden={desktop && i !== active}>
-                    <span className="mono">{String(i + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</span>
+                    <p className="mono">{String(i + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</p>
                     <h3>{s.title}</h3><p>{s.text}</p>
                   </article>
                 ))}

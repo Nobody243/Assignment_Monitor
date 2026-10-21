@@ -1,37 +1,55 @@
 /* ============================================================ design tokens
    One tonal scale for neutrals (cold space background, warm off-white ink), one accent scale (the colour of a
-   deadline), semantic aliases on top. Every component reads the aliases, never the raw steps. */
+   deadline), semantic aliases on top. Every component reads the aliases, never the raw steps.
+
+   Golden ratio throughout:
+   - hues: the accent sits at oklch hue 37; every companion hue is one golden angle (137.5°) further round the
+     wheel, so they are as far apart as colours can be: ok 174.5 (teal), warn 89.5 (amber), cool 227 (blue).
+   - alphas (lines, surfaces, accent washes): 1/φⁿ = .382 .236 .146 .09 .056 .034.
+   - type: 16px × φ^(n/4). Headings sit on whole steps (φ, φ², φ³, φ⁴); UI text on quarter steps. */
 :root {
   color-scheme: dark;
 
   /* neutral steps: 0 is the sky behind the planet, 5 is the lightest surface */
   --n-0: #07080d; --n-1: #0a0b10; --n-2: #0f1016; --n-3: #15171f; --n-4: #1d1f29; --n-5: #2a2d3a;
-  /* ink steps: 1 is headline white, 4 is the quietest caption that still passes contrast on --n-1 */
+  /* ink steps: 1 is headline white, 4 is the quietest caption that still passes AA on --n-1 */
   --ink-1: #f3f2ed; --ink-2: #cfcdc5; --ink-3: #9b9892; --ink-4: #8a8780;
-  /* accent steps */
-  --accent-2: #ffd3c0; --accent-3: #ffb08a; --accent-4: #ff8a5c; --accent-5: #ff6a3d; --accent-6: #e4532b; --accent-7: #b43d1d;
+  /* accent steps: oklch hue 37, lightness .87 → .52 */
+  --accent-2: #fec5b4; --accent-3: #fea388; --accent-4: #ff8764; --accent-5: #fd693d; --accent-6: #e04f1f; --accent-7: #b53707;
   --accent-ink: #140905;
-  --accent-a08: rgba(255, 106, 61, 0.08); --accent-a14: rgba(255, 106, 61, 0.14); --accent-a24: rgba(255, 106, 61, 0.24); --accent-a45: rgba(255, 106, 61, 0.45);
-  --cool-4: #8fa6ff; --cool-5: #3a6cff; --cool-a12: rgba(58, 108, 255, 0.12);
-  --ok: #5ad19a; --warn: #ffc46b;
+  --accent-a1: rgba(253, 105, 61, 0.056); --accent-a2: rgba(253, 105, 61, 0.09); --accent-a3: rgba(253, 105, 61, 0.146);
+  --accent-a4: rgba(253, 105, 61, 0.236); --accent-a5: rgba(253, 105, 61, 0.382);
+  /* golden-angle companions */
+  --cool-4: #4dc0ec; --cool-5: #0180a5; --cool-a3: rgba(1, 128, 165, 0.146);
+  --ok: #2ad4b1; --warn: #f1c542;
 
   /* semantic */
   --bg: var(--n-1); --bg-space: var(--n-0);
   --accent: var(--accent-5); --accent-hover: var(--accent-4); --accent-press: var(--accent-6);
-  --line: rgba(243, 242, 237, 0.09); --line-2: rgba(243, 242, 237, 0.16); --line-3: rgba(243, 242, 237, 0.28);
-  --surface: rgba(255, 255, 255, 0.035);
-  --glass: rgba(12, 13, 18, 0.74); --glass-2: rgba(16, 17, 24, 0.84); --glass-3: rgba(20, 21, 30, 0.92);
-  --shadow-1: 0 10px 30px -12px rgba(0, 0, 0, 0.6); --shadow-2: 0 30px 80px -30px rgba(0, 0, 0, 0.75); --shadow-win: 0 40px 100px -30px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --line: rgba(243, 242, 237, 0.09); --line-2: rgba(243, 242, 237, 0.146); --line-3: rgba(243, 242, 237, 0.236);
+  --surface: rgba(255, 255, 255, 0.034);
+  --glass: rgba(12, 13, 18, 0.764); --glass-2: rgba(16, 17, 24, 0.854); --glass-3: rgba(20, 21, 30, 0.91);
+  --shadow-1: 0 10px 30px -12px rgba(0, 0, 0, 0.618); --shadow-2: 0 30px 80px -30px rgba(0, 0, 0, 0.764); --shadow-win: 0 40px 100px -30px rgba(0, 0, 0, 0.854), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   --focus: var(--accent-4);
+  /* highlighted words inside headings: change these two to recolour every one (the hero can differ) */
+  --heading-accent: var(--accent); --hero-accent: var(--accent);
 
-  /* type */
-  --font: "Manrope", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --serif: "Instrument Serif", Georgia, serif;
+  /* type: one family with optical sizing (Inter Display cuts in above 20px), one mono for labels and data */
+  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
-  --t-xs: 11px; --t-sm: 13px; --t-base: 16px;
-  --t-md: clamp(17px, 1.5vw, 19px); --t-lg: clamp(20px, 2vw, 24px); --t-xl: clamp(26px, 3vw, 34px);
-  --t-2xl: clamp(34px, 4.6vw, 58px); --t-3xl: clamp(42px, 6.6vw, 96px);
-  --lh-tight: 1.02; --lh-body: 1.6;
+  --w-body: 400; --w-ui: 500; --w-strong: 600; --w-head: 700;
+  /* scale: 16px × φ^(n/4) */
+  --t-2xs: 11.1px; --t-xs: 12.6px; --t-sm: 14.2px; --t-base: 16px; --t-md: 18px; --t-lg: 20.4px; --t-xl: 25.9px;
+  --t-2xl: 32.9px; --t-3xl: 41.9px; --t-4xl: 53.3px; --t-5xl: 67.8px; --t-6xl: 109.7px;
+  /* heading roles, fluid between whole steps */
+  --h-hero: clamp(var(--t-3xl), 7.2vw, var(--t-6xl));
+  --h-page: clamp(var(--t-2xl), 5vw, var(--t-5xl));
+  --h-section: clamp(var(--t-xl), 3.4vw, var(--t-3xl));
+  --h-sub: var(--t-xl);
+  --h-card: var(--t-lg);
+  --lede: clamp(var(--t-base), 1.4vw, var(--t-lg));
+  --lh-tight: 1.05; --lh-head: 1.15; --lh-sub: 1.272; --lh-body: 1.618;
+  --track-hero: -0.03em; --track-head: -0.022em; --track-sub: -0.012em; --track-label: 0.08em;
 
   /* space, radius, layout */
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;

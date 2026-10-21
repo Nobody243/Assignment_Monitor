@@ -97,15 +97,15 @@ export default function Intro() {
           <div className="intro-num"><span className="intro-pct" ref={pctEl}>00</span><sup>%</sup></div>
           <div className="intro-ring" />
         </div>
-        <div className="intro-word"><img src="/assets/logo.svg" alt="" width="22" height="22" />Assignment Monitor</div>
-        <div className="intro-status-wrap mono"><span className="intro-status" ref={statusEl} aria-live="polite">Warming up</span><i className="intro-caret" /></div>
+        <p className="intro-word"><img src="/assets/logo.svg" alt="" width="22" height="22" />Assignment Monitor</p>
+        <p className="intro-status-wrap mono"><span className="intro-status" ref={statusEl} aria-live="polite">Warming up</span><i className="intro-caret" /></p>
         <ol className="intro-stages mono" ref={stagesEl} aria-hidden="true">
           {MARKS.map(([at, n, label]) => <li key={n} data-at={at}><b>{n}</b>{label}</li>)}
         </ol>
       </div>
-      <div className="intro-corner intro-corner-l mono">For Bahria University LMS</div>
-      <div className="intro-corner intro-corner-c mono">Islamabad · Lahore · Karachi</div>
-      <div className="intro-corner intro-corner-r mono">v{rel.version} · Windows · free</div>
+      <p className="intro-corner intro-corner-l mono">For Bahria University LMS</p>
+      <p className="intro-corner intro-corner-c mono">Islamabad · Lahore · Karachi</p>
+      <p className="intro-corner intro-corner-r mono">v{rel.version} · Windows · free</p>
     </div>
   );
 }

@@ -36,15 +36,15 @@ export default function TourMobile() {
     <section id="story" className="story story-m">
       <div className="wrap">
         <div className="story-head">
-          <span className="mono">Tour</span>
-          <h2>One screen tells you <span className="serif accent">what's due.</span></h2>
+          <p className="mono">Tour</p>
+          <h2>One screen tells you <span className="heading-accent">what's due.</span></h2>
         </div>
       </div>
       <div className="tour-m-track" ref={track} role="list" aria-label="Tour steps">
         {TOUR.map((s, i) => (
           <article className={`tour-m-card${i === active ? " is-active" : ""}`} key={s.title} role="listitem">
             <Crop spot={s.spot} />
-            <span className="mono">{String(i + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")} · {s.label}</span>
+            <p className="mono">{String(i + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")} · {s.label}</p>
             <h3>{s.title}</h3>
             <p>{s.text}</p>
           </article>

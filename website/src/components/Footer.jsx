@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { useRelease } from "../lib/release.jsx";
 import { useScroll } from "../lib/scroll.jsx";
 import { LINKS } from "../data/content.js";
+import { IS_WINDOWS } from "../lib/platform.js";
+import { SendToPc } from "./SendToPc.jsx";
+import { DOWNLOAD_PATH } from "./Button.jsx";
 
 const Ext = ({ href, children }) => <a href={href} target="_blank" rel="noopener">{children}</a>;
 
@@ -11,28 +14,30 @@ export default function Footer() {
   const { scrollTo } = useScroll();
   return (
     <footer className="footer">
-      <div className="footer-mark" aria-hidden="true">Assignment Monitor</div>
+      <p className="footer-mark" aria-hidden="true">Assignment Monitor</p>
       <div className="wrap">
         <div className="footer-top">
           <div className="footer-brand">
             <Link className="brand footer-brand-link" to="/"><img src="/assets/logo.svg" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
             <p>A small, honest tool that reads your LMS so you don't have to. Built by a Bahria student, for Bahria students. Free forever, open source, and it never phones home.</p>
             <div className="footer-cta">
-              <a className="btn btn-accent" href={rel.setupUrl} data-download="setup">Download <small>v{rel.version}</small></a>
+              {IS_WINDOWS
+                ? <Link className="btn btn-accent" to={DOWNLOAD_PATH.setup} data-download-page="setup">Download <small>v{rel.version}</small></Link>
+                : <SendToPc />}
               <a className="btn btn-ghost" href={LINKS.repo} target="_blank" rel="noopener">Star on GitHub</a>
             </div>
           </div>
           <nav className="footer-cols" aria-label="Footer">
             <div><h3>Get it</h3><ul>
-              <li><a href={rel.setupUrl} data-download="setup">Installer for Windows</a></li>
-              <li><a href={rel.zipUrl} data-download="zip">Portable zip</a></li>
+              <li><Link to={DOWNLOAD_PATH.setup}>Installer for Windows</Link></li>
+              <li><Link to={DOWNLOAD_PATH.zip}>Portable zip</Link></li>
               <li><Link to="/download">Download guide</Link></li>
               <li><Ext href={LINKS.releases}>All releases</Ext></li>
               <li><Ext href={LINKS.readmeSource}>Run from source</Ext></li>
             </ul></div>
             <div><h3>Explore</h3><ul>
               <li><Link to="/#story">Tour</Link></li><li><Link to="/#features">Features</Link></li><li><Link to="/#screens">Screens</Link></li>
-              <li><Link to="/faq">FAQ</Link></li><li><Link to="/changelog">Changelog</Link></li>
+              <li><Link to="/faq">FAQ</Link></li><li><Ext href={LINKS.releases}>Release notes</Ext></li>
             </ul></div>
             <div><h3>Project</h3><ul>
               <li><Ext href={LINKS.repo}>Source code</Ext></li>
