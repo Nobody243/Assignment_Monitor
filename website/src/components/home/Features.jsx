@@ -159,7 +159,6 @@ export default function Features() {
       </div>
       <div className="feat-wheel" ref={wheel} role="region" aria-roledescription="carousel" aria-label="Features, drag to spin or use the arrow keys" tabIndex={0}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onPointerEnter={onEnter} onPointerLeave={onLeave} onKeyDown={onKey}>
-        <i className="feat-floor" aria-hidden="true" />
         <div className="feat-ring" ref={ring}>
           {FEATURES.map((f, i) => <Card f={f} i={i} key={f.n} refFn={(el) => { cards.current[i] = el; }} />)}
         </div>
