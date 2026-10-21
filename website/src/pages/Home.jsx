@@ -19,7 +19,7 @@ import { SectionHead, Reveal } from "../components/Reveal.jsx";
 import { FAQ } from "../data/content.js";
 
 export default function Home() {
-  usePageMeta("", "A free, open-source Windows app that watches your Bahria University LMS assignments: daily checks, hourly reminders on due days, extended-deadline detection. Everything stays on your PC.");
+  usePageMeta("", "A free, open-source Windows app that watches your Bahria University LMS and CMS: assignments with extended-deadline detection, attendance margins, the exam seating plan and course announcements. Everything stays on your PC.");
   const { hash } = useLocation();
   const { scrollTo } = useScroll();
   const { introDone } = useScene();

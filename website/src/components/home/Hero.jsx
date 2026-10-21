@@ -27,7 +27,7 @@ export default function Hero() {
             {WORDS.map((w) => <span className="w" key={w} aria-hidden="true"><motion.span variants={word}>{w}</motion.span></span>)}
             <span className="w" aria-hidden="true"><motion.span className="heading-accent hero-accent" variants={word}>again.</motion.span></span>
           </h1>
-          <motion.p className="lede" variants={rise}>Assignment Monitor signs in to the portal for you, reads every course, catches the extended deadlines the LMS hides, and reminds you out loud on the day something is due. Wherever your campus is, it keeps watch.</motion.p>
+          <motion.p className="lede" variants={rise}>Assignment Monitor signs in to the portal for you and keeps watch on the four things that matter: every course's assignments, with the extended deadlines the LMS hides; your attendance margin; your exam room and seat; and course announcements. It reminds you out loud on the day something is due.</motion.p>
           <motion.div className="hero-cta" variants={rise}>
             <DownloadActions size="lg" />
           </motion.div>

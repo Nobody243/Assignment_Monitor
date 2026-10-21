@@ -111,25 +111,19 @@ def alert_attendance(changes: dict, minimum: int) -> None:
     for c in dropped:
         if c not in new_abs:
             lines.append(f"- {c['code']} {c['title'][:28]} is now under {minimum}% ({c['percent']:.0f}%)")
-    first = (new_abs or dropped)[0]
     if dropped:
         title = f"Attendance under {minimum}% in {_plural(len(dropped), 'course')}"
-        voice = (f"Attention: your attendance in {first['title']} has dropped to {first['percent']:.0f} percent, "
-                 f"under the {minimum} percent minimum.")
     else:
         title = f"New absence in {_plural(len(new_abs), 'course')}"
-        voice = f"An absence was recorded in {first['title']}. Attendance is now {first['percent']:.0f} percent."
-    _notify(title, "\n".join(lines), voice)
+    _notify(title, "\n".join(lines))
 
 
 def alert_announcements(new_items: list) -> None:
     if not new_items:
         return
     lines = [f"- {a['course'][:26]}: {a['text'][:70]}" for a in new_items[:3]]
-    first = new_items[0]
     title = f"{_plural(len(new_items), 'new announcement')} on the LMS"
-    voice = f"New announcement in {first['course']}: {first['text'][:140]}"
-    _notify(title, "\n".join(lines), voice)
+    _notify(title, "\n".join(lines))
 
 
 def _exam_line(e: dict) -> str:
@@ -149,16 +143,12 @@ def alert_exams_soon(exams: list) -> None:
     else:
         lead = f"in {_plural(first['days'], 'day')}"
     title = f"Exam {lead}: {first['title'][:40]}"
-    voice = (f"Reminder: your {first.get('exam_type', '').lower() or 'exam'} for {first['title']} is {lead} at "
-             f"{first['when'].strftime('%I:%M %p').lstrip('0')}" + (f", {seat_text(first)}." if seat_text(first) else "."))
-    _notify(title, "\n".join(_exam_line(e) for e in exams[:4]), voice)
+    _notify(title, "\n".join(_exam_line(e) for e in exams[:4]))
 
 
 def alert_exam_today(e: dict) -> None:
     """Morning-of reminder (hourly job, once per exam)."""
-    voice = (f"Good luck: your {e.get('exam_type', '').lower() or 'exam'} for {e['title']} is today at "
-             f"{e['when'].strftime('%I:%M %p').lstrip('0')}" + (f", {seat_text(e)}." if seat_text(e) else "."))
-    _notify(f"Exam today: {e['title'][:40]}", _exam_line(e), voice)
+    _notify(f"Exam today: {e['title'][:40]}", _exam_line(e))
 
 
 def alert_exams_scheduled(exams: list) -> None:
@@ -171,5 +161,4 @@ def alert_exams_scheduled(exams: list) -> None:
     title = f"Exam schedule posted: {_plural(len(ups), 'paper')}"
     body = "\n".join(f"- {e['title'][:34]}: {e['date']} {e['start_time']}" + (f" · {seat_text(e)}" if seat_text(e) else "")
                      for e in ups[:4])
-    _notify(title, body, f"The exam seating plan is out for {_plural(len(ups), 'paper')}. "
-                         "Open Assignment Monitor to see your rooms and seats.")
+    _notify(title, body)

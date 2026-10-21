@@ -1,0 +1,9 @@
+# Normalise line endings: LF in the repository, native on checkout is not needed on Windows for these tools
+* text=auto eol=lf
+*.ico binary
+*.png binary
+*.glb binary
+*.wasm binary
+*.ttf binary
+*.webp binary
+*.jpg binary
