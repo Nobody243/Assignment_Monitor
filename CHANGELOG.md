@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 - 2026-10-22
+
+- Design pass: rounded surfaces that lift on hover, a short slide when switching pages, a fade when switching themes, counters that count up and attendance bars that fill in. All of it can be switched off with the new Animations switch in Settings, Appearance.
+- Faster: fonts are built once and reused instead of being created for every label, so pages open quicker and use less memory.
+- Sign-in screen copy covers everything the app watches.
+
 ## 1.3.0 - 2026-10-22
 
 - Lectures: every course's lecture notes in one list, by week, with a checkbox per file. Tick what you want and "Download selected" fetches the files through the app's own sign-in into a folder you choose (Documents / Assignment Monitor / Lectures by default), organised as course / week - title. Files already on disk are skipped; video links open in the browser.

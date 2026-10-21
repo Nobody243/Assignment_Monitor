@@ -27,10 +27,10 @@ export const NUMBERS = [
 ];
 
 export const TOUR = [
-  { spot: [20, 20.5, 76.1, 14.9], label: "Next deadline", title: "The next deadline, with a countdown", text: "Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet." },
-  { spot: [20, 36.3, 76.1, 10.7], label: "Six counters", title: "Pending, due today, this week, extended, overdue, submitted", text: "Each counter is a filter. Click it and the Assignments page opens on exactly that slice." },
-  { spot: [20, 48.2, 44.9, 37.7], label: "Attendance", title: "Your attendance margin, weakest course first", text: "Every course's percentage from the CMS. Red is under the 75% rule; the Attendance page behind it says how many classes you can still miss, or must attend." },
-  { spot: [65.8, 48.2, 30.3, 37.7], label: "Next exam", title: "Room and seat before you have to ask", text: "The seating plan from the CMS with a countdown, time, room, row and seat. A notification comes the day before and on the morning of the paper." },
+  { spot: [28.2, 20.5, 59.7, 14.8], label: "Next deadline", title: "The next deadline, with a countdown", text: "Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet." },
+  { spot: [28.2, 36.4, 59.8, 10.6], label: "Six counters", title: "Pending, due today, this week, extended, overdue, submitted", text: "Each counter is a filter. Click it and the Assignments page opens on exactly that slice." },
+  { spot: [28.2, 48.2, 35.0, 37.9], label: "Attendance", title: "Your attendance margin, weakest course first", text: "Every course's percentage from the CMS. Red is under the 75% rule; the Attendance page behind it says how many classes you can still miss, or must attend." },
+  { spot: [64.1, 48.2, 23.9, 37.9], label: "Next exam", title: "Room and seat before you have to ask", text: "The seating plan from the CMS with a countdown, time, room, row and seat. A notification comes the day before and on the morning of the paper." },
   { spot: [1, 2.5, 16, 96], label: "Always a click away", title: "Light or dark, tray or window", text: "Switch the theme any time. Close the window and it keeps running in the tray; the background checks run even when it doesn't." },
 ];
 
@@ -58,6 +58,7 @@ export const SCREENS = [
   { id: "attendance", label: "Attendance", caption: "Attendance: every course's hours, the margin to the 75% rule, and the class-by-class record." },
   { id: "exams", label: "Exams", caption: "Exams: the seating plan with room, row and seat, and a countdown to each paper." },
   { id: "lectures", label: "Lectures", caption: "Lectures: every course's notes by week; tick files and download them into course / week folders." },
+  { id: "announcements", label: "Announcements", caption: "Announcements: every course's notices in one feed, newest first." },
   { id: "assignments", label: "Assignments", caption: "Assignments: filters, course picker, search, extension history and marks." },
   { id: "settings", label: "Settings", caption: "Settings: account, theme, tray, voice and notifications, campus tracking, automatic checks, privacy." },
   { id: "setup", label: "Sign-in", caption: "First run: sign in once, tick automatic checks, done." },

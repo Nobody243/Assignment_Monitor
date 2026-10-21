@@ -75,8 +75,25 @@
 }
 
 /* ============================================================ features */
-.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-3); overflow: hidden; }
-.card { position: relative; padding: 34px 30px 36px; background: var(--glass); overflow: hidden; transition: background var(--d-2); }
+/* features carousel: native scroll-snap track, arrows + dots, three cards per view on desktop */
+.feat-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.feat-head .section-head { margin-bottom: 0; }
+.feat-nav { display: flex; gap: 8px; flex: none; margin-bottom: 6px; }
+.feat-nav[aria-hidden="true"] { visibility: hidden; }
+.feat-arrow { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); color: var(--ink-1); display: grid; place-items: center; background: var(--glass); transition: border-color var(--d-1), background var(--d-1), opacity var(--d-1), transform var(--d-2) var(--ease-out); }
+.feat-arrow svg { width: 18px; height: 18px; }
+.feat-arrow:hover:not(:disabled) { border-color: var(--line-3); background: var(--glass-2); transform: translateY(-1px); }
+.feat-arrow:disabled { opacity: 0.35; cursor: default; }
+.feat-track { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0; padding: 26px 2px 14px; margin: 0 -2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; outline: none; }
+.feat-track::-webkit-scrollbar { display: none; }
+.feat-track:focus-visible { outline: 2px solid var(--focus); outline-offset: 6px; border-radius: 18px; }
+.feat-dots { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+.feat-dots button { position: relative; width: 36px; height: 36px; }
+.feat-dots button::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 4px; background: var(--line-3); transition: width var(--d-2) var(--ease-out), background var(--d-2); }
+.feat-dots button[aria-selected="true"]::after { width: 26px; background: var(--accent); }
+.card { position: relative; flex: 0 0 calc((100% - 28px) / 3); scroll-snap-align: start; padding: 32px 28px 34px; background: var(--glass); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
+  transition: background var(--d-2), border-color var(--d-2), transform var(--d-2) var(--ease-out), box-shadow var(--d-2); }
+.card:hover { border-color: var(--line-2); transform: translateY(-4px); box-shadow: var(--shadow-1); }
 .card::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity var(--d-2); background: radial-gradient(260px 200px at var(--mx, 50%) var(--my, 50%), var(--accent-a3), transparent 70%); }
 .card:hover { background: var(--glass-2); }
 .card:hover::after { opacity: 1; }
@@ -89,8 +106,8 @@
 .card ul { margin: 18px 0 0; padding: 0; list-style: none; font-size: var(--t-sm); }
 .card ul li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .card ul li span { font-family: var(--mono); font-size: var(--t-2xs); color: var(--ink-3); letter-spacing: 0.04em; }
-@media (max-width: 980px) { .cards { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 600px) { .cards { grid-template-columns: 1fr; } .card { padding: 26px 22px 28px; } .card .mono { margin-bottom: 26px; } }
+@media (max-width: 980px) { .card { flex-basis: calc((100% - 14px) / 2); } }
+@media (max-width: 600px) { .feat-head { flex-direction: column; align-items: flex-start; } .card { flex-basis: 86%; padding: 26px 22px 28px; } .card .mono { margin-bottom: 26px; } .feat-track { padding-top: 18px; } }
 
 /* ============================================================ steps */
 .steps { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -165,7 +182,6 @@
 .tour-m-dots button[aria-selected="true"]::after { width: 26px; background: var(--accent); }
 
 /* ============================================================ phones: shorter sections */
-.show-more { margin-top: 14px; width: 100%; justify-content: center; }
 
 /* ============================================================ section heads over the planet (narrow screens) */
 .section-head, .story-head { position: relative; }

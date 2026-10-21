@@ -14,7 +14,7 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 
@@ -115,9 +115,10 @@ DEFAULTS = {
     "EXAM_REMIND_DAYS": 1,
     "TRACK_LECTURES": True,
     "LECTURES_DIR": "",
+    "ANIMATIONS": True,
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
-              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES")
+              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "ANIMATIONS")
 _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE": (-5, 5),
              "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14)}
 

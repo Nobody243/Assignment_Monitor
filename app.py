@@ -16,6 +16,7 @@ import queue
 import re
 import sys
 import threading
+import time
 import webbrowser
 from datetime import datetime, timedelta
 
@@ -213,6 +214,7 @@ def load_fonts():
 
 
 def pick_fonts():
+    _FONTS.clear()
     try:
         fams = set(tkfont.families())
     except Exception:
@@ -233,9 +235,109 @@ def pick_fonts():
         FONTS["mono"] = "Cascadia Mono"
 
 
+_FONTS = {}
+
+
 def F(size=MD, weight="normal", display=False):
-    key = "display" if display else weight
-    return ctk.CTkFont(family=FONTS[key], size=size, weight=WEIGHTS[key])
+    """Shared CTkFont per (size, weight): creating a font per widget was the single biggest cost of a page build."""
+    key = ("display" if display else weight, size)
+    f = _FONTS.get(key)
+    if f is None:
+        f = _FONTS[key] = ctk.CTkFont(family=FONTS[key[0]], size=size, weight=WEIGHTS[key[0]])
+    return f
+
+
+# ---------------------------------------------------------------------------- motion
+ANIMATE = {"on": True}
+
+
+def ease_out(t):
+    return 1 - (1 - t) ** 3
+
+
+def animate(widget, duration, step, done=None):
+    """Runs step(t) with t eased 0..1 over `duration` seconds on the Tk loop (16 ms frames). With animations off,
+    jumps straight to the end state."""
+    if not ANIMATE["on"]:
+        try:
+            step(1.0)
+        except Exception:
+            return
+        if done:
+            done()
+        return
+    start = time.perf_counter()
+
+    def tick():
+        t = min(1.0, (time.perf_counter() - start) / duration)
+        try:
+            if not widget.winfo_exists():
+                return
+            step(ease_out(t))
+        except Exception:
+            return
+        if t < 1:
+            widget.after(16, tick)
+        elif done:
+            done()
+    tick()
+
+
+def count_up(label, value, suffix="", duration=0.7):
+    """Animates a number label from 0 to value."""
+    if not value:
+        label.configure(text=f"0{suffix}")
+        return
+    animate(label, duration, lambda t: label.configure(text=f"{int(round(value * t))}{suffix}"))
+
+
+def fill_bar(bar, ratio, duration=0.6):
+    """Animates a progress bar from empty to ratio."""
+    bar.set(0)
+    animate(bar, duration, lambda t: bar.set(ratio * t))
+
+
+def hover_lift(widget, fg=None, border=None):
+    """Hover feedback for a card or row: the border brightens (and optionally the fill) while the pointer is over it,
+    including over its children. Cheap, no reflow."""
+    try:
+        base_fg = widget.cget("fg_color")
+        base_border = widget.cget("border_color")
+    except Exception:
+        return
+    hover_fg = fg or base_fg
+    hover_border = border or C["line2"]
+    state = {"in": False}
+
+    def enter(_e=None):
+        if not state["in"]:
+            state["in"] = True
+            try:
+                widget.configure(border_color=hover_border, fg_color=hover_fg)
+            except Exception:
+                pass
+
+    def leave(_e=None):
+        # ignore leaves that are really moves onto a child
+        try:
+            x, y = widget.winfo_pointerxy()
+            wx, wy = widget.winfo_rootx(), widget.winfo_rooty()
+            if wx <= x < wx + widget.winfo_width() and wy <= y < wy + widget.winfo_height():
+                return
+        except Exception:
+            pass
+        state["in"] = False
+        try:
+            widget.configure(border_color=base_border, fg_color=base_fg)
+        except Exception:
+            pass
+
+    def bind_all(w):
+        w.bind("<Enter>", enter, add="+")
+        w.bind("<Leave>", leave, add="+")
+        for c in w.winfo_children():
+            bind_all(c)
+    bind_all(widget)
 
 
 def urgency_color(key):
@@ -254,10 +356,13 @@ def pill(parent, text, key_or_color, size=11):
                         corner_radius=6, height=24)
 
 
-def surface(parent, **kw):
-    opts = dict(fg_color=C["surface"], corner_radius=12, border_width=1, border_color=C["line"])
+def surface(parent, hover=False, **kw):
+    opts = dict(fg_color=C["surface"], corner_radius=14, border_width=1, border_color=C["line"])
     opts.update(kw)
-    return ctk.CTkFrame(parent, **opts)
+    box = ctk.CTkFrame(parent, **opts)
+    if hover:
+        box.after(50, lambda: hover_lift(box))
+    return box
 
 
 def hairline(parent, padx=20):
@@ -284,14 +389,23 @@ def primary_button(parent, text, cmd, height=38, width=None):
                          hover_color=C["accent_h"], text_color=C["on_accent"], corner_radius=8, command=cmd, **kw)
 
 
-def bind_click(widget, cb):
+def bind_click(widget, cb, lift=True):
+    """Makes a whole card clickable (and, for frames, gives it hover feedback)."""
     widget.bind("<Button-1>", lambda e: cb())
     try:
         widget.configure(cursor="hand2")
     except Exception:
         pass
     for child in widget.winfo_children():
-        bind_click(child, cb)
+        bind_click(child, cb, lift=False)
+    if lift and isinstance(widget, ctk.CTkFrame):
+        try:
+            if widget.cget("border_width"):
+                hover_lift(widget)
+            else:
+                hover_lift(widget, fg=C["surface2"], border=C["surface2"])
+        except Exception:
+            pass
 
 
 def fmt_due(item):
@@ -386,13 +500,15 @@ class SetupView(ctk.CTkFrame):
             ctk.CTkLabel(inner, text="", image=self.app.logo).pack(anchor="w")
         ctk.CTkLabel(inner, text=APP_NAME, font=F(D1, "semibold", display=True), text_color=C["ink"]).pack(anchor="w", pady=(14, 0))
         ctk.CTkLabel(inner, text=TAGLINE, font=F(LG), text_color=C["accent"]).pack(anchor="w", pady=(0, 10))
-        ctk.CTkLabel(inner, text="Your assignments, deadlines and reminders in one place.\nSet it up once; it runs on its own.",
-                     font=F(LG), text_color=C["muted"], justify="left").pack(anchor="w", pady=(0, 28))
+        intro = "Assignments, attendance, exams, announcements\nand lecture notes, read for you.\nSet it up once; it runs on its own."
+        ctk.CTkLabel(inner, text=intro, font=F(LG), text_color=C["muted"], justify="left").pack(anchor="w", pady=(0, 28))
 
         for title, desc in [
-            ("Checks the LMS for you", "Signs in every evening at 7 PM and whenever your PC starts, then tells you what is pending."),
-            ("Catches extended deadlines", "The portal hides them in a merged date string. The app reads both dates."),
-            ("Reminds you on the day", "Hourly voice and desktop reminders while an unsubmitted assignment is due today."),
+            ("Checks the portal for you", "Signs in every evening at 7 PM and whenever your PC starts, then tells you only what changed."),
+            ("Catches what the LMS hides",
+             "Extended deadlines merged into one date string, a new absence, a posted exam seat, a fresh announcement."),
+            ("Reminds you on the day",
+             "Hourly voice reminders while an assignment is due today; quiet notifications for everything else."),
             ("Stays on your PC", "Your password is encrypted by Windows for your account and only ever sent to cms.bahria.edu.pk."),
         ]:
             row = ctk.CTkFrame(inner, fg_color="transparent")
@@ -617,8 +733,8 @@ class DashboardView(ctk.CTkScrollableFrame):
                          font=F(SM), text_color=C["amber"] if c["open"] else C["muted"]).pack(anchor="w", padx=16)
             bar = ctk.CTkProgressBar(cc, height=4, progress_color=C["green"] if ratio == 1 else C["accent"],
                                      fg_color=C["surface2"], corner_radius=2)
-            bar.set(ratio)
             bar.pack(fill="x", padx=16, pady=(10, 14))
+            fill_bar(bar, ratio)
             bind_click(cc, lambda n=name_: self.app.navigate("assignments", course=n))
 
     def _campus_cards(self, now):
@@ -673,8 +789,8 @@ class DashboardView(ctk.CTkScrollableFrame):
                          anchor="w").pack(side="left")
             ctk.CTkLabel(top, text=f"{c.get('percent', 0):.0f}%", font=F(SM, "semibold"), text_color=color).pack(side="right")
             bar = ctk.CTkProgressBar(r, height=4, progress_color=color, fg_color=C["surface2"], corner_radius=2)
-            bar.set(min(1.0, c.get("percent", 0) / 100))
             bar.pack(fill="x", pady=(4, 4))
+            fill_bar(bar, min(1.0, c.get("percent", 0) / 100))
         ctk.CTkLabel(card, text="", height=8).pack()
         bind_click(card, lambda: self.app.navigate("attendance"))
         return card
@@ -747,8 +863,10 @@ class DashboardView(ctk.CTkScrollableFrame):
                 ctk.CTkFrame(cell, fg_color=C["line"], width=1, height=2, corner_radius=0).pack(side="left", fill="y", pady=16)
             inner = ctk.CTkFrame(cell, fg_color="transparent")
             inner.pack(side="left", fill="x", expand=True, padx=18, pady=14)
-            ctk.CTkLabel(inner, text=str(value), font=F(H1, "semibold", display=True),
-                         text_color=C["ink"] if value else C["dim"]).pack(anchor="w")
+            num = ctk.CTkLabel(inner, text="0", font=F(H1, "semibold", display=True),
+                               text_color=C["ink"] if value else C["dim"])
+            num.pack(anchor="w")
+            count_up(num, value)
             ctk.CTkLabel(inner, text=label, font=F(SM), text_color=C["muted"]).pack(anchor="w")
             bind_click(cell, lambda f=flt: self.app.navigate("assignments", filter_name=f))
 
@@ -882,6 +1000,7 @@ class AssignmentsView(ctk.CTkFrame):
             meta += f"   ·   {marks}"
         ctk.CTkLabel(body, text=meta, font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(2, 0))
         pill(row, info["label"], info["key"]).pack(side="right")
+        hover_lift(row, fg=C["surface2"], border=C["surface2"])
 
 
 # ---------------------------------------------------------------------------- attendance
@@ -921,8 +1040,11 @@ class AttendanceView(ctk.CTkScrollableFrame):
                 ctk.CTkFrame(cell, fg_color=C["line"], width=1, height=2, corner_radius=0).pack(side="left", fill="y", pady=16)
             inner = ctk.CTkFrame(cell, fg_color="transparent")
             inner.pack(side="left", fill="x", expand=True, padx=18, pady=14)
-            ctk.CTkLabel(inner, text=val, font=F(H1, "semibold", display=True),
-                         text_color=C["red"] if (i == 1 and below) else C["ink"]).pack(anchor="w")
+            vl = ctk.CTkLabel(inner, text=val, font=F(H1, "semibold", display=True),
+                              text_color=C["red"] if (i == 1 and below) else C["ink"])
+            vl.pack(anchor="w")
+            if val.endswith("%"):
+                count_up(vl, int(val[:-1]), "%")
             ctk.CTkLabel(inner, text=lbl, font=F(SM), text_color=C["muted"]).pack(anchor="w")
         ctk.CTkLabel(self, text=f"Minimum {minimum}% (change it in Settings). Margins assume the usual class length; "
                                 "the portal's own figures are authoritative.",
@@ -960,8 +1082,8 @@ class AttendanceView(ctk.CTkScrollableFrame):
             ctk.CTkLabel(right, text="No classes yet", font=F(SM), text_color=C["dim"]).pack(anchor="e")
         if c.get("total"):
             bar = ctk.CTkProgressBar(box, height=6, progress_color=color, fg_color=C["surface2"], corner_radius=3)
-            bar.set(min(1.0, c.get("percent", 0) / 100))
             bar.pack(fill="x", padx=20, pady=(10, 6))
+            fill_bar(bar, min(1.0, c.get("percent", 0) / 100))
             if c.get("ok", True):
                 margin = (f"Present {c.get('present', 0):g} of {c.get('total', 0):g} hours. You can miss {c.get('can_miss', 0):g} more "
                           f"hour{'s' if c.get('can_miss', 0) != 1 else ''} and stay at {minimum}%.")
@@ -1423,7 +1545,9 @@ class SettingsView(ctk.CTkScrollableFrame):
         soft_button(row, "Switch account", lambda: self.app.show_setup()).pack(side="right")
 
         look = self._section("Appearance", "Remembered across restarts.")
-        theme_switch(look, self.app).pack(anchor="w", padx=20, pady=(0, 18))
+        theme_switch(look, self.app).pack(anchor="w", padx=20, pady=(0, 6))
+        self.anim_sw = self._switch(look, "Animations (page transitions, counters, hover)", env.get("ANIMATIONS", True))
+        ctk.CTkLabel(look, text="", height=8).pack()
 
         bg = self._section("Running in the background",
                            "Closing the window keeps the app in the system tray; right-click the icon to open, sync or quit.")
@@ -1579,6 +1703,9 @@ class SettingsView(ctk.CTkScrollableFrame):
         env["NOTIFY_DAYS_AHEAD"] = int(self.days.get())
         env["CLOSE_TO_TRAY"] = bool(self.tray_sw.get())
         env["CHECK_UPDATES"] = bool(self.updates_sw.get())
+        if hasattr(self, "anim_sw"):
+            env["ANIMATIONS"] = bool(self.anim_sw.get())
+            ANIMATE["on"] = env["ANIMATIONS"]
         if hasattr(self, "track_att"):
             env["TRACK_ATTENDANCE"] = bool(self.track_att.get())
             env["TRACK_EXAMS"] = bool(self.track_exams.get())
@@ -1735,7 +1862,14 @@ class App(ctk.CTk):
         super().__init__(fg_color=C["bg"])
         pick_fonts()
         self.title(APP_NAME)
+        ANIMATE["on"] = bool(self.env.get("ANIMATIONS", True))
         self._place_window()
+        if ANIMATE["on"]:
+            try:
+                self.attributes("-alpha", 0.0)
+                self.after(60, lambda: animate(self, 0.28, lambda t: self.attributes("-alpha", t)))
+            except Exception:
+                pass
         self.logo = self._load_logo()
         icon = ASSETS_DIR / "icon.ico"
         if icon.exists():
@@ -1883,11 +2017,18 @@ class App(ctk.CTk):
     # ---- theme
     def set_theme(self, theme):
         self.theme = theme
-        ctk.set_appearance_mode(theme)
         env = dict(self.env)
         env["THEME"] = theme
         save_env(env)
         self.env = load_env()
+
+        def switch():
+            ctk.set_appearance_mode(theme)
+            animate(self, 0.22, lambda t: self.attributes("-alpha", 0.55 + 0.45 * t))
+        if ANIMATE["on"]:
+            animate(self, 0.12, lambda t: self.attributes("-alpha", 1 - 0.45 * t), done=switch)
+        else:
+            ctk.set_appearance_mode(theme)
 
     # ---- screens
     def _clear(self):
@@ -2010,9 +2151,13 @@ class App(ctk.CTk):
             bar.configure(fg_color=C["accent"] if active else "transparent")
         if self.current:
             self.views[self.current].pack_forget()
+        changed = self.current != key
         self.current = key
         view = self.views[key]
-        view.pack(fill="both", expand=True)
+        view.pack(fill="both", expand=True, pady=(12, 0) if changed else 0)
+        if changed:
+            # the page settles into place from a few pixels below
+            animate(view, 0.26, lambda t: view.pack_configure(pady=(int(round(12 * (1 - t))), 0)))
         self.page_title.configure(text=dict(self.NAV)[key])
         if key == "assignments" and kwargs:
             view.apply(kwargs.get("filter_name"), kwargs.get("course"))
