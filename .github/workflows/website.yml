@@ -6,9 +6,9 @@ name: Website
 on:
   push:
     branches: ["main"]
-    paths: ["website/**", ".github/workflows/website.yml"]
+    paths: ["website/**", ".github/workflows/website.yml", ".github/scripts/site-smoke.mjs"]
   pull_request:
-    paths: ["website/**", ".github/workflows/website.yml"]
+    paths: ["website/**", ".github/workflows/website.yml", ".github/scripts/site-smoke.mjs"]
   workflow_dispatch:
 
 permissions:
@@ -48,27 +48,8 @@ jobs:
           echo "bundle sizes:"; du -h dist/bundle/* | sort -h
       - name: Routes render (headless Chromium)
         run: |
-          npx --yes playwright@1.48.2 install --with-deps chromium >/dev/null 2>&1
-          npm run preview -- --host 127.0.0.1 >/tmp/preview.log 2>&1 &
+          npm i --no-save --no-audit --no-fund playwright@1.48.2
+          npx playwright install --with-deps chromium
+          (npm run preview -- --host 127.0.0.1 >/tmp/preview.log 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
-          cat > /tmp/smoke.mjs <<'EOF'
-          import { chromium } from "playwright";
-          const b = await chromium.launch(); const errors = [];
-          const pg = await b.newPage({ reducedMotion: "reduce" });
-          pg.on("pageerror", (e) => errors.push(String(e)));
-          pg.on("response", (r) => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
-          for (const path of ["/", "/download", "/privacy", "/faq", "/nope"]) {
-            await pg.goto("http://127.0.0.1:4173" + path, { waitUntil: "load" });
-            await pg.waitForSelector("main h1", { timeout: 15000 });
-            const h1 = (await pg.textContent("main h1")).trim();
-            console.log(path, "->", h1.slice(0, 60));
-          }
-          await pg.goto("http://127.0.0.1:4173/download", { waitUntil: "load" });
-          const links = await pg.$$eval("a[data-download]", (as) => as.map((a) => a.href));
-          if (!links.some((l) => /AssignmentMonitor-Setup\.exe$/.test(l))) throw new Error("installer link missing: " + links.join(", "));
-          if (!links.some((l) => /AssignmentMonitor-portable\.zip$/.test(l))) throw new Error("zip link missing: " + links.join(", "));
-          await b.close();
-          if (errors.length) { console.error(errors.join("\n")); process.exit(1); }
-          console.log("routes ok, download links ok, no page errors");
-          EOF
-          node /tmp/smoke.mjs
+          node ../.github/scripts/site-smoke.mjs
