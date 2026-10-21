@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SectionHead, Reveal, Window } from "../Reveal.jsx";
-import { SCREENS } from "../../data/content.js";
+import { SCREENS, shot } from "../../data/content.js";
 
 function Seg({ label, options, value, onChange }) {
   return (
@@ -19,7 +19,7 @@ function Seg({ label, options, value, onChange }) {
 export default function Gallery() {
   const [screen, setScreen] = useState("dashboard");
   const [theme, setTheme] = useState("dark");
-  const src = `/assets/shot-${screen}-${theme}.png`;
+  const src = shot(screen, theme);
   const current = SCREENS.find((s) => s.id === screen);
   return (
     <section id="screens">

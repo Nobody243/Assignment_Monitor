@@ -168,20 +168,21 @@ from jobs import process_sync, collectors_for                                   
 # ---------------------------------------------------------------------------- design tokens
 # Direction: calm and editorial. Warm neutral surfaces, one accent, three type weights (regular, medium, semibold;
 # never bold), hairline dividers instead of nested cards, no decorative icons.
-# Golden ratio, twice: the accent sits at oklch hue 265 (blue) and every other hue is one golden angle (137.5°)
-# further round the wheel, so they are as far apart as colours can be (red 42 · green 180 · violet 317 · amber 95 ·
-# sky 232); and the type scale is 13px × φ^(n/4). Every colour is a (light, dark) pair so the theme switch restyles
-# the live window: inks sit at L≈.50 on the light surfaces and L≈.78 on the dark ones (AA on both), tints are the
-# same hue at L .955 / .26.
+# Colour: cool slate neutrals (a touch of blue in every grey, so the surfaces read as one material) with a single
+# indigo accent, and the five state hues spaced a golden angle (137.5°) apart from it round the wheel so they never
+# clash: red 42 · green 180 · violet 317 · amber 95 · sky 232. Every colour is a (light, dark) pair so the theme switch
+# restyles the live window. Inks sit at L≈.48 on the light surfaces and L≈.80 on the dark ones (AA on both); tints
+# are the same hue at L .96 / .22. "side" is the sidebar and status bar: a shade off the content so the shell
+# frames the page instead of merging with it.
 C = {
-    "bg": ("#f4f4f1", "#121314"), "surface": ("#ffffff", "#1a1c1e"), "surface2": ("#eeeeea", "#232629"),
-    "field": ("#fafaf8", "#202326"), "line": ("#e3e3de", "#2c2f33"), "line2": ("#d6d6d0", "#3a3e43"),
-    "ink": ("#1b1b1a", "#ececea"), "muted": ("#62625e", "#a0a39e"), "dim": ("#9a9a94", "#6a6d69"),
-    "accent": ("#2955d3", "#95b6fe"), "accent_h": ("#1a41be", "#adc7ff"), "on_accent": ("#ffffff", "#0e1320"),
-    "red": ("#af4000", "#fd9a73"), "amber": ("#806a00", "#dec358"), "green": ("#007465", "#36d2ba"),
-    "sky": ("#006c94", "#5dc4f7"), "violet": ("#893ba1", "#d99cee"),
-    "red_t": ("#ffebe4", "#321e16"), "amber_t": ("#f6f0da", "#29240f"), "green_t": ("#dcf7f1", "#0e2a25"),
-    "sky_t": ("#e0f4ff", "#112732"), "violet_t": ("#f9eafe", "#2b1f2f"), "grey_t": ("#eeeeea", "#232629"),
+    "bg": ("#f3f4f7", "#0d0f13"), "surface": ("#ffffff", "#15181d"), "surface2": ("#eceef3", "#1c2027"),
+    "side": ("#f8f9fb", "#101318"), "field": ("#f7f8fb", "#1a1e25"), "line": ("#e3e6ec", "#252a32"), "line2": ("#cfd4de", "#343a45"),
+    "ink": ("#14161b", "#eef0f4"), "muted": ("#5b6170", "#9aa1ad"), "dim": ("#9096a3", "#666d79"),
+    "accent": ("#2f5bea", "#8aa7ff"), "accent_h": ("#2449cc", "#a3baff"), "on_accent": ("#ffffff", "#0b1024"),
+    "red": ("#c2410c", "#ff9b78"), "amber": ("#946200", "#e3c75c"), "green": ("#0f766e", "#4fd6bf"),
+    "sky": ("#0369a1", "#67c6f5"), "violet": ("#7e3fb8", "#d9a3f2"),
+    "red_t": ("#fdeee6", "#33201a"), "amber_t": ("#fbf3dc", "#2a2412"), "green_t": ("#dcf5f0", "#0f2a26"),
+    "sky_t": ("#e0f2fe", "#122633"), "violet_t": ("#f3e8fb", "#2a1f31"), "grey_t": ("#eceef3", "#1c2027"),
 }
 URGENCY = {"today": "red", "missed": "red", "soon": "amber", "week": "sky", "later": "dim",
            "submitted": "green", "unknown": "dim"}
@@ -353,7 +354,7 @@ def pill(parent, text, key_or_color, size=11):
     color = C[URGENCY[key_or_color]] if key_or_color in URGENCY else key_or_color
     tint = urgency_tint(key_or_color) if key_or_color in URGENCY else C["surface2"]
     return ctk.CTkLabel(parent, text=f"  {text}  ", font=F(size, "semibold"), fg_color=tint, text_color=color,
-                        corner_radius=6, height=24)
+                        corner_radius=12, height=24)
 
 
 def surface(parent, hover=False, **kw):
@@ -2048,7 +2049,7 @@ class App(ctk.CTk):
         self.container.grid_columnconfigure(1, weight=1)
         self.container.grid_rowconfigure(0, weight=1)
 
-        side = ctk.CTkFrame(self.container, fg_color=C["surface"], corner_radius=0, width=224)
+        side = ctk.CTkFrame(self.container, fg_color=C["side"], corner_radius=0, width=224)
         side.grid(row=0, column=0, sticky="nsw")
         side.grid_propagate(False)
         ctk.CTkFrame(self.container, fg_color=C["line"], width=1, corner_radius=0).grid(row=0, column=0, sticky="nse")
@@ -2068,7 +2069,7 @@ class App(ctk.CTk):
             item.pack(fill="x", padx=(0, 12), pady=1)
             bar = ctk.CTkFrame(item, fg_color="transparent", width=3, height=2, corner_radius=2)
             bar.pack(side="left", fill="y", pady=8)
-            b = ctk.CTkButton(item, text=label, font=F(LG), height=40, anchor="w", corner_radius=8,
+            b = ctk.CTkButton(item, text=label, font=F(LG), height=40, anchor="w", corner_radius=10,
                               fg_color="transparent", hover_color=C["surface2"], text_color=C["muted"],
                               command=lambda k=key: self.navigate(k))
             b.pack(side="left", fill="x", expand=True, padx=(9, 0))
@@ -2117,7 +2118,7 @@ class App(ctk.CTk):
         self.body = ctk.CTkFrame(content, fg_color="transparent")
         self.body.grid(row=2, column=0, sticky="nsew", padx=32, pady=(6, 0))
 
-        status = ctk.CTkFrame(content, fg_color=C["surface"], corner_radius=0, height=28)
+        status = ctk.CTkFrame(content, fg_color=C["side"], corner_radius=0, height=28)
         status.grid(row=3, column=0, sticky="ew")
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
         self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")

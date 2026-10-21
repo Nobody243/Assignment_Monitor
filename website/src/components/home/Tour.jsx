@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger, useScroll, reduceMotion } from "../../lib/scroll.jsx";
 import { useScene } from "../../lib/scene.jsx";
 import { Window } from "../Reveal.jsx";
-import { TOUR } from "../../data/content.js";
+import { TOUR, shot } from "../../data/content.js";
 
 /* Pinned walkthrough: the dashboard stays put while four short scroll steps move a spotlight over it and swap the
    caption. Desktop only; on narrow screens the steps simply stack under the screenshot. */
@@ -48,9 +48,11 @@ export default function Tour() {
           <div className="story-grid">
             <div className="story-visual">
               <Window title="Dashboard" className="shot">
-                <img src="/assets/shot-dashboard-light.png" alt="The dashboard in the light theme" width="1280" height="840" loading="lazy" />
-                <div className="spot" style={{ "--sx": `${sx}%`, "--sy": `${sy}%`, "--sw": `${sw}%`, "--sh": `${sh}%` }} />
-                <span className="spot-label" style={{ "--sx": `${sx}%`, "--sy": `${sy}%` }}>{step.label}</span>
+                <div className="shot-body">
+                  <img src={shot("dashboard", "light")} alt="The dashboard in the light theme" width="1280" height="840" loading="lazy" />
+                  <div className="spot" style={{ "--sx": `${sx}%`, "--sy": `${sy}%`, "--sw": `${sw}%`, "--sh": `${sh}%` }} />
+                  <span className="spot-label" style={{ "--sx": `${sx}%`, "--sy": `${sy}%` }}>{step.label}</span>
+                </div>
               </Window>
             </div>
             <div className="story-side">

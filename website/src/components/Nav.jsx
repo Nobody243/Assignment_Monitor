@@ -40,7 +40,7 @@ export default function Nav() {
   return (
     <motion.header className={`nav${scrolled || open ? " is-scrolled" : ""}`} initial={{ y: -16, opacity: 0 }} animate={introDone ? { y: 0, opacity: 1 } : {}} transition={{ duration: 1, ease: EASE, delay: 0.5 }}>
       <div className="wrap">
-        <Link className="brand" to="/" aria-label="Assignment Monitor home" onClick={() => setOpen(false)}>
+        <Link className="brand" to="/" aria-label="Assignment Monitor home" onClick={(e) => { setOpen(false); if (window.location.pathname === "/") { e.preventDefault(); if (window.__lenis) window.__lenis.scrollTo(0, { duration: 1.1 }); else window.scrollTo({ top: 0, behavior: "smooth" }); window.history.replaceState(null, "", "/"); } }}>
           <img src="/assets/logo.svg?v=2" alt="" width="28" height="28" />
           <span>Assignment Monitor<small>for Bahria University LMS</small></span>
         </Link>

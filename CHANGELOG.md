@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2 - 2026-10-22
+
+- New colour scheme in both themes: cool slate greys with a single indigo accent, calmer state colours, and a sidebar and status bar a shade off the page so the shell frames the content. Pills are fully rounded and nav items a little softer.
+
 ## 1.3.1 - 2026-10-22
 
 - Design pass: rounded surfaces that lift on hover, a short slide when switching pages, a fade when switching themes, counters that count up and attendance bars that fill in. All of it can be switched off with the new Animations switch in Settings, Appearance.

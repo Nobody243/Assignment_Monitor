@@ -53,6 +53,9 @@ export const STEPS = [
   { title: "Let it run", text: "Leave \"Check automatically\" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days." },
 ];
 
+export const SHOT_V = "132";
+export const shot = (id, theme) => `/assets/shot-${id}-${theme}.png?v=${SHOT_V}`;
+
 export const SCREENS = [
   { id: "dashboard", label: "Dashboard", caption: "Dashboard: next deadline, counters, attention list, course progress." },
   { id: "attendance", label: "Attendance", caption: "Attendance: every course's hours, the margin to the 75% rule, and the class-by-class record." },

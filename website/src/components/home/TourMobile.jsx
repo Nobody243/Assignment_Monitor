@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { TOUR } from "../../data/content.js";
+import { TOUR, shot } from "../../data/content.js";
 
 const SHOT = { w: 1280, h: 840 };
 const BOX = 1.6;   // the crop window's aspect ratio (width / height)
@@ -12,7 +12,7 @@ function Crop({ spot }) {
   const widthPct = spotAspect >= BOX ? 9000 / w : (9000 * SHOT.w) / (SHOT.h * BOX * h);   // 10 % breathing room
   return (
     <div className="tour-m-crop" aria-hidden="true">
-      <img src="/assets/shot-dashboard-light.png" alt="" width={SHOT.w} height={SHOT.h} loading="lazy"
+      <img src={shot("dashboard", "light")} alt="" width={SHOT.w} height={SHOT.h} loading="lazy"
         style={{ width: `${widthPct}%`, transform: `translate(-${x + w / 2}%, -${y + h / 2}%)` }} />
     </div>
   );
