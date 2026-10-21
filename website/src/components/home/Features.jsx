@@ -18,13 +18,16 @@ const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefe
 
 function Card({ f, i, refFn }) {
   return (
-    <article className="card" ref={refFn} style={{ "--a": `${i * STEP}deg` }}>
-      <p className="mono">{f.n} · {f.tag}</p>
-      <h3>{f.title}</h3>
-      <p>{f.text}</p>
-      {f.datestr && <div className="datestr"><span className="now">{f.datestr.now}</span><s>{f.datestr.was}</s></div>}
-      {f.list && <ul>{f.list.map(([k, v]) => <li key={k}>{k} <span>{v}</span></li>)}</ul>}
-    </article>
+    <div className="card3d" ref={refFn} style={{ "--a": `${i * STEP}deg` }}>
+      <article className="card">
+        <p className="mono">{f.n} · {f.tag}</p>
+        <h3>{f.title}</h3>
+        <p>{f.text}</p>
+        {f.datestr && <div className="datestr"><span className="now">{f.datestr.now}</span><s>{f.datestr.was}</s></div>}
+        {f.list && <ul>{f.list.map(([k, v]) => <li key={k}>{k} <span>{v}</span></li>)}</ul>}
+        <i className="card-shade" aria-hidden="true" />
+      </article>
+    </div>
   );
 }
 
@@ -63,8 +66,8 @@ export default function Features() {
       cards.current.forEach((c, i) => {
         if (!c) return;
         const a = Math.abs(mod(i * STEP + s.theta + 180, 360) - 180);     // 0 = facing the viewer
-        c.style.opacity = a < 18 ? 1 : Math.max(0, 1 - (a - 18) / 64).toFixed(3);
         c.style.visibility = a > 84 ? "hidden" : "visible";
+        c.style.setProperty("--shade", Math.min(0.93, Math.pow(a / 84, 1.3) * 0.96).toFixed(3));   // lit from the front; no opacity, it would flatten the 3D slab
       });
       const front = mod(Math.round(-s.theta / STEP), N);
       if (front !== s.shown) { s.shown = front; setIdx(front); }
@@ -156,6 +159,7 @@ export default function Features() {
       </div>
       <div className="feat-wheel" ref={wheel} role="region" aria-roledescription="carousel" aria-label="Features, drag to spin or use the arrow keys" tabIndex={0}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onPointerEnter={onEnter} onPointerLeave={onLeave} onKeyDown={onKey}>
+        <i className="feat-floor" aria-hidden="true" />
         <div className="feat-ring" ref={ring}>
           {FEATURES.map((f, i) => <Card f={f} i={i} key={f.n} refFn={(el) => { cards.current[i] = el; }} />)}
         </div>

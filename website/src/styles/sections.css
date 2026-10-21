@@ -83,12 +83,21 @@
 .feat-arrow { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); color: var(--ink-1); display: grid; place-items: center; background: var(--glass); transition: border-color var(--d-1), background var(--d-1), transform var(--d-2) var(--ease-out); }
 .feat-arrow svg { width: 18px; height: 18px; }
 .feat-arrow:hover { border-color: var(--line-3); background: var(--glass-2); transform: translateY(-1px); }
-.feat-wheel { position: relative; padding: 34px 0 18px; overflow: hidden; perspective: 1500px; perspective-origin: 50% 42%; touch-action: pan-y; cursor: grab; outline: none; }
+.feat-wheel { position: relative; padding: 44px 0 30px; overflow: hidden; perspective: 1400px; perspective-origin: 50% 16%; touch-action: pan-y; cursor: grab; outline: none; }
 .feat-wheel.is-dragging { cursor: grabbing; }
 .feat-wheel:focus-visible .feat-ring { outline: 2px solid var(--focus); outline-offset: 10px; border-radius: 20px; }
+.feat-floor { position: absolute; left: 50%; bottom: 0; width: min(1200px, 140vw); height: 150px; transform: translateX(-50%); pointer-events: none; background: radial-gradient(50% 100% at 50% 100%, var(--accent-a3), transparent 70%); }
 .feat-ring { position: relative; width: 100%; height: var(--ring-h, 420px); transform-style: preserve-3d; will-change: transform; }
-.feat-ring .card { position: absolute; left: 50%; top: 0; width: min(392px, 84vw); height: var(--card-h, auto); margin-left: calc(min(392px, 84vw) / -2);
-  transform: rotateY(var(--a)) translateZ(var(--ring-r, 600px)); backface-visibility: hidden; -webkit-backface-visibility: hidden; will-change: opacity; }
+/* each card is a slab: two back-plates give it thickness you can see from the side, the front face is near-opaque
+   with a top highlight, and a shade overlay darkens it as it turns away from the light */
+.feat-ring .card3d { position: absolute; left: 50%; top: 0; width: min(392px, 84vw); height: var(--card-h, auto); margin-left: calc(min(392px, 84vw) / -2);
+  transform: rotateY(var(--a)) translateZ(var(--ring-r, 600px)); transform-style: preserve-3d; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.feat-ring .card3d::before, .feat-ring .card3d::after { content: ""; position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden; pointer-events: none; }
+.feat-ring .card3d::before { background: #090b10; transform: translateZ(-24px) scale(0.982); box-shadow: 0 60px 90px -30px rgba(0, 0, 0, 0.9); }
+.feat-ring .card3d::after { background: #141821; border: 1px solid rgba(255, 255, 255, 0.05); transform: translateZ(-12px) scale(0.992); }
+.feat-ring .card { height: 100%; background: rgba(15, 17, 23, 0.94); border-color: rgba(255, 255, 255, 0.11); transform: translateZ(0);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.4), 0 34px 60px -26px rgba(0, 0, 0, 0.85); }
+.feat-ring .card-shade { position: absolute; inset: 0; background: #04050a; opacity: var(--shade, 0); pointer-events: none; border-radius: inherit; }
 .feat-dots { display: flex; justify-content: center; gap: 2px; margin-top: 4px; }
 .feat-dots button { position: relative; width: 34px; height: 34px; }
 .feat-dots button::after { content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border-radius: 4px; background: var(--line-3); transition: width var(--d-2) var(--ease-out), background var(--d-2); }
@@ -109,12 +118,35 @@
 @media (max-width: 600px) { .feat-head { flex-direction: column; align-items: flex-start; } .card { padding: 26px 22px 28px; } .card .mono { margin-bottom: 26px; } .feat-wheel { padding-top: 20px; perspective: 1100px; } .feat-dots button { width: 28px; } }
 
 /* ============================================================ steps */
-.steps { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.step { position: relative; padding: 70px 22px 22px; border-radius: 18px; background: var(--glass); border: 1px solid var(--line); transition: border-color var(--d-2), transform var(--d-2) var(--ease-out); }
-.step:hover { border-color: var(--line-2); transform: translateY(-3px); }
-.step::before { content: attr(data-n); position: absolute; left: 18px; top: 16px; width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--n-1); display: grid; place-items: center; font-weight: var(--w-head); letter-spacing: var(--track-sub); font-size: var(--t-lg); color: var(--accent); }
-.step h3 { margin-bottom: 8px; } .step p { color: var(--ink-3); font-size: var(--t-sm); max-width: 34ch; }
-@media (max-width: 900px) { .steps { grid-template-columns: 1fr; gap: 16px; } .step { padding: 22px 22px 22px 86px; } .step::before { left: 16px; top: 18px; } }
+/* setup timeline: a line drawn as the section scrolls in, with a current flowing along it, and nodes that light up */
+.tl { position: relative; padding-top: 4px; }
+.tl-line { position: absolute; pointer-events: none; overflow: visible; }
+.tl-line-h { left: 0; width: 100%; top: 11px; height: 40px; }
+.tl-line-v { display: none; left: 7px; width: 40px; top: 31px; height: var(--tl-v-h, 0px); }
+.tl-base { fill: none; stroke: var(--line-2); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.tl-draw { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 6px var(--accent-a4)); }
+.tl-flow { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke-dasharray: 0.03 0.17; opacity: 0.5; mix-blend-mode: screen; animation: tl-flow 3.2s linear infinite; }
+@keyframes tl-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -0.2; } }
+.tl-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.tl-step { position: relative; padding-top: 80px; }
+.tl-node { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--n-1); display: grid; place-items: center;
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: 0.06em; color: var(--ink-3); transition: border-color 0.5s, color 0.5s, box-shadow 0.6s, transform 0.5s var(--ease-out); }
+.tl-node b { font-weight: 500; }
+.tl-step.is-on .tl-node { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 6px var(--accent-a2), 0 0 34px var(--accent-a3); transform: translateX(-50%) scale(1.06); }
+.tl-step.is-on .tl-node::after { content: ""; position: absolute; inset: -1px; border-radius: 50%; border: 1px solid var(--accent); animation: tl-pulse 2.4s var(--ease-out) infinite; }
+@keyframes tl-pulse { from { transform: scale(1); opacity: 0.7; } to { transform: scale(1.7); opacity: 0; } }
+.tl-card { padding: 22px 22px 24px; border-radius: 18px; background: var(--glass); border: 1px solid var(--line); transition: border-color 0.5s, transform var(--d-2) var(--ease-out), background 0.5s; }
+.tl-step.is-on .tl-card { border-color: var(--line-2); }
+.tl-card:hover { transform: translateY(-3px); background: var(--glass-2); }
+.tl-card h3 { margin-bottom: 8px; } .tl-card p { color: var(--ink-3); font-size: var(--t-sm); max-width: 34ch; }
+@media (max-width: 900px) {
+  .tl-line-h { display: none; } .tl-line-v { display: block; }
+  .tl-steps { grid-template-columns: 1fr; gap: 18px; }
+  .tl-step { padding: 0 0 0 78px; }
+  .tl-node { left: 0; top: 4px; transform: none; }
+  .tl-step.is-on .tl-node { transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) { .tl-flow, .tl-step.is-on .tl-node::after { animation: none; } }
 
 /* ============================================================ gallery */
 .gallery-controls { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -124,10 +156,16 @@
 .seg button:hover { color: var(--ink-1); }
 .seg button[aria-selected="true"] { color: var(--n-1); }
 .seg-pill { position: absolute; inset: 0; border-radius: 8px; background: var(--ink-1); }
-.gallery-win { max-width: 1120px; margin: 0 auto; }
+.gallery-persp { perspective: 1700px; position: relative; max-width: 1120px; margin: 0 auto; }
+.gallery-stage { position: relative; transform-style: preserve-3d; will-change: transform; }
+.gallery-floor { position: absolute; left: 50%; bottom: -60px; width: 120%; height: 160px; transform: translateX(-50%); pointer-events: none; background: radial-gradient(50% 100% at 50% 100%, var(--accent-a3), transparent 70%); opacity: 0.9; }
+.gallery-glare { position: absolute; inset: 0; border-radius: 14px; pointer-events: none; opacity: 0; transition: opacity 0.5s; background: radial-gradient(420px 300px at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.09), transparent 70%); mix-blend-mode: screen; }
+.gallery-stage:hover .gallery-glare { opacity: 1; }
+.gallery-win { position: relative; box-shadow: var(--shadow-win), 0 60px 100px -40px rgba(0, 0, 0, 0.9); }
+.seg-progress { position: absolute; left: 10px; right: 10px; bottom: 5px; height: 2px; border-radius: 1px; background: var(--accent); transform-origin: left; z-index: 1; }
 .gallery-frame { position: relative; aspect-ratio: 1280 / 840; background: #121315; }
 .gallery-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.gallery-caption { text-align: center; margin-top: 16px; color: var(--ink-3); font-size: var(--t-sm); }
+.gallery-caption { text-align: center; margin-top: 18px; color: var(--ink-3); font-size: var(--t-sm); min-height: 1.6em; }
 @media (max-width: 640px) { .gallery-controls { justify-content: center; } .seg { flex-wrap: wrap; justify-content: center; } }
 
 /* ============================================================ privacy */
