@@ -6,14 +6,16 @@
 | --- | --- | --- |
 | Portal password | `%LOCALAPPDATA%\Assignment Monitor\settings.env` | Encrypted with Windows DPAPI for your user account. Another user or another PC cannot decrypt it. Never written to the log. |
 | Enrollment number, campus, preferences | same file | Plain text (not secret). |
-| Assignment list, attendance, exam plan, announcements, sync metadata, log | `%LOCALAPPDATA%\Assignment Monitor\data\` | Local files, readable only by your Windows account by default. |
+| Assignment list, attendance, exam plan, announcements, lecture list, sync metadata, log | `%LOCALAPPDATA%\Assignment Monitor\data\` | Local files, readable only by your Windows account by default. |
 | Browser profile (portal session cookies) | `%LOCALAPPDATA%\Assignment Monitor\chrome_profile\` | Local, same as above. Deleted on uninstall. |
+
+Downloaded lecture files go to `Documents\Assignment Monitor\Lectures` unless you pick another folder in the Lectures page.
 
 Running from source, the same files live in the project folder and are git-ignored.
 
 ## Network
 
-- The app only connects to `https://cms.bahria.edu.pk` and `https://lms.bahria.edu.pk`, over HTTPS, to do exactly what you would do by hand: sign in, open the attendance and exam seating pages on the CMS, open the LMS, open the assignments and announcements page for each course. It only ever reads; it never submits a form on the portal.
+- The app only connects to `https://cms.bahria.edu.pk` and `https://lms.bahria.edu.pk`, over HTTPS, to do exactly what you would do by hand: sign in, open the attendance and exam seating pages on the CMS, open the LMS, open the assignments, announcements and lecture-notes page for each course, and, only when you click Download on the Lectures page, fetch the lecture files you ticked. It only ever reads; it never submits a form on the portal.
 - If Google Chrome is not installed, Playwright's Chromium is downloaded once from Microsoft's Playwright CDN.
 - Update check: when the app starts (and when you click "Check for updates") it asks `api.github.com` for the newest release number, and downloads the installer from GitHub only if you click Install. Nothing about you is sent beyond the request itself. Switch it off in Settings → Running in the background.
 - Otherwise the app does not phone home, has no telemetry, and sends nothing anywhere else.

@@ -11,6 +11,7 @@ A desktop app that keeps an eye on your LMS and CMS so you don't have to: assign
 - **Attendance** per course with the margin to your minimum, class-by-class, and an alert when an absence is recorded
 - **Exam seating plan** with room and seat, a countdown, a reminder the day before and on the morning of each paper
 - **Announcements** from every course in one place, with an alert for each new one
+- **Lecture notes** from every course in one list; tick the files you want and download them into tidy course / week folders
 - Lives in the **system tray**, can start with Windows, light and dark themes, keyboard shortcuts
 
 ## Install
@@ -36,10 +37,11 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | **Attendance** | Every course's hours and percentage, how many hours you can still miss (or need to attend) for your minimum, and the class-by-class record with topics. |
 | **Exams** | The seating plan: date, session, time, room, row and seat for each paper, with a countdown; papers not yet scheduled are listed too. |
 | **Announcements** | Every course's LMS announcements, newest first, filterable by course. |
+| **Lectures** | Every course's lecture notes by week with a checkbox per file. Download the selection into a folder you choose, organised as course / week - title; existing files are skipped. |
 | **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), campus tracking (attendance minimum, exam reminder lead, what to read), automatic checks, data folder, privacy and licenses. |
 | **Activity** | Log of every sync and reminder, including the scheduled background runs. |
 
-Shortcuts: **F5** sync · **Ctrl+1…7** switch pages · **Ctrl+F** search · **Esc** clear search.
+Shortcuts: **F5** sync · **Ctrl+1…8** switch pages · **Ctrl+F** search · **Esc** clear search.
 
 **Tray:** closing the window keeps the app in the system tray (switchable in Settings). Right-click the tray icon to open, sync now, or quit. "Start with Windows" opens it minimized to the tray at sign-in. Launching the app while it is already running just brings the window back.
 
@@ -59,7 +61,7 @@ They run even when the app is closed. Turn them off any time from Settings; unin
 
 - Your password is encrypted with Windows Data Protection (DPAPI) for your user account and stored in `%LOCALAPPDATA%\Assignment Monitor\settings.env`. It is only ever sent to `cms.bahria.edu.pk` when signing in.
 - Assignments, attendance, the exam plan, announcements, logs and the browser profile stay in that same local folder. There is no server, no account, no telemetry.
-- The app only reads your own pages (LMS assignments and announcements, CMS attendance and exam seating); it never submits or changes anything on the portal. Each of these can be switched off in Settings.
+- The app only reads your own pages (LMS assignments, announcements and lecture notes, CMS attendance and exam seating); it never submits or changes anything on the portal. Each of these can be switched off in Settings. Lecture files are downloaded only when you click Download, to a folder you choose.
 
 Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md) · [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
 

@@ -7,8 +7,8 @@ from config import APP_NAME, DB_PATH, has_credentials, load_env
 from deadlines import classify, is_open_pending, sort_key
 from lms_scraper import LoginError, run_sync
 from notifier import (alert_assignments, alert_announcements, alert_attendance, alert_exam_today,
-                      alert_exams_scheduled, alert_exams_soon, send_toast, speak_voice)
-from tracker import (compare_announcements, compare_assignments, compare_attendance, exams_within,
+                      alert_exams_scheduled, alert_exams_soon, alert_lectures, send_toast, speak_voice)
+from tracker import (compare_announcements, compare_assignments, compare_attendance, compare_lectures, exams_within,
                      load_attendance, load_stored_assignments, mark_reminder, reminder_sent, save_exams)
 
 log = logging.getLogger("bahria.jobs")
@@ -22,6 +22,8 @@ def collectors_for(env: dict) -> tuple:
         out.append("exams")
     if env.get("TRACK_ANNOUNCEMENTS", True):
         out.append("announcements")
+    if env.get("TRACK_LECTURES", True):
+        out.append("lectures")
     return tuple(out)
 
 
@@ -73,6 +75,14 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
             log.info("  announce %-30s %s", a["course"][:30], a["text"][:80])
         if notify:
             alert_announcements(new_ann)
+    if "lectures" in result:
+        new_lec = compare_lectures(result["lectures"])
+        summary["lectures"] = len(result["lectures"])
+        summary["new_lectures"] = len(new_lec)
+        for x in new_lec:
+            log.info("  lecture  %-30s week %s: %s", x["course"][:30], x["week"], x["title"][:60])
+        if notify:
+            alert_lectures(new_lec)
     for key, err in (result.get("errors") or {}).items():
         log.warning("  %s could not be read this time: %s", key, err)
     return summary

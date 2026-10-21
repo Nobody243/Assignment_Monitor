@@ -17,7 +17,7 @@ import re
 import sys
 import threading
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timedelta
 
 if sys.stdout is None or sys.stderr is None:          # windowed exe: no console attached
     sys.stdout = sys.stdout or open(os.devnull, "w")
@@ -27,7 +27,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
-from config import (APP_ID, APP_NAME, APP_VERSION, TAGLINE, ASSETS_DIR, BASE_DIR, DATA_DIR, DOCS_DIR, LOG_PATH,
+from config import (APP_ID, APP_NAME, APP_VERSION, TAGLINE, ASSETS_DIR, BASE_DIR, DATA_DIR, DOCS_DIR, LOG_PATH, lectures_dir,
                     FROZEN, RELEASES_URL, REPO_URL, CAMPUS_NAMES, CAMPUS_ID_BY_NAME, campus_name,
                     load_env, save_env, has_credentials, load_meta, setup_logging)
 
@@ -61,7 +61,8 @@ def main():
     parser.add_argument("--enable-automation", action="store_true", help="register the background tasks, then exit")
     parser.add_argument("--disable-automation", action="store_true", help="remove the background tasks, then exit")
     parser.add_argument("--view", default="dashboard",
-                        choices=["dashboard", "assignments", "attendance", "exams", "announcements", "settings", "activity"])
+                        choices=["dashboard", "assignments", "attendance", "exams", "announcements", "lectures", "settings",
+                                 "activity"])
     args = parser.parse_args()
     setup_logging(to_console=not FROZEN)
 
@@ -150,14 +151,14 @@ def _signal_event(name: str) -> bool:
 # ============================================================================ GUI
 import customtkinter as ctk                      # noqa: E402  (imported after the CLI fast path)
 import tkinter.font as tkfont                    # noqa: E402
-from tkinter import messagebox                   # noqa: E402
+from tkinter import filedialog, messagebox       # noqa: E402
 
 import automation                                                                           # noqa: E402
 import updater                                                                              # noqa: E402
 from tray import TrayIcon                                                                   # noqa: E402
 from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
-                     load_exams, load_announcements)
-from lms_scraper import run_sync, LoginError, _release_lock                                 # noqa: E402
+                     load_exams, load_announcements, load_lectures)
+from lms_scraper import run_sync, download_lectures, LoginError, _release_lock              # noqa: E402
 from notifier import send_toast, speak_voice, list_voices                                   # noqa: E402
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
 from campus import upcoming_exams, seat_text, session_date                                 # noqa: E402
@@ -1162,6 +1163,240 @@ class AnnouncementsView(ctk.CTkFrame):
                          wraplength=820).pack(anchor="w", pady=(3, 0))
 
 
+# ---------------------------------------------------------------------------- lectures
+class LecturesView(ctk.CTkFrame):
+    """Every course's lecture notes in one list with a checkbox per file; the selection downloads into
+    <folder>/<course>/<Week NN - title>/ through the app's own signed-in session."""
+
+    def __init__(self, master, app):
+        super().__init__(master, fg_color="transparent")
+        self.app = app
+        self.course = "All courses"
+        self.selected = set()          # (lecture id, file index)
+        self.busy = False
+        self.stop_flag = False
+
+        bar = ctk.CTkFrame(self, fg_color="transparent")
+        bar.pack(fill="x", pady=(2, 8))
+        self.summary = ctk.CTkLabel(bar, text="", font=F(SM), text_color=C["muted"], anchor="w")
+        self.summary.pack(side="left")
+        self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=250, font=F(SM),
+                                             fg_color=C["surface"], text_color=C["ink"], button_color=C["surface2"],
+                                             button_hover_color=C["line2"], dropdown_font=F(SM), command=self._set_course)
+        self.course_menu.pack(side="right")
+
+        act = ctk.CTkFrame(self, fg_color="transparent")
+        act.pack(fill="x", pady=(0, 8))
+        self.dl_btn = primary_button(act, "Download selected", self._download, height=34, width=190)
+        self.dl_btn.pack(side="left")
+        soft_button(act, "Select all", lambda: self._select(True), width=90).pack(side="left", padx=(8, 0))
+        soft_button(act, "Clear", lambda: self._select(False), width=70).pack(side="left", padx=(8, 0))
+        self.stop_btn = soft_button(act, "Stop", self._stop, width=70)
+        soft_button(act, "Open folder", self._open_folder, width=100).pack(side="right")
+        soft_button(act, "Change folder", self._change_folder, width=110).pack(side="right", padx=(0, 8))
+        self.folder_lbl = ctk.CTkLabel(act, text="", font=F(XS), text_color=C["dim"], anchor="e")
+        self.folder_lbl.pack(side="right", padx=(0, 12))
+
+        self.progress = ctk.CTkProgressBar(self, height=3, corner_radius=0, progress_color=C["accent"], fg_color=C["bg"])
+        self.progress.set(0)
+        self.progress.pack(fill="x", pady=(0, 6))
+        self.progress.pack_forget()
+        self.list = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.list.pack(fill="both", expand=True)
+
+    # -- state helpers
+    def _set_course(self, v):
+        self.course = v
+        self.refresh()
+
+    def _visible(self):
+        return [x for x in self.app.lectures if self.course == "All courses" or x.get("course") == self.course]
+
+    def _select(self, on):
+        keys = {(x["id"], i) for x in self._visible() for i in range(len(x.get("files", [])))}
+        self.selected = (self.selected | keys) if on else (self.selected - keys)
+        self.refresh()
+
+    def _toggle(self, key, var):
+        if var.get():
+            self.selected.add(key)
+        else:
+            self.selected.discard(key)
+        self._update_button()
+
+    def _update_button(self):
+        n = len(self.selected)
+        self.dl_btn.configure(text=f"Download selected ({n})" if n else "Download selected",
+                              state="normal" if n and not self.busy else "disabled")
+
+    def _folder(self):
+        return lectures_dir(self.app.env)
+
+    def _open_folder(self):
+        d = self._folder()
+        d.mkdir(parents=True, exist_ok=True)
+        os.startfile(d)
+
+    def _change_folder(self):
+        chosen = filedialog.askdirectory(title="Save lecture files in…", initialdir=str(self._folder()))
+        if not chosen:
+            return
+        env = dict(self.app.env)
+        env["LECTURES_DIR"] = chosen
+        save_env(env)
+        self.app.env = load_env()
+        self.refresh()
+
+    # -- rendering
+    def refresh(self):
+        env = self.app.env
+        items = self.app.lectures
+        courses = ["All courses"] + sorted({x.get("course", "") for x in items if x.get("course")})
+        self.course_menu.configure(values=courses)
+        if self.course not in courses:
+            self.course = "All courses"
+            self.course_menu.set(self.course)
+        self.folder_lbl.configure(text=str(self._folder()))
+        for w in self.list.winfo_children():
+            w.destroy()
+        if not env.get("TRACK_LECTURES", True):
+            self.summary.configure(text="Lecture notes are not being read (Settings → Campus tracking).")
+            self._update_button()
+            return
+        rows = self._visible()
+        files = sum(len(x.get("files", [])) for x in rows)
+        self.summary.configure(text=f"{len(rows)} week{'s' if len(rows) != 1 else ''}  ·  {files} file{'s' if files != 1 else ''}"
+                                    + ("" if self.course != "All courses" else f"  ·  {len(courses) - 1} courses"))
+        self._update_button()
+        if not rows:
+            ctk.CTkLabel(self.list, text="No lecture notes yet. They are read from every course page with each sync.",
+                         font=F(LG), text_color=C["dim"]).pack(pady=50)
+            return
+        cutoff = datetime.now() - timedelta(days=3)
+        by_course = {}
+        for x in rows:
+            by_course.setdefault(x["course"], []).append(x)
+        for course, lecs in by_course.items():
+            box = surface(self.list)
+            box.pack(fill="x", pady=(0, 10))
+            head = ctk.CTkFrame(box, fg_color="transparent")
+            head.pack(fill="x", padx=20, pady=(16, 6))
+            ctk.CTkLabel(head, text=course, font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(side="left")
+            nfiles = sum(len(x.get("files", [])) for x in lecs)
+            ctk.CTkLabel(head, text=f"{len(lecs)} weeks  ·  {nfiles} files", font=F(SM), text_color=C["muted"]).pack(side="right")
+            for i, x in enumerate(lecs):
+                if i:
+                    hairline(box)
+                self._week(box, x, cutoff)
+            ctk.CTkLabel(box, text="", height=6).pack()
+
+    def _week(self, parent, x, cutoff):
+        r = ctk.CTkFrame(parent, fg_color="transparent")
+        r.pack(fill="x", padx=20, pady=8)
+        left = ctk.CTkFrame(r, fg_color="transparent")
+        left.pack(side="left", fill="x", expand=True)
+        is_new = False
+        try:
+            is_new = datetime.fromisoformat(x.get("first_seen", "")) >= cutoff
+        except ValueError:
+            pass
+        title = ctk.CTkFrame(left, fg_color="transparent")
+        title.pack(anchor="w")
+        ctk.CTkLabel(title, text=f"Week {x.get('week', '')}   ·   {x.get('title', '')}", font=F(MD, "semibold"), text_color=C["ink"],
+                     anchor="w").pack(side="left")
+        if is_new:
+            pill(title, "New", "week").pack(side="left", padx=(10, 0))
+        files = x.get("files", [])
+        for i, f in enumerate(files):
+            key = (x["id"], i)
+            var = ctk.BooleanVar(value=key in self.selected)
+            label = f.get("filename") or f.get("label") or f"File {i + 1}"
+            cb = ctk.CTkCheckBox(left, text=label, variable=var, font=F(SM), text_color=C["muted"], checkbox_width=18,
+                                 checkbox_height=18, corner_radius=4, border_width=1, fg_color=C["accent"],
+                                 hover_color=C["accent_h"], border_color=C["line2"],
+                                 command=lambda k=key, v=var: self._toggle(k, v))
+            cb.pack(anchor="w", pady=(4, 0))
+        if x.get("remarks"):
+            ctk.CTkLabel(left, text=x["remarks"], font=F(XS), text_color=C["dim"], anchor="w", justify="left",
+                         wraplength=700).pack(anchor="w", pady=(3, 0))
+        if x.get("videos"):
+            vids = ctk.CTkFrame(r, fg_color="transparent")
+            vids.pack(side="right", padx=(10, 0))
+            for j, url in enumerate(x["videos"][:3]):
+                soft_button(vids, "Video" if len(x["videos"]) == 1 else f"Video {j + 1}", lambda u=url: webbrowser.open(u),
+                            width=70).pack(side="left", padx=(6, 0))
+
+    # -- downloading
+    def _download(self):
+        if self.busy or not self.selected:
+            return
+        chosen = []
+        for x in self.app.lectures:
+            picked = [f for i, f in enumerate(x.get("files", [])) if (x["id"], i) in self.selected]
+            if picked:
+                y = dict(x)
+                y["files"] = picked
+                chosen.append(y)
+        total = sum(len(y["files"]) for y in chosen)
+        dest = self._folder()
+        self.busy = True
+        self.stop_flag = False
+        self._update_button()
+        self.stop_btn.pack(side="left", padx=(8, 0))
+        self.progress.set(0)
+        self.progress.pack(fill="x", pady=(0, 6), before=self.list)
+        self.app.set_status(f"Downloading {total} file{'s' if total != 1 else ''} to {dest}…")
+
+        def prog(msg, done, tot):
+            try:
+                self.after(0, lambda: (self.progress.set(done / max(1, tot)), self.app.set_status(f"{done}/{tot}  ·  {msg}")))
+            except RuntimeError:
+                pass
+
+        def work():
+            try:
+                res = download_lectures(chosen, dest, progress=prog, should_stop=lambda: self.stop_flag)
+            except LoginError as e:
+                res = {"saved": [], "skipped": 0, "failed": [("sign-in", str(e))]}
+            except Exception as e:
+                log.error("Lecture download failed: %s", e)
+                res = {"saved": [], "skipped": 0, "failed": [("download", str(e)[:200])]}
+            try:
+                self.after(0, self._done, res, dest)
+            except RuntimeError:
+                pass
+        threading.Thread(target=work, daemon=True).start()
+
+    def _stop(self):
+        self.stop_flag = True
+        self.app.set_status("Stopping after the current file…")
+
+    def _done(self, res, dest):
+        self.busy = False
+        self.stop_btn.pack_forget()
+        self.progress.pack_forget()
+        saved, skipped, failed = len(res["saved"]), res["skipped"], res["failed"]
+        bits = [f"{saved} file{'s' if saved != 1 else ''} saved"]
+        if skipped:
+            bits.append(f"{skipped} already there")
+        if failed:
+            bits.append(f"{len(failed)} failed")
+        self.app.set_status("Lecture download: " + ", ".join(bits) + f"  ·  {dest}")
+        if saved and not failed:
+            self.selected = set()
+        elif failed:
+            keep = {k for k in self.selected}
+            self.selected = keep
+            messagebox.showwarning(APP_NAME, "Some files could not be downloaded:\n\n" +
+                                   "\n".join(f"- {n}: {why}" for n, why in failed[:8]))
+        self.refresh()
+        if saved and not failed:
+            try:
+                os.startfile(dest)
+            except OSError:
+                pass
+
+
 # ---------------------------------------------------------------------------- settings
 class SettingsView(ctk.CTkScrollableFrame):
     EXAM_LEAD = {"the day before": 1, "2 days before": 2, "3 days before": 3, "a week before": 7}
@@ -1258,6 +1493,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.track_exams = self._switch(camp, "Exam seating plan, with a reminder before each paper and on the morning of it",
                                         env.get("TRACK_EXAMS", True))
         self.track_ann = self._switch(camp, "Course announcements, with an alert for each new one", env.get("TRACK_ANNOUNCEMENTS", True))
+        self.track_lec = self._switch(camp, "Lecture notes from every course, with an alert when new ones are uploaded "
+                                            "(downloads happen only when you ask, from the Lectures page)", env.get("TRACK_LECTURES", True))
         min_row = ctk.CTkFrame(camp, fg_color="transparent")
         min_row.pack(fill="x", padx=20, pady=(8, 4))
         ctk.CTkLabel(min_row, text="Minimum attendance", font=F(MD), text_color=C["ink"]).pack(side="left")
@@ -1348,6 +1585,7 @@ class SettingsView(ctk.CTkScrollableFrame):
             env["TRACK_ANNOUNCEMENTS"] = bool(self.track_ann.get())
             env["ATTENDANCE_MIN"] = int(self.att_min.get())
             env["EXAM_REMIND_DAYS"] = self.EXAM_LEAD.get(self.exam_days.get(), 1)
+            env["TRACK_LECTURES"] = bool(self.track_lec.get())
         if hasattr(self, "rate"):
             env["VOICE_NAME"], env["VOICE_VOLUME"], env["VOICE_RATE"] = self._voice_prefs()
         save_env(env)
@@ -1439,7 +1677,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         threading.Thread(target=work, daemon=True).start()
 
     def _clear_data(self):
-        if messagebox.askyesno(APP_NAME, "Delete the locally saved assignments, attendance, exam plan and announcements? "
+        if messagebox.askyesno(APP_NAME, "Delete the locally saved assignments, attendance, exam plan, announcements and lecture list? "
                                           "The next sync will rebuild them."):
             clear_stored_assignments()
             self.app.reload_data()
@@ -1486,7 +1724,7 @@ class ActivityView(ctk.CTkFrame):
 # ---------------------------------------------------------------------------- main window
 class App(ctk.CTk):
     NAV = [("dashboard", "Dashboard"), ("assignments", "Assignments"), ("attendance", "Attendance"), ("exams", "Exams"),
-           ("announcements", "Announcements"), ("settings", "Settings"), ("activity", "Activity")]
+           ("announcements", "Announcements"), ("lectures", "Lectures"), ("settings", "Settings"), ("activity", "Activity")]
     CONTENT_MAX = 1120
 
     def __init__(self, start_view="dashboard", force_setup=False, start_hidden=False):
@@ -1511,6 +1749,7 @@ class App(ctk.CTk):
         self.attendance = {}
         self.exams = []
         self.announcements = []
+        self.lectures = []
         self.syncing = False
         self.views = {}
         self.current = None
@@ -1742,7 +1981,7 @@ class App(ctk.CTk):
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
         self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")
         self.status_lbl.pack(side="left", padx=32, pady=4)
-        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–7 pages  ·  v{APP_VERSION}", font=F(XS),
+        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–8 pages  ·  v{APP_VERSION}", font=F(XS),
                      text_color=C["dim"]).pack(side="right", padx=32)
 
         self.views = {
@@ -1751,6 +1990,7 @@ class App(ctk.CTk):
             "attendance": AttendanceView(self.body, self),
             "exams": ExamsView(self.body, self),
             "announcements": AnnouncementsView(self.body, self),
+            "lectures": LecturesView(self.body, self),
             "settings": SettingsView(self.body, self),
             "activity": ActivityView(self.body, self),
         }
@@ -1785,6 +2025,7 @@ class App(ctk.CTk):
         self.attendance = load_attendance()
         self.exams = load_exams()
         self.announcements = load_announcements()
+        self.lectures = load_lectures()
         self.meta = load_meta()
         if "last_sync_lbl" in self.__dict__:
             ls = self.meta.get("last_sync")
@@ -1834,6 +2075,8 @@ class App(ctk.CTk):
                 bits.append(f"{s['below']} course{'s' if s['below'] != 1 else ''} under {int(env.get('ATTENDANCE_MIN', 75))}% attendance")
             if s.get("new_announcements"):
                 bits.append(f"{s['new_announcements']} new announcement{'s' if s['new_announcements'] != 1 else ''}")
+            if s.get("new_lectures"):
+                bits.append(f"{s['new_lectures']} new lecture week{'s' if s['new_lectures'] != 1 else ''}")
             if data.get("errors"):
                 bits.append("some pages could not be read (see Activity)")
             result = (True, " · ".join(bits))

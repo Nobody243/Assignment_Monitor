@@ -1,7 +1,9 @@
 """Parsers and small calculations for the CMS/LMS pages beyond assignments: attendance, exam seating and
 announcements. Pure functions over HTML strings, so they are easy to test without a browser."""
+import base64
 import hashlib
 import re
+from urllib.parse import unquote
 from datetime import datetime
 from typing import List, Optional
 
@@ -210,3 +212,59 @@ def _posted_iso(text: str) -> str:
         except ValueError:
             continue
     return ""
+
+
+# ---------------------------------------------------------------------------- lecture notes
+_SAFE = re.compile(r"[^A-Za-z0-9 ._()&+-]+")
+
+
+def safe_name(text: str, limit: int = 80) -> str:
+    """A file-system-safe version of a course or lecture title."""
+    t = _SAFE.sub(" ", text or "").strip(" .")
+    t = _WS.sub(" ", t)
+    return (t[:limit].rstrip(" .") or "untitled")
+
+
+def filename_from_link(href: str) -> str:
+    """The LMS download links carry the original file name inside their base64 'k' parameter
+    (…,Lec-1-Intro-28092026-012454pm.pptx,…). Returns '' when it cannot be read."""
+    m = re.search(r"[?&]k=([^&]+)", href or "")
+    if not m:
+        return ""
+    raw = unquote(m.group(1))
+    try:
+        padded = raw + "=" * (-len(raw) % 4)
+        decoded = base64.b64decode(padded).decode("utf-8", "replace")
+    except Exception:
+        return ""
+    for part in decoded.split(","):
+        part = part.strip()
+        if re.search(r"\.[A-Za-z0-9]{2,5}$", part) and "/" not in part:
+            return safe_name(part, 120)
+    return ""
+
+
+def parse_lectures(page_html: str, course: str) -> List[dict]:
+    """The LMS 'Lecture Notes' table for one course: one row per week with its files and video links."""
+    tree = html.fromstring(page_html)
+    out = []
+    for row in tree.xpath("//table//tr"):
+        tds = row.xpath("./td")
+        cells = [_clean(c.text_content()) for c in tds]
+        if len(cells) < 6 or not cells[1]:
+            continue
+        week, title = cells[0], cells[1]
+        files = []
+        for i, a in enumerate(tds[2].xpath(".//a[@href]"), start=1):
+            href = a.get("href") or ""
+            if not href or href.startswith("#"):
+                continue
+            label = _clean(a.text_content()) or f"File {i}"
+            files.append({"label": label, "href": href, "filename": filename_from_link(href) or f"{safe_name(title)} ({i})"})
+        videos = [a.get("href") for td in tds[3:5] for a in td.xpath(".//a[@href]") if a.get("href")]
+        if not files and not videos:
+            continue
+        key = hashlib.sha1(f"{course}|{week}|{title}|{len(files)}".encode("utf-8")).hexdigest()[:12]
+        out.append({"id": key, "course": course, "week": week, "title": title, "files": files, "videos": videos,
+                    "remarks": cells[5] if len(cells) > 5 else ""})
+    return out

@@ -10,16 +10,17 @@ from urllib.parse import urljoin
 from lxml import html
 from playwright.sync_api import sync_playwright
 
-from campus import parse_announcements, parse_attendance, parse_attendance_detail, parse_exam_seats
+from campus import (parse_announcements, parse_attendance, parse_attendance_detail, parse_exam_seats, parse_lectures,
+                    safe_name)
 from config import (PROFILE_DIR, DATA_DIR, BROWSERS_DIR, LOGIN_URL, SSO_URL, ASSIGNMENTS_URL, ATTENDANCE_URL,
-                    EXAMS_URL, ANNOUNCEMENTS_URL, load_env, save_meta, campus_name)
+                    EXAMS_URL, ANNOUNCEMENTS_URL, LECTURES_URL, LMS_BASE_URL, load_env, save_meta, campus_name)
 from deadlines import parse_deadline
 
 log = logging.getLogger("bahria.scraper")
 
 LOCK_PATH = DATA_DIR / "sync.lock"
 LOCK_STALE_SECONDS = 15 * 60
-ALL_COLLECTORS = ("assignments", "attendance", "exams", "announcements")
+ALL_COLLECTORS = ("assignments", "attendance", "exams", "announcements", "lectures")
 
 
 class LoginError(RuntimeError):
@@ -270,6 +271,16 @@ def _collect_exams(s: PortalSession) -> List[dict]:
     return out
 
 
+def _collect_lectures(s: PortalSession) -> List[dict]:
+    page = s.lms(LECTURES_URL)
+    out: List[dict] = []
+    for course_val, course_name in s.lms_courses():
+        s.select_course(course_val)
+        out.extend(parse_lectures(page.content(), course_name))
+    log.info("Lecture notes: %d weeks across all courses.", len(out))
+    return out
+
+
 def _collect_announcements(s: PortalSession) -> List[dict]:
     page = s.lms(ANNOUNCEMENTS_URL)
     out: List[dict] = []
@@ -321,6 +332,7 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     ("attendance", "Reading attendance", lambda: _collect_attendance(session, previous_attendance)),
                     ("exams", "Reading the exam schedule", lambda: _collect_exams(session)),
                     ("announcements", "Reading announcements", lambda: _collect_announcements(session)),
+                    ("lectures", "Reading lecture notes", lambda: _collect_lectures(session)),
                 ]
                 for key, label, fn in steps:
                     if key not in collect:
@@ -345,6 +357,8 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     summary.append(f"{sum(1 for e in result['exams'] if e['scheduled'])} scheduled exams")
                 if "announcements" in result:
                     summary.append(f"{len(result['announcements'])} announcements")
+                if "lectures" in result:
+                    summary.append(f"{len(result['lectures'])} lecture weeks")
                 meta["last_sync"] = datetime.now().isoformat(timespec="seconds")
                 meta["last_result"] = ", ".join(summary)
                 save_meta(meta)
@@ -353,6 +367,94 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                 context.close()
     finally:
         _release_lock()
+
+
+def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callable[[str, int, int], None]] = None,
+                      should_stop: Optional[Callable[[], bool]] = None) -> dict:
+    """
+    Downloads lecture files into dest_dir/<course>/<Week NN - title>/<file>. `selection` is a list of lecture
+    records (as stored) whose files should be fetched; already-present files are skipped. The download links on
+    the LMS expire daily, so the course page is re-read in a fresh signed-in session and files are matched by
+    week + title + label. Returns {"saved": [paths], "skipped": n, "failed": [(name, reason)]}.
+    """
+    from pathlib import Path
+    env = load_env()
+    enrollment, password = env.get("ENROLLMENT", "").strip(), env.get("PASSWORD", "").strip()
+    institute_id = str(env.get("INSTITUTE_ID", "1")).strip()
+    if not enrollment or not password:
+        raise LoginError("Enrollment number and password are not configured yet.")
+    say = progress or (lambda msg, done, total: None)
+    stop = should_stop or (lambda: False)
+    dest = Path(dest_dir)
+    wanted = {}
+    for lec in selection:
+        for f in lec.get("files", []):
+            wanted.setdefault(lec["course"], []).append((lec, f))
+    total = sum(len(v) for v in wanted.values())
+    result = {"saved": [], "skipped": 0, "failed": []}
+    if not total:
+        return result
+    _acquire_lock()
+    try:
+        with sync_playwright() as p:
+            context = _launch_browser(p, True)
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                page.set_default_timeout(45000)
+                session = PortalSession(page, enrollment, password, institute_id)
+                session.sign_in()
+                session.lms(LECTURES_URL)
+                courses = dict((name, val) for val, name in session.lms_courses())
+                done = 0
+                for course, items in wanted.items():
+                    if stop():
+                        break
+                    val = courses.get(course)
+                    if not val:
+                        for _lec, f in items:
+                            result["failed"].append((f["filename"], "course is no longer on the LMS"))
+                        done += len(items)
+                        continue
+                    session.select_course(val)
+                    fresh = {}
+                    for lec in parse_lectures(page.content(), course):
+                        for f in lec["files"]:
+                            fresh[(lec["week"], lec["title"], f["label"])] = f
+                    for lec, f in items:
+                        if stop():
+                            break
+                        done += 1
+                        name = f.get("filename") or safe_name(lec["title"])
+                        folder = dest / safe_name(course) / f"Week {str(lec['week']).zfill(2)} - {safe_name(lec['title'], 60)}"
+                        target = folder / name
+                        say(f"{course[:30]} · week {lec['week']} · {name[:40]}", done, total)
+                        if target.exists() and target.stat().st_size > 0:
+                            result["skipped"] += 1
+                            continue
+                        live = fresh.get((lec["week"], lec["title"], f["label"])) or f
+                        url = urljoin(LMS_BASE_URL + "/Student/", live["href"])
+                        try:
+                            resp = page.request.get(url, timeout=120000)
+                            ctype = (resp.headers.get("content-type") or "").lower()
+                            body = resp.body()
+                            if not resp.ok or ("text/html" in ctype and len(body) < 200000):
+                                raise RuntimeError(f"portal answered {resp.status} ({ctype.split(';')[0] or 'unknown type'})")
+                            cd = resp.headers.get("content-disposition") or ""
+                            m = re.search(r"filename\*?=(?:UTF-8\'\')?\"?([^\";]+)", cd, re.I)
+                            if m and "." in m.group(1):
+                                target = folder / safe_name(m.group(1).strip(), 120)
+                            folder.mkdir(parents=True, exist_ok=True)
+                            target.write_bytes(body)
+                            result["saved"].append(str(target))
+                            log.info("Downloaded %s (%d KB)", target.name, len(body) // 1024)
+                        except Exception as e:
+                            log.warning("Download failed for %s: %s", name, str(e)[:160])
+                            result["failed"].append((name, str(e)[:120]))
+            finally:
+                context.close()
+    finally:
+        _release_lock()
+    return result
 
 
 def run_lms_check(headless: bool = True, interactive: bool = False) -> List[dict]:

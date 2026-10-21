@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 - 2026-10-22
+
+- Lectures: every course's lecture notes in one list, by week, with a checkbox per file. Tick what you want and "Download selected" fetches the files through the app's own sign-in into a folder you choose (Documents / Assignment Monitor / Lectures by default), organised as course / week - title. Files already on disk are skipped; video links open in the browser.
+- A notification when new lecture notes are uploaded (switchable, like the other trackers).
+- Attendance, exam and announcement alerts are Windows notifications only; the voice is kept for assignment reminders.
+
 ## 1.2.0 - 2026-10-21
 
 - Attendance: every course's present, absent and total hours with the percentage, how many hours you can still miss (or need to attend) for the minimum you set, and the class-by-class record with topics. An alert when a new absence is recorded or a course drops under the minimum.

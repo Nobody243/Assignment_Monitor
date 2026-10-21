@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from campus import attendance_margin, upcoming_exams
-from config import (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH)
+from config import (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH)
 from deadlines import is_open_pending
 
 log = logging.getLogger("bahria.tracker")
@@ -43,7 +43,7 @@ def save_assignments(assignments: Dict[str, dict]) -> None:
 
 
 def clear_stored_assignments() -> None:
-    for path in (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH):
+    for path in (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH):
         try:
             path.unlink()
         except FileNotFoundError:
@@ -190,6 +190,38 @@ def compare_announcements(current: List[dict]) -> List[dict]:
         stored[a["id"]] = a
     if current or first_read:
         _save_json(ANNOUNCEMENTS_PATH, list(stored.values()))
+    return new
+
+
+# ---------------------------------------------------------------------------- lecture notes
+def load_lectures() -> List[dict]:
+    """Course order as on the LMS, then by week."""
+    items = _load_json(LECTURES_PATH, [])
+    return sorted(items, key=lambda x: (x.get("course", ""), _week_num(x.get("week"))))
+
+
+def _week_num(w) -> float:
+    try:
+        return float(str(w).strip())
+    except (TypeError, ValueError):
+        return 1e9
+
+
+def compare_lectures(current: List[dict]) -> List[dict]:
+    """Merges a fresh read and returns weeks not seen before (silent on the very first read)."""
+    stored = {x["id"]: x for x in _load_json(LECTURES_PATH, [])}
+    first_read = not LECTURES_PATH.exists()
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    new = []
+    merged = {}
+    for x in current:
+        old = stored.get(x["id"])
+        x["first_seen"] = old.get("first_seen", now_iso) if old else now_iso
+        if old is None and not first_read:
+            new.append(x)
+        merged[x["id"]] = x
+    if current or first_read:
+        _save_json(LECTURES_PATH, list(merged.values()))   # weeks removed from the LMS disappear here too
     return new
 
 

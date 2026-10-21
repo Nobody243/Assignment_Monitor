@@ -14,7 +14,7 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 
@@ -52,6 +52,7 @@ ATTENDANCE_PATH = DATA_DIR / "attendance.json"
 EXAMS_PATH = DATA_DIR / "exams.json"
 ANNOUNCEMENTS_PATH = DATA_DIR / "announcements.json"
 REMINDERS_PATH = DATA_DIR / "reminders.json"
+LECTURES_PATH = DATA_DIR / "lectures.json"
 LOG_PATH = DATA_DIR / "app.log"
 
 for _d in (DATA_DIR, PROFILE_DIR):
@@ -66,6 +67,7 @@ LMS_BASE_URL = "https://lms.bahria.edu.pk"
 SSO_URL = f"{CMS_BASE_URL}/Sys/Common/GoToLMS.aspx"
 ASSIGNMENTS_URL = f"{LMS_BASE_URL}/Student/Assignments.php"
 ANNOUNCEMENTS_URL = f"{LMS_BASE_URL}/Student/Announcements.php"
+LECTURES_URL = f"{LMS_BASE_URL}/Student/LectureNotes.php"
 ATTENDANCE_URL = f"{CMS_BASE_URL}/Sys/Student/ClassAttendance/StudentWiseAttendance.aspx"
 EXAMS_URL = f"{CMS_BASE_URL}/Sys/Student/ExamSeatingPlan/ExamSeats"
 
@@ -111,9 +113,11 @@ DEFAULTS = {
     "TRACK_ANNOUNCEMENTS": True,
     "ATTENDANCE_MIN": 75,
     "EXAM_REMIND_DAYS": 1,
+    "TRACK_LECTURES": True,
+    "LECTURES_DIR": "",
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
-              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS")
+              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES")
 _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE": (-5, 5),
              "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14)}
 
@@ -206,6 +210,8 @@ def save_env(config: dict) -> None:
     lines.append(f"VOICE_RATE={int(merged['VOICE_RATE'])}")
     lines.append(f"ATTENDANCE_MIN={int(merged['ATTENDANCE_MIN'])}")
     lines.append(f"EXAM_REMIND_DAYS={int(merged['EXAM_REMIND_DAYS'])}")
+    if merged.get("LECTURES_DIR"):
+        lines.append(f"LECTURES_DIR={merged['LECTURES_DIR']}")
     if merged.get("WINDOW_GEOMETRY"):
         lines.append(f"WINDOW_GEOMETRY={merged['WINDOW_GEOMETRY']}")
     for key in _BOOL_KEYS:
@@ -213,6 +219,16 @@ def save_env(config: dict) -> None:
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(ENV_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
+
+
+def lectures_dir(config: dict = None) -> Path:
+    """Where downloaded lecture files go: the user's choice, else Documents / Assignment Monitor / Lectures."""
+    config = config or load_env()
+    custom = (config.get("LECTURES_DIR") or "").strip()
+    if custom:
+        return Path(custom)
+    docs = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents"
+    return docs / APP_NAME / "Lectures"
 
 
 def has_credentials(config: dict = None) -> bool:

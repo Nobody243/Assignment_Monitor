@@ -162,3 +162,17 @@ def alert_exams_scheduled(exams: list) -> None:
     body = "\n".join(f"- {e['title'][:34]}: {e['date']} {e['start_time']}" + (f" · {seat_text(e)}" if seat_text(e) else "")
                      for e in ups[:4])
     _notify(title, body)
+
+
+def alert_lectures(new_items: list) -> None:
+    """New lecture notes (notification only)."""
+    if not new_items:
+        return
+    by_course = {}
+    for x in new_items:
+        by_course.setdefault(x["course"], []).append(x)
+    lines = []
+    for c, xs in list(by_course.items())[:3]:
+        more = f" +{len(xs) - 2}" if len(xs) > 2 else ""
+        lines.append(f"- {c[:28]}: " + ", ".join(f"week {x['week']} {x['title'][:24]}" for x in xs[:2]) + more)
+    _notify(f"New lecture notes in {_plural(len(by_course), 'course')}", "\n".join(lines))
