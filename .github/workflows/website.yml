@@ -1,0 +1,74 @@
+name: Website
+
+# The app workflow (build.yml) skips website-only commits on purpose: it builds a Windows installer.
+# This one covers the site: every push or pull request that touches website/ must install, build and pass a
+# smoke test of the built bundle (routes, download links, no missing assets) before Vercel's deploy is trusted.
+on:
+  push:
+    branches: ["main"]
+    paths: ["website/**", ".github/workflows/website.yml"]
+  pull_request:
+    paths: ["website/**", ".github/workflows/website.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Build
+        run: npm run build
+      - name: Smoke test the built site
+        run: |
+          set -e
+          test -f dist/index.html
+          test -f dist/draco/draco_decoder.wasm
+          test -f dist/assets/ascend/planet.glb
+          # every hashed bundle referenced by index.html must exist
+          for f in $(grep -o '/bundle/[^"]*' dist/index.html | sort -u); do test -f "dist$f" || { echo "missing $f"; exit 1; }; done
+          # the SPA fallback and security headers are configured
+          node -e "const v=require('./vercel.json'); if(!v.rewrites?.length) throw new Error('no SPA rewrite'); if(!JSON.stringify(v.headers).includes('Content-Security-Policy')) throw new Error('no CSP')"
+          echo "bundle sizes:"; du -h dist/bundle/* | sort -h
+      - name: Routes render (headless Chromium)
+        run: |
+          npx --yes playwright@1.48.2 install --with-deps chromium >/dev/null 2>&1
+          npm run preview -- --host 127.0.0.1 >/tmp/preview.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
+          cat > /tmp/smoke.mjs <<'EOF'
+          import { chromium } from "playwright";
+          const b = await chromium.launch(); const errors = [];
+          const pg = await b.newPage({ reducedMotion: "reduce" });
+          pg.on("pageerror", (e) => errors.push(String(e)));
+          pg.on("response", (r) => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+          for (const path of ["/", "/download", "/privacy", "/faq", "/nope"]) {
+            await pg.goto("http://127.0.0.1:4173" + path, { waitUntil: "load" });
+            await pg.waitForSelector("main h1", { timeout: 15000 });
+            const h1 = (await pg.textContent("main h1")).trim();
+            console.log(path, "->", h1.slice(0, 60));
+          }
+          await pg.goto("http://127.0.0.1:4173/download", { waitUntil: "load" });
+          const links = await pg.$$eval("a[data-download]", (as) => as.map((a) => a.href));
+          if (!links.some((l) => /AssignmentMonitor-Setup\.exe$/.test(l))) throw new Error("installer link missing: " + links.join(", "));
+          if (!links.some((l) => /AssignmentMonitor-portable\.zip$/.test(l))) throw new Error("zip link missing: " + links.join(", "));
+          await b.close();
+          if (errors.length) { console.error(errors.join("\n")); process.exit(1); }
+          console.log("routes ok, download links ok, no page errors");
+          EOF
+          node /tmp/smoke.mjs
