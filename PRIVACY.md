@@ -4,7 +4,7 @@
 
 ## What it does
 
-With your permission, the app signs in to the Bahria University CMS/LMS portal using the enrollment number and password you provide, and reads your own assignments page, the same way you would in a browser. It does this on your PC, on a schedule you control, and stores the results on your PC only.
+With your permission, the app signs in to the Bahria University CMS/LMS portal using the enrollment number and password you provide, and reads your own pages, the same way you would in a browser: the LMS assignments and announcements for each course, and the CMS attendance, attendance detail and exam seating plan. Each of these can be switched off in Settings. It does this on your PC, on a schedule you control, and stores the results on your PC only.
 
 ## What it does not do
 
@@ -22,7 +22,7 @@ With your permission, the app signs in to the Bahria University CMS/LMS portal u
 
 ## Deleting your data
 
-Uninstalling removes the app, the background tasks and the browser profile. To remove everything, also delete the folder `%LOCALAPPDATA%\Assignment Monitor`.
+Uninstalling closes the app, removes the background tasks and the program, and asks whether to delete your saved sign-in, settings and cached data (assignments, attendance, exam plan, announcements). Say yes and nothing remains; otherwise delete the folder `%LOCALAPPDATA%\Assignment Monitor` yourself.
 
 ## Warranty
 

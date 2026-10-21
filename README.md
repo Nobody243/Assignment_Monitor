@@ -2,12 +2,15 @@
 
 **for Bahria University LMS** · unofficial, open source, Windows · [website](https://assignment-monitor.vercel.app)
 
-A desktop app that keeps an eye on your LMS assignments so you don't have to. Install it, sign in once, and it quietly does the rest.
+A desktop app that keeps an eye on your LMS and CMS so you don't have to: assignments, attendance, exams and announcements. Install it, sign in once, and it quietly does the rest.
 
 - Dashboard: next deadline, what's pending, due today, due this week, extended, overdue, submitted
 - Catches **extended deadlines**, which the portal hides by merging the old and new dates into one string
 - **Checks automatically** every day at 7 PM and when you sign in to Windows
 - **Reminds you aloud every hour** on the day an unsubmitted assignment is due
+- **Attendance** per course with the margin to your minimum, class-by-class, and an alert when an absence is recorded
+- **Exam seating plan** with room and seat, a countdown, a reminder the day before and on the morning of each paper
+- **Announcements** from every course in one place, with an alert for each new one
 - Lives in the **system tray**, can start with Windows, light and dark themes, keyboard shortcuts
 
 ## Install
@@ -30,10 +33,13 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | --- | --- |
 | **Dashboard** | Next deadline, counters, needs-attention list sorted by deadline, per-course progress. Click a counter or course to filter. |
 | **Assignments** | Full list with filters, course picker and search. Shows extension history and marks. |
-| **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), automatic checks, data folder, privacy and licenses. |
+| **Attendance** | Every course's hours and percentage, how many hours you can still miss (or need to attend) for your minimum, and the class-by-class record with topics. |
+| **Exams** | The seating plan: date, session, time, room, row and seat for each paper, with a countdown; papers not yet scheduled are listed too. |
+| **Announcements** | Every course's LMS announcements, newest first, filterable by course. |
+| **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), campus tracking (attendance minimum, exam reminder lead, what to read), automatic checks, data folder, privacy and licenses. |
 | **Activity** | Log of every sync and reminder, including the scheduled background runs. |
 
-Shortcuts: **F5** sync · **Ctrl+1…4** switch pages · **Ctrl+F** search · **Esc** clear search.
+Shortcuts: **F5** sync · **Ctrl+1…7** switch pages · **Ctrl+F** search · **Esc** clear search.
 
 **Tray:** closing the window keeps the app in the system tray (switchable in Settings). Right-click the tray icon to open, sync now, or quit. "Start with Windows" opens it minimized to the tray at sign-in. Launching the app while it is already running just brings the window back.
 
@@ -41,9 +47,9 @@ Shortcuts: **F5** sync · **Ctrl+1…4** switch pages · **Ctrl+F** search · **
 
 | Task | When | What |
 | --- | --- | --- |
-| `AssignmentMonitor_DailyCheck` | Daily 19:00 | Sync + notifications |
+| `AssignmentMonitor_DailyCheck` | Daily 19:00 | Sync (assignments, attendance, exams, announcements) + notifications, including "exam tomorrow" |
 | `AssignmentMonitor_LogonCheck` | 2 min after sign-in | Catch-up sync if the PC was off at 19:00 |
-| `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today |
+| `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today, plus one reminder on the morning of an exam |
 
 They run even when the app is closed. Turn them off any time from Settings; uninstalling removes them too.
 
@@ -52,8 +58,8 @@ They run even when the app is closed. Turn them off any time from Settings; unin
 ## Privacy and security
 
 - Your password is encrypted with Windows Data Protection (DPAPI) for your user account and stored in `%LOCALAPPDATA%\Assignment Monitor\settings.env`. It is only ever sent to `cms.bahria.edu.pk` when signing in.
-- Assignment data, logs and the browser profile stay in that same local folder. There is no server, no account, no telemetry.
-- The app only reads your own assignments page; it never submits or changes anything on the portal.
+- Assignments, attendance, the exam plan, announcements, logs and the browser profile stay in that same local folder. There is no server, no account, no telemetry.
+- The app only reads your own pages (LMS assignments and announcements, CMS attendance and exam seating); it never submits or changes anything on the portal. Each of these can be switched off in Settings.
 
 Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md) · [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
 

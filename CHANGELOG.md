@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 - 2026-10-21
+
+- Attendance: every course's present, absent and total hours with the percentage, how many hours you can still miss (or need to attend) for the minimum you set, and the class-by-class record with topics. An alert when a new absence is recorded or a course drops under the minimum.
+- Exams: the seating plan with date, session, time, room, row and seat for every paper, a countdown on the dashboard, a reminder the day before (configurable) and once on the morning of the paper, and an alert when the plan is posted or a room changes.
+- Announcements: every course's LMS announcements in one place, newest first, with an alert for each new one.
+- Three new pages (Attendance, Exams, Announcements), dashboard cards for attendance and the next exam, and a Campus tracking section in Settings to switch each one on or off and set the attendance minimum.
+- One signed-in session now reads everything; a page that cannot be read is skipped and logged instead of failing the sync.
+- `--status` prints attendance and upcoming exams as well as assignments.
+
 ## Unreleased
 
 - Typography: the app now ships the Inter typeface (regular, medium, semibold and a display cut for headings) with Segoe UI as the fallback, on a golden-ratio type scale. Nothing is set in bold any more; headings are semibold.

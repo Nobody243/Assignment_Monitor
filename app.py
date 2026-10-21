@@ -60,7 +60,8 @@ def main():
     parser.add_argument("--quit", action="store_true", help="ask a running instance to quit, then exit")
     parser.add_argument("--enable-automation", action="store_true", help="register the background tasks, then exit")
     parser.add_argument("--disable-automation", action="store_true", help="remove the background tasks, then exit")
-    parser.add_argument("--view", default="dashboard", choices=["dashboard", "assignments", "settings", "activity"])
+    parser.add_argument("--view", default="dashboard",
+                        choices=["dashboard", "assignments", "attendance", "exams", "announcements", "settings", "activity"])
     args = parser.parse_args()
     setup_logging(to_console=not FROZEN)
 
@@ -154,10 +155,13 @@ from tkinter import messagebox                   # noqa: E402
 import automation                                                                           # noqa: E402
 import updater                                                                              # noqa: E402
 from tray import TrayIcon                                                                   # noqa: E402
-from tracker import load_stored_assignments, compare_assignments, clear_stored_assignments  # noqa: E402
-from lms_scraper import run_lms_check, LoginError, _release_lock                            # noqa: E402
-from notifier import alert_assignments, send_toast, speak_voice, list_voices               # noqa: E402
+from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
+                     load_exams, load_announcements)
+from lms_scraper import run_sync, LoginError, _release_lock                                 # noqa: E402
+from notifier import send_toast, speak_voice, list_voices                                   # noqa: E402
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
+from campus import upcoming_exams, seat_text, session_date                                 # noqa: E402
+from jobs import process_sync, collectors_for                                               # noqa: E402
 
 # ---------------------------------------------------------------------------- design tokens
 # Direction: calm and editorial. Warm neutral surfaces, one accent, three type weights (regular, medium, semibold;
@@ -294,6 +298,41 @@ def fmt_due(item):
     if not dt:
         return item.get("due_date", "No deadline")
     return dt.strftime("%a %d %b · %I:%M %p").replace(" 0", " ").replace("AM", "am").replace("PM", "pm")
+
+
+def rel_time(iso):
+    """'3 days ago' style label for an ISO timestamp (empty when unknown)."""
+    try:
+        dt = datetime.fromisoformat(iso)
+    except Exception:
+        return ""
+    d = datetime.now() - dt
+    secs = int(d.total_seconds())
+    if secs < 3600:
+        return "just now" if secs < 120 else f"{secs // 60} min ago"
+    if secs < 86400:
+        return f"{secs // 3600} h ago"
+    days = secs // 86400
+    if days == 1:
+        return "yesterday"
+    if days < 14:
+        return f"{days} days ago"
+    if days < 60:
+        return f"{days // 7} weeks ago"
+    return dt.strftime("%d %b %Y")
+
+
+def att_color(c):
+    """Colour key for an attendance record: red under the minimum, amber when one more absence would do it."""
+    if not c.get("ok", True):
+        return C["red"], C["red_t"], "Under minimum"
+    if c.get("total", 0) and c.get("can_miss", 0) < 3:
+        return C["amber"], C["amber_t"], "At risk"
+    return C["green"], C["green_t"], "On track"
+
+
+def countdown(days):
+    return "Today" if days == 0 else "Tomorrow" if days == 1 else f"{days} days"
 
 
 def open_doc(name, fallback_url=None):
@@ -465,8 +504,10 @@ class SetupView(ctk.CTkFrame):
 
     def _worker(self, enable_automation):
         try:
-            items = run_lms_check(headless=True)
-            pending, extended, _ = compare_assignments(items)
+            env = load_env()
+            data = run_sync(headless=True, collect=collectors_for(env), progress=lambda m: self.app.after(0, self.console_write, m))
+            s = process_sync(data, env, notify=False)
+            items, pending = data.get("assignments", []), range(s["pending"])
             note = ""
             if enable_automation:
                 ok, _ = automation.enable()
@@ -538,6 +579,7 @@ class DashboardView(ctk.CTkScrollableFrame):
 
         self._next_deadline(open_items[0] if open_items else None, infos)
         self._stats(counts)
+        self._campus_cards(now)
 
         box = surface(self)
         box.pack(fill="x", pady=(14, 0))
@@ -577,6 +619,94 @@ class DashboardView(ctk.CTkScrollableFrame):
             bar.set(ratio)
             bar.pack(fill="x", padx=16, pady=(10, 14))
             bind_click(cc, lambda n=name_: self.app.navigate("assignments", course=n))
+
+    def _campus_cards(self, now):
+        """Attendance (left) and next exam (right), then the latest announcements. Each card is skipped when
+        its tracking is off or nothing has been read yet."""
+        env = self.app.env
+        att = [c for c in self.app.attendance.values() if c.get("total")]
+        exams = self.app.exams if env.get("TRACK_EXAMS", True) else []
+        anns = self.app.announcements if env.get("TRACK_ANNOUNCEMENTS", True) else []
+        show_att = env.get("TRACK_ATTENDANCE", True) and att
+        if show_att or exams:
+            row = ctk.CTkFrame(self, fg_color="transparent")
+            row.pack(fill="x", pady=(10, 0))
+            row.grid_columnconfigure(0, weight=3, uniform="camp")
+            row.grid_columnconfigure(1, weight=2, uniform="camp")
+            col = 0
+            if show_att:
+                card = self._attendance_card(row, att, int(env.get("ATTENDANCE_MIN", 75)))
+                card.grid(row=0, column=0, sticky="nsew", padx=(0, 10 if exams else 0))
+                col = 1
+            if exams:
+                self._exam_card(row, exams, now).grid(row=0, column=col, sticky="nsew", columnspan=1 if show_att else 2)
+        if anns:
+            box = surface(self)
+            box.pack(fill="x", pady=(10, 0))
+            heading(box, "Latest announcements", "From your course pages on the LMS").pack(anchor="w", padx=20, pady=(18, 10))
+            for i, a in enumerate(anns[:3]):
+                if i:
+                    hairline(box)
+                r = ctk.CTkFrame(box, fg_color="transparent")
+                r.pack(fill="x", padx=20, pady=9)
+                ctk.CTkLabel(r, text=f"{a.get('course', '')}   ·   {rel_time(a.get('posted_at') or a.get('first_seen', ''))}",
+                             font=F(XS, "semibold"), text_color=C["accent"], anchor="w").pack(anchor="w")
+                ctk.CTkLabel(r, text=a.get("text", ""), font=F(MD), text_color=C["ink"], anchor="w", justify="left",
+                             wraplength=820).pack(anchor="w", pady=(2, 0))
+            ctk.CTkLabel(box, text="", height=6).pack()
+            bind_click(box, lambda: self.app.navigate("announcements"))
+
+    def _attendance_card(self, parent, att, minimum):
+        card = surface(parent)
+        below = [c for c in att if not c.get("ok", True)]
+        sub = (f"{len(below)} course{'s' if len(below) != 1 else ''} under {minimum}%" if below
+               else f"All courses at or above {minimum}%")
+        heading(card, "Attendance", sub).pack(anchor="w", padx=20, pady=(18, 8))
+        for c in sorted(att, key=lambda c: c.get("percent", 0))[:5]:
+            color, _, _ = att_color(c)
+            r = ctk.CTkFrame(card, fg_color="transparent")
+            r.pack(fill="x", padx=20, pady=(4, 0))
+            top = ctk.CTkFrame(r, fg_color="transparent")
+            top.pack(fill="x")
+            ctk.CTkLabel(top, text=f"{c.get('code', '')}  {c.get('title', '')}", font=F(SM, "medium"), text_color=C["ink"],
+                         anchor="w").pack(side="left")
+            ctk.CTkLabel(top, text=f"{c.get('percent', 0):.0f}%", font=F(SM, "semibold"), text_color=color).pack(side="right")
+            bar = ctk.CTkProgressBar(r, height=4, progress_color=color, fg_color=C["surface2"], corner_radius=2)
+            bar.set(min(1.0, c.get("percent", 0) / 100))
+            bar.pack(fill="x", pady=(4, 4))
+        ctk.CTkLabel(card, text="", height=8).pack()
+        bind_click(card, lambda: self.app.navigate("attendance"))
+        return card
+
+    def _exam_card(self, parent, exams, now):
+        up = upcoming_exams(exams, now)
+        if up:
+            e = up[0]
+            key = "today" if e["days"] == 0 else "soon" if e["days"] <= 3 else "week" if e["days"] <= 7 else "later"
+            card = surface(parent, fg_color=urgency_tint(key), border_color=urgency_tint(key))
+            color = urgency_color(key)
+            ctk.CTkLabel(card, text=f"NEXT EXAM  ·  {e.get('exam_type', '').upper()}", font=F(XS, "semibold"),
+                         text_color=color).pack(anchor="w", padx=20, pady=(18, 0))
+            ctk.CTkLabel(card, text=e["title"], font=F(H3, "semibold", display=True), text_color=C["ink"], wraplength=360,
+                         justify="left").pack(anchor="w", padx=20, pady=(2, 2))
+            when = e["when"].strftime("%a %d %b  ·  %I:%M %p").replace(" 0", " ")
+            ctk.CTkLabel(card, text=when, font=F(MD), text_color=C["muted"]).pack(anchor="w", padx=20)
+            if seat_text(e):
+                ctk.CTkLabel(card, text=seat_text(e), font=F(SM), text_color=C["muted"]).pack(anchor="w", padx=20, pady=(1, 0))
+            ctk.CTkLabel(card, text=countdown(e["days"]), font=F(D1, "semibold", display=True),
+                         text_color=color).pack(anchor="w", padx=20, pady=(6, 2))
+            more = len(up) - 1
+            ctk.CTkLabel(card, text=f"{more} more scheduled" if more else "Last one on the plan", font=F(SM),
+                         text_color=C["muted"]).pack(anchor="w", padx=20, pady=(0, 18))
+        else:
+            card = surface(parent)
+            heading(card, "Exams", "No exam is scheduled yet").pack(anchor="w", padx=20, pady=(18, 6))
+            pending = sum(1 for e in exams if not e.get("scheduled"))
+            ctk.CTkLabel(card, text=f"{pending} paper{'s' if pending != 1 else ''} waiting for a date on the seating plan."
+                         if pending else "The seating plan will appear here once the exams section posts it.",
+                         font=F(MD), text_color=C["muted"], wraplength=360, justify="left").pack(anchor="w", padx=20, pady=(0, 18))
+        bind_click(card, lambda: self.app.navigate("exams"))
+        return card
 
     def _next_deadline(self, item, infos):
         if item is None:
@@ -753,8 +883,289 @@ class AssignmentsView(ctk.CTkFrame):
         pill(row, info["label"], info["key"]).pack(side="right")
 
 
+# ---------------------------------------------------------------------------- attendance
+class AttendanceView(ctk.CTkScrollableFrame):
+    def __init__(self, master, app):
+        super().__init__(master, fg_color="transparent")
+        self.app = app
+        self.expanded = set()
+
+    def refresh(self):
+        for w in self.winfo_children():
+            w.destroy()
+        env = self.app.env
+        minimum = int(env.get("ATTENDANCE_MIN", 75))
+        att = sorted([c for c in self.app.attendance.values()], key=lambda c: (c.get("total", 0) == 0, c.get("percent", 0)))
+        if not env.get("TRACK_ATTENDANCE", True):
+            self._empty("Attendance tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
+            return
+        if not att:
+            self._empty("No attendance yet", "Press Sync now (or F5). Attendance is read from the CMS with every check.")
+            return
+        with_hours = [c for c in att if c.get("total")]
+        below = [c for c in with_hours if not c.get("ok", True)]
+        total_present = sum(c.get("present", 0) for c in with_hours)
+        total_hours = sum(c.get("total", 0) for c in with_hours)
+        overall = total_present / total_hours * 100 if total_hours else 0
+        strip = surface(self)
+        strip.pack(fill="x", pady=(2, 12))
+        cells = [(f"{overall:.0f}%", "Overall this semester"), (str(len(below)), f"Under {minimum}%"),
+                 (f"{sum(c.get('absent', 0) for c in with_hours):g} h", "Hours missed"),
+                 (f"{total_hours:g} h", "Hours held")]
+        for i, (val, lbl) in enumerate(cells):
+            strip.grid_columnconfigure(i, weight=1, uniform="att")
+            cell = ctk.CTkFrame(strip, fg_color="transparent")
+            cell.grid(row=0, column=i, sticky="nsew")
+            if i:
+                ctk.CTkFrame(cell, fg_color=C["line"], width=1, height=2, corner_radius=0).pack(side="left", fill="y", pady=16)
+            inner = ctk.CTkFrame(cell, fg_color="transparent")
+            inner.pack(side="left", fill="x", expand=True, padx=18, pady=14)
+            ctk.CTkLabel(inner, text=val, font=F(H1, "semibold", display=True),
+                         text_color=C["red"] if (i == 1 and below) else C["ink"]).pack(anchor="w")
+            ctk.CTkLabel(inner, text=lbl, font=F(SM), text_color=C["muted"]).pack(anchor="w")
+        ctk.CTkLabel(self, text=f"Minimum {minimum}% (change it in Settings). Margins assume the usual class length; "
+                                "the portal's own figures are authoritative.",
+                     font=F(SM), text_color=C["muted"], anchor="w").pack(fill="x", pady=(0, 8))
+        for c in att:
+            self._course(c, minimum)
+
+    def _empty(self, title, sub):
+        box = surface(self)
+        box.pack(fill="x")
+        ctk.CTkLabel(box, text=title, font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
+        ctk.CTkLabel(box, text=sub, font=F(MD), text_color=C["muted"]).pack(pady=(0, 28))
+
+    def _course(self, c, minimum):
+        color, tint, label = att_color(c)
+        code = c.get("code", "")
+        box = surface(self)
+        box.pack(fill="x", pady=(0, 10))
+        head = ctk.CTkFrame(box, fg_color="transparent")
+        head.pack(fill="x", padx=20, pady=(16, 0))
+        left = ctk.CTkFrame(head, fg_color="transparent")
+        left.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(left, text=f"{code}  ·  {c.get('title', '')}", font=F(LG, "semibold"), text_color=C["ink"],
+                     anchor="w").pack(anchor="w")
+        ch = str(c.get("credit_hours", "") or "")
+        credits = f"{ch} credit hour{'' if ch == '1' else 's'}" if ch else ""
+        meta = "   ·   ".join(b for b in (c.get("teacher", ""), c.get("class", ""), credits) if b)
+        ctk.CTkLabel(left, text=meta, font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(1, 0))
+        right = ctk.CTkFrame(head, fg_color="transparent")
+        right.pack(side="right")
+        if c.get("total"):
+            ctk.CTkLabel(right, text=f"{c.get('percent', 0):.1f}%", font=F(H2, "semibold", display=True), text_color=color).pack(anchor="e")
+            pill(right, label, color).pack(anchor="e")
+        else:
+            ctk.CTkLabel(right, text="No classes yet", font=F(SM), text_color=C["dim"]).pack(anchor="e")
+        if c.get("total"):
+            bar = ctk.CTkProgressBar(box, height=6, progress_color=color, fg_color=C["surface2"], corner_radius=3)
+            bar.set(min(1.0, c.get("percent", 0) / 100))
+            bar.pack(fill="x", padx=20, pady=(10, 6))
+            if c.get("ok", True):
+                margin = (f"Present {c.get('present', 0):g} of {c.get('total', 0):g} hours. You can miss {c.get('can_miss', 0):g} more "
+                          f"hour{'s' if c.get('can_miss', 0) != 1 else ''} and stay at {minimum}%.")
+            else:
+                margin = (f"Present {c.get('present', 0):g} of {c.get('total', 0):g} hours. Attend the next {c.get('need', 0):g} hours "
+                          f"without a miss to get back to {minimum}%.")
+            if c.get("new_absent_hours"):
+                margin += f"  Last sync recorded {c['new_absent_hours']:g} new absent hour{'s' if c['new_absent_hours'] != 1 else ''}."
+            ctk.CTkLabel(box, text=margin, font=F(SM), text_color=C["muted"], anchor="w", justify="left",
+                         wraplength=820).pack(anchor="w", padx=20)
+        sessions = c.get("sessions") or []
+        foot = ctk.CTkFrame(box, fg_color="transparent")
+        foot.pack(fill="x", padx=20, pady=(8, 14))
+        if sessions:
+            missed = [x for x in sessions if x.get("absent")]
+            missed_txt = f"  ·  {len(missed)} missed" if missed else ""
+            txt = "Hide classes" if code in self.expanded else f"Show {len(sessions)} classes{missed_txt}"
+            soft_button(foot, txt, lambda k=code: self._toggle(k)).pack(side="left")
+        if code in self.expanded and sessions:
+            tbl = ctk.CTkFrame(box, fg_color="transparent")
+            tbl.pack(fill="x", padx=20, pady=(0, 14))
+            for i, x in enumerate(reversed(sessions)):
+                if i:
+                    hairline(tbl, padx=0)
+                r = ctk.CTkFrame(tbl, fg_color="transparent")
+                r.pack(fill="x", pady=7)
+                absent = bool(x.get("absent"))
+                ctk.CTkFrame(r, fg_color=C["red"] if absent else C["green"], width=8, height=8, corner_radius=4).pack(side="left", pady=6)
+                body = ctk.CTkFrame(r, fg_color="transparent")
+                body.pack(side="left", fill="x", expand=True, padx=(12, 0))
+                d = session_date(x.get("date", ""))
+                when = d.strftime("%a %d %b") if d else x.get("date", "")
+                ctk.CTkLabel(body, text=f"{when}   ·   {x.get('type', '')}   ·   {x.get('room', '')}", font=F(SM, "medium"),
+                             text_color=C["ink"], anchor="w").pack(anchor="w")
+                if x.get("topics"):
+                    ctk.CTkLabel(body, text=x["topics"], font=F(SM), text_color=C["muted"], anchor="w", justify="left",
+                                 wraplength=700).pack(anchor="w")
+                tag = f"Absent {x.get('absent', 0):g} h" if absent else f"Present {x.get('present', 0):g} h"
+                pill(r, tag, "missed" if absent else "submitted").pack(side="right")
+
+    def _toggle(self, code):
+        if code in self.expanded:
+            self.expanded.discard(code)
+        else:
+            self.expanded.add(code)
+        self.refresh()
+
+
+# ---------------------------------------------------------------------------- exams
+class ExamsView(ctk.CTkScrollableFrame):
+    def __init__(self, master, app):
+        super().__init__(master, fg_color="transparent")
+        self.app = app
+
+    def refresh(self):
+        for w in self.winfo_children():
+            w.destroy()
+        env = self.app.env
+        exams = self.app.exams
+        if not env.get("TRACK_EXAMS", True):
+            self._empty("Exam tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
+            return
+        if not exams:
+            self._empty("No exam schedule yet", "Press Sync now (or F5). The seating plan is read from the CMS with every check.")
+            return
+        now = datetime.now()
+        up = upcoming_exams(exams, now)
+        past = [e for e in exams if e.get("scheduled") and e not in up and e["id"] not in {u["id"] for u in up}]
+        unscheduled = [e for e in exams if not e.get("scheduled")]
+        defaulter = [e for e in exams if e.get("fee_defaulter")]
+        if defaulter:
+            warn = surface(self, fg_color=C["red_t"], border_color=C["red_t"])
+            warn.pack(fill="x", pady=(2, 10))
+            ctk.CTkLabel(warn, text="The portal marks you as a fee defaulter for some papers. "
+                                    "Clear it with the accounts office before the exam.",
+                         font=F(MD, "medium"), text_color=C["red"], wraplength=820, justify="left").pack(anchor="w", padx=20, pady=14)
+        ctk.CTkLabel(self, text="Check class, session and room on the portal before each paper; the exams section can move them.",
+                     font=F(SM), text_color=C["muted"], anchor="w").pack(fill="x", pady=(2, 8))
+        if up:
+            box = surface(self)
+            box.pack(fill="x", pady=(0, 10))
+            heading(box, "Upcoming", f"{len(up)} paper{'s' if len(up) != 1 else ''} on the seating plan").pack(
+                anchor="w", padx=20, pady=(18, 8))
+            for i, e in enumerate(up):
+                if i:
+                    hairline(box)
+                self._row(box, e)
+            ctk.CTkLabel(box, text="", height=6).pack()
+        if unscheduled:
+            box = surface(self)
+            box.pack(fill="x", pady=(0, 10))
+            heading(box, "Not scheduled yet", "These papers have no date on the plan").pack(anchor="w", padx=20, pady=(18, 8))
+            for i, e in enumerate(unscheduled):
+                if i:
+                    hairline(box)
+                r = ctk.CTkFrame(box, fg_color="transparent")
+                r.pack(fill="x", padx=20, pady=9)
+                ctk.CTkLabel(r, text=e["title"], font=F(MD, "medium"), text_color=C["ink"], anchor="w").pack(side="left")
+                ctk.CTkLabel(r, text=f"{e.get('exam_type', '')}   ·   {e.get('class', '')}", font=F(SM),
+                             text_color=C["muted"]).pack(side="right")
+            ctk.CTkLabel(box, text="", height=6).pack()
+        if past:
+            box = surface(self)
+            box.pack(fill="x", pady=(0, 10))
+            heading(box, "Done", f"{len(past)} paper{'s' if len(past) != 1 else ''} already held").pack(anchor="w", padx=20, pady=(18, 8))
+            for i, e in enumerate(sorted(past, key=lambda x: x.get("date", ""), reverse=True)):
+                if i:
+                    hairline(box)
+                r = ctk.CTkFrame(box, fg_color="transparent")
+                r.pack(fill="x", padx=20, pady=9)
+                ctk.CTkLabel(r, text=e["title"], font=F(MD, "medium"), text_color=C["muted"], anchor="w").pack(side="left")
+                ctk.CTkLabel(r, text=f"{e.get('date', '')}   ·   {e.get('start_time', '')}", font=F(SM),
+                             text_color=C["dim"]).pack(side="right")
+            ctk.CTkLabel(box, text="", height=6).pack()
+
+    def _empty(self, title, sub):
+        box = surface(self)
+        box.pack(fill="x")
+        ctk.CTkLabel(box, text=title, font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
+        ctk.CTkLabel(box, text=sub, font=F(MD), text_color=C["muted"]).pack(pady=(0, 28))
+
+    def _row(self, parent, e):
+        key = "today" if e["days"] == 0 else "soon" if e["days"] <= 3 else "week" if e["days"] <= 7 else "later"
+        r = ctk.CTkFrame(parent, fg_color="transparent")
+        r.pack(fill="x", padx=20, pady=12)
+        date_box = ctk.CTkFrame(r, fg_color=urgency_tint(key), corner_radius=10, width=64)
+        date_box.pack(side="left")
+        ctk.CTkLabel(date_box, text=e["when"].strftime("%d"), font=F(H2, "semibold", display=True),
+                     text_color=urgency_color(key), width=64).pack(pady=(8, 0))
+        ctk.CTkLabel(date_box, text=e["when"].strftime("%b").upper(), font=F(XS, "semibold"),
+                     text_color=urgency_color(key)).pack(pady=(0, 8))
+        body = ctk.CTkFrame(r, fg_color="transparent")
+        body.pack(side="left", fill="x", expand=True, padx=(14, 0))
+        ctk.CTkLabel(body, text=e["title"], font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(anchor="w")
+        when = e["when"].strftime("%A  ·  %I:%M %p").replace("  0", "  ")
+        bits = [when, e.get("session", ""), seat_text(e), e.get("exam_type", "")]
+        ctk.CTkLabel(body, text="   ·   ".join(b for b in bits if b), font=F(SM), text_color=C["muted"],
+                     anchor="w").pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(body, text=e.get("class", ""), font=F(XS), text_color=C["dim"], anchor="w").pack(anchor="w")
+        pill(r, countdown(e["days"]), key).pack(side="right")
+
+
+# ---------------------------------------------------------------------------- announcements
+class AnnouncementsView(ctk.CTkFrame):
+    def __init__(self, master, app):
+        super().__init__(master, fg_color="transparent")
+        self.app = app
+        self.course = "All courses"
+        bar = ctk.CTkFrame(self, fg_color="transparent")
+        bar.pack(fill="x", pady=(2, 10))
+        self.summary = ctk.CTkLabel(bar, text="", font=F(SM), text_color=C["muted"], anchor="w")
+        self.summary.pack(side="left")
+        self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=260, font=F(SM),
+                                             fg_color=C["surface"], text_color=C["ink"], button_color=C["surface2"],
+                                             button_hover_color=C["line2"], dropdown_font=F(SM), command=self._set_course)
+        self.course_menu.pack(side="right")
+        self.list = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.list.pack(fill="both", expand=True)
+
+    def _set_course(self, v):
+        self.course = v
+        self.refresh()
+
+    def refresh(self):
+        env = self.app.env
+        anns = self.app.announcements
+        courses = ["All courses"] + sorted({a.get("course", "") for a in anns if a.get("course")})
+        self.course_menu.configure(values=courses)
+        if self.course not in courses:
+            self.course = "All courses"
+            self.course_menu.set(self.course)
+        rows = [a for a in anns if self.course == "All courses" or a.get("course") == self.course]
+        for w in self.list.winfo_children():
+            w.destroy()
+        if not env.get("TRACK_ANNOUNCEMENTS", True):
+            self.summary.configure(text="Announcement tracking is off (Settings → Campus tracking).")
+            return
+        self.summary.configure(text=f"{len(rows)} announcement{'s' if len(rows) != 1 else ''}" + ("" if not anns else "  ·  newest first"))
+        if not rows:
+            ctk.CTkLabel(self.list, text="No announcements yet. They are read from every course page with each sync.",
+                         font=F(LG), text_color=C["dim"]).pack(pady=50)
+            return
+        box = surface(self.list)
+        box.pack(fill="x")
+        for i, a in enumerate(rows):
+            if i:
+                hairline(box)
+            r = ctk.CTkFrame(box, fg_color="transparent")
+            r.pack(fill="x", padx=20, pady=12)
+            top = ctk.CTkFrame(r, fg_color="transparent")
+            top.pack(fill="x")
+            ctk.CTkLabel(top, text=a.get("course", ""), font=F(SM, "semibold"), text_color=C["accent"], anchor="w").pack(side="left")
+            posted = a.get("posted_at") or a.get("first_seen", "")
+            ctk.CTkLabel(top, text=f"{rel_time(posted)}   ·   {a.get('posted', '')}", font=F(XS), text_color=C["dim"]).pack(side="right")
+            if a.get("title") and a["title"].lower() not in ("all", "general"):
+                ctk.CTkLabel(r, text=a["title"], font=F(MD, "semibold"), text_color=C["ink"], anchor="w", justify="left",
+                             wraplength=820).pack(anchor="w", pady=(4, 0))
+            ctk.CTkLabel(r, text=a.get("text", ""), font=F(MD), text_color=C["ink"], anchor="w", justify="left",
+                         wraplength=820).pack(anchor="w", pady=(3, 0))
+
+
 # ---------------------------------------------------------------------------- settings
 class SettingsView(ctk.CTkScrollableFrame):
+    EXAM_LEAD = {"the day before": 1, "2 days before": 2, "3 days before": 3, "a week before": 7}
+
     def __init__(self, master, app):
         super().__init__(master, fg_color="transparent")
         self.app = app
@@ -839,6 +1250,34 @@ class SettingsView(ctk.CTkScrollableFrame):
         soft_button(btns, "Preview voice", self._preview_voice).pack(side="left", padx=(0, 8))
         soft_button(btns, "Send a test alert", self._test_alert).pack(side="left")
 
+        camp = self._section("Campus tracking",
+                             "Besides assignments, each sync can read these from the portal. "
+                             "Alerts follow the notification settings above.")
+        self.track_att = self._switch(camp, "Attendance per course, with an alert when an absence is recorded or a course "
+                                            "drops under the minimum", env.get("TRACK_ATTENDANCE", True))
+        self.track_exams = self._switch(camp, "Exam seating plan, with a reminder before each paper and on the morning of it",
+                                        env.get("TRACK_EXAMS", True))
+        self.track_ann = self._switch(camp, "Course announcements, with an alert for each new one", env.get("TRACK_ANNOUNCEMENTS", True))
+        min_row = ctk.CTkFrame(camp, fg_color="transparent")
+        min_row.pack(fill="x", padx=20, pady=(8, 4))
+        ctk.CTkLabel(min_row, text="Minimum attendance", font=F(MD), text_color=C["ink"]).pack(side="left")
+        self.att_min = ctk.CTkOptionMenu(min_row, values=["60", "65", "70", "75", "80", "85", "90"], width=80, height=32, font=F(SM),
+                                         fg_color=C["field"], text_color=C["ink"], button_color=C["line2"],
+                                         button_hover_color=C["dim"], command=lambda v: self._save_prefs())
+        self.att_min.set(str(env.get("ATTENDANCE_MIN", 75)))
+        self.att_min.pack(side="left", padx=10)
+        ctk.CTkLabel(min_row, text="%  (your university's rule; margins on the Attendance page use it)", font=F(SM),
+                     text_color=C["muted"]).pack(side="left")
+        ex_row = ctk.CTkFrame(camp, fg_color="transparent")
+        ex_row.pack(fill="x", padx=20, pady=(6, 18))
+        ctk.CTkLabel(ex_row, text="Remind me about an exam", font=F(MD), text_color=C["ink"]).pack(side="left")
+        self.exam_days = ctk.CTkOptionMenu(ex_row, values=list(self.EXAM_LEAD), width=150, height=32, font=F(SM),
+                                           fg_color=C["field"], text_color=C["ink"], button_color=C["line2"],
+                                           button_hover_color=C["dim"], dropdown_font=F(SM), command=lambda v: self._save_prefs())
+        self.exam_days.set(next((k for k, v in self.EXAM_LEAD.items() if v == int(env.get("EXAM_REMIND_DAYS", 1))), "the day before"))
+        self.exam_days.pack(side="left", padx=10)
+        ctk.CTkLabel(ex_row, text="plus once on the morning of the paper", font=F(SM), text_color=C["muted"]).pack(side="left")
+
         auto = self._section("Automatic checks",
                              "Windows runs a check daily at 7:00 PM and two minutes after you sign in, plus an hourly "
                              "reminder while something is due today. These run even when the app is closed.")
@@ -903,6 +1342,12 @@ class SettingsView(ctk.CTkScrollableFrame):
         env["NOTIFY_DAYS_AHEAD"] = int(self.days.get())
         env["CLOSE_TO_TRAY"] = bool(self.tray_sw.get())
         env["CHECK_UPDATES"] = bool(self.updates_sw.get())
+        if hasattr(self, "track_att"):
+            env["TRACK_ATTENDANCE"] = bool(self.track_att.get())
+            env["TRACK_EXAMS"] = bool(self.track_exams.get())
+            env["TRACK_ANNOUNCEMENTS"] = bool(self.track_ann.get())
+            env["ATTENDANCE_MIN"] = int(self.att_min.get())
+            env["EXAM_REMIND_DAYS"] = self.EXAM_LEAD.get(self.exam_days.get(), 1)
         if hasattr(self, "rate"):
             env["VOICE_NAME"], env["VOICE_VOLUME"], env["VOICE_RATE"] = self._voice_prefs()
         save_env(env)
@@ -994,7 +1439,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         threading.Thread(target=work, daemon=True).start()
 
     def _clear_data(self):
-        if messagebox.askyesno(APP_NAME, "Delete the locally saved assignments? The next sync will rebuild them."):
+        if messagebox.askyesno(APP_NAME, "Delete the locally saved assignments, attendance, exam plan and announcements? "
+                                          "The next sync will rebuild them."):
             clear_stored_assignments()
             self.app.reload_data()
             self.app.set_status("Local data cleared.")
@@ -1039,7 +1485,8 @@ class ActivityView(ctk.CTkFrame):
 
 # ---------------------------------------------------------------------------- main window
 class App(ctk.CTk):
-    NAV = [("dashboard", "Dashboard"), ("assignments", "Assignments"), ("settings", "Settings"), ("activity", "Activity")]
+    NAV = [("dashboard", "Dashboard"), ("assignments", "Assignments"), ("attendance", "Attendance"), ("exams", "Exams"),
+           ("announcements", "Announcements"), ("settings", "Settings"), ("activity", "Activity")]
     CONTENT_MAX = 1120
 
     def __init__(self, start_view="dashboard", force_setup=False, start_hidden=False):
@@ -1061,6 +1508,9 @@ class App(ctk.CTk):
 
         self.meta = load_meta()
         self.data = {}
+        self.attendance = {}
+        self.exams = []
+        self.announcements = []
         self.syncing = False
         self.views = {}
         self.current = None
@@ -1292,12 +1742,15 @@ class App(ctk.CTk):
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
         self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")
         self.status_lbl.pack(side="left", padx=32, pady=4)
-        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–4 pages  ·  v{APP_VERSION}", font=F(XS),
+        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–7 pages  ·  v{APP_VERSION}", font=F(XS),
                      text_color=C["dim"]).pack(side="right", padx=32)
 
         self.views = {
             "dashboard": DashboardView(self.body, self),
             "assignments": AssignmentsView(self.body, self),
+            "attendance": AttendanceView(self.body, self),
+            "exams": ExamsView(self.body, self),
+            "announcements": AnnouncementsView(self.body, self),
             "settings": SettingsView(self.body, self),
             "activity": ActivityView(self.body, self),
         }
@@ -1329,6 +1782,9 @@ class App(ctk.CTk):
     # ---- data
     def reload_data(self):
         self.data = load_stored_assignments()
+        self.attendance = load_attendance()
+        self.exams = load_exams()
+        self.announcements = load_announcements()
         self.meta = load_meta()
         if "last_sync_lbl" in self.__dict__:
             ls = self.meta.get("last_sync")
@@ -1367,10 +1823,20 @@ class App(ctk.CTk):
 
     def _sync_worker(self, on_done):
         try:
-            items = run_lms_check(headless=True)
-            pending, extended, new_items = compare_assignments(items)
-            alert_assignments(pending, extended)
-            result = (True, f"Synced {len(items)} assignments · {len(pending)} pending · {len(new_items)} new")
+            env = load_env()
+            data = run_sync(headless=True, collect=collectors_for(env), previous_attendance=load_attendance(),
+                            progress=lambda m: self.after(0, self.set_status, m))
+            s = process_sync(data, env, notify=True)
+            bits = [f"Synced {s['assignments']} assignments · {s['pending']} pending"]
+            if s.get("new"):
+                bits.append(f"{s['new']} new")
+            if s.get("below"):
+                bits.append(f"{s['below']} course{'s' if s['below'] != 1 else ''} under {int(env.get('ATTENDANCE_MIN', 75))}% attendance")
+            if s.get("new_announcements"):
+                bits.append(f"{s['new_announcements']} new announcement{'s' if s['new_announcements'] != 1 else ''}")
+            if data.get("errors"):
+                bits.append("some pages could not be read (see Activity)")
+            result = (True, " · ".join(bits))
         except LoginError as e:
             result = (False, str(e))
         except Exception as e:

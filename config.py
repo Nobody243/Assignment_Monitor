@@ -14,7 +14,7 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 
@@ -48,6 +48,10 @@ PROFILE_DIR = BASE_DIR / "chrome_profile"
 BROWSERS_DIR = BASE_DIR / "browsers"
 DB_PATH = DATA_DIR / "assignments.json"
 META_PATH = DATA_DIR / "meta.json"
+ATTENDANCE_PATH = DATA_DIR / "attendance.json"
+EXAMS_PATH = DATA_DIR / "exams.json"
+ANNOUNCEMENTS_PATH = DATA_DIR / "announcements.json"
+REMINDERS_PATH = DATA_DIR / "reminders.json"
 LOG_PATH = DATA_DIR / "app.log"
 
 for _d in (DATA_DIR, PROFILE_DIR):
@@ -61,6 +65,9 @@ CMS_BASE_URL = "https://cms.bahria.edu.pk"
 LMS_BASE_URL = "https://lms.bahria.edu.pk"
 SSO_URL = f"{CMS_BASE_URL}/Sys/Common/GoToLMS.aspx"
 ASSIGNMENTS_URL = f"{LMS_BASE_URL}/Student/Assignments.php"
+ANNOUNCEMENTS_URL = f"{LMS_BASE_URL}/Student/Announcements.php"
+ATTENDANCE_URL = f"{CMS_BASE_URL}/Sys/Student/ClassAttendance/StudentWiseAttendance.aspx"
+EXAMS_URL = f"{CMS_BASE_URL}/Sys/Student/ExamSeatingPlan/ExamSeats"
 
 # (display name, CMS institute id). Order matters for the setup dropdown.
 CAMPUSES = [
@@ -99,8 +106,16 @@ DEFAULTS = {
     "VOICE_VOLUME": 100,
     "VOICE_RATE": 0,
     "WINDOW_GEOMETRY": "",
+    "TRACK_ATTENDANCE": True,
+    "TRACK_EXAMS": True,
+    "TRACK_ANNOUNCEMENTS": True,
+    "ATTENDANCE_MIN": 75,
+    "EXAM_REMIND_DAYS": 1,
 }
-_BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES")
+_BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
+              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS")
+_INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE": (-5, 5),
+             "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14)}
 
 
 def app_command(*args: str) -> list:
@@ -133,19 +148,10 @@ def load_env() -> dict:
     for key, val in raw.items():
         if key in _BOOL_KEYS:
             config[key] = val.lower() in ("true", "1", "yes")
-        elif key == "NOTIFY_DAYS_AHEAD":
+        elif key in _INT_KEYS:
+            lo, hi = _INT_KEYS[key]
             try:
-                config[key] = max(0, int(val))
-            except ValueError:
-                pass
-        elif key == "VOICE_VOLUME":
-            try:
-                config[key] = min(100, max(0, int(val)))
-            except ValueError:
-                pass
-        elif key == "VOICE_RATE":
-            try:
-                config[key] = min(5, max(-5, int(val)))
+                config[key] = min(hi, max(lo, int(val)))
             except ValueError:
                 pass
         elif key in ("PASSWORD", "PASSWORD_ENC"):
@@ -198,6 +204,8 @@ def save_env(config: dict) -> None:
     lines.append(f"VOICE_NAME={merged['VOICE_NAME']}")
     lines.append(f"VOICE_VOLUME={int(merged['VOICE_VOLUME'])}")
     lines.append(f"VOICE_RATE={int(merged['VOICE_RATE'])}")
+    lines.append(f"ATTENDANCE_MIN={int(merged['ATTENDANCE_MIN'])}")
+    lines.append(f"EXAM_REMIND_DAYS={int(merged['EXAM_REMIND_DAYS'])}")
     if merged.get("WINDOW_GEOMETRY"):
         lines.append(f"WINDOW_GEOMETRY={merged['WINDOW_GEOMETRY']}")
     for key in _BOOL_KEYS:
