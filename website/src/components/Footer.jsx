@@ -18,7 +18,7 @@ export default function Footer() {
       <div className="wrap">
         <div className="footer-top">
           <div className="footer-brand">
-            <Link className="brand footer-brand-link" to="/"><img src="/assets/logo.svg" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
+            <Link className="brand footer-brand-link" to="/"><img src="/assets/logo.svg?v=2" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
             <p>A small, honest tool that reads your LMS so you don't have to. Built by a Bahria student, for Bahria students. Free forever, open source, and it never phones home.</p>
             <div className="footer-cta">
               {IS_WINDOWS

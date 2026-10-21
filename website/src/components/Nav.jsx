@@ -41,7 +41,7 @@ export default function Nav() {
     <motion.header className={`nav${scrolled || open ? " is-scrolled" : ""}`} initial={{ y: -16, opacity: 0 }} animate={introDone ? { y: 0, opacity: 1 } : {}} transition={{ duration: 1, ease: EASE, delay: 0.5 }}>
       <div className="wrap">
         <Link className="brand" to="/" aria-label="Assignment Monitor home" onClick={() => setOpen(false)}>
-          <img src="/assets/logo.svg" alt="" width="28" height="28" />
+          <img src="/assets/logo.svg?v=2" alt="" width="28" height="28" />
           <span>Assignment Monitor<small>for Bahria University LMS</small></span>
         </Link>
         <nav className="nav-links" aria-label="Site">
