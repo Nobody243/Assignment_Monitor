@@ -151,8 +151,11 @@ def _signal_event(name: str) -> bool:
 
 # ============================================================================ GUI
 import customtkinter as ctk                      # noqa: E402  (imported after the CLI fast path)
+import tkinter as tk                             # noqa: E402
 import tkinter.font as tkfont                    # noqa: E402
+from ctypes import wintypes                      # noqa: E402
 from tkinter import Text as tk_text_cls, Entry as tk_entry_cls  # noqa: E402
+from PIL import Image, ImageTk                   # noqa: E402
 from tkinter import filedialog, messagebox, simpledialog  # noqa: E402
 
 import automation                                                                           # noqa: E402
@@ -302,6 +305,125 @@ def fill_bar(bar, ratio, duration=0.6):
     animate(bar, duration, lambda t: bar.set(ratio * t))
 
 
+class _BitmapInfo(ctypes.Structure):
+    _fields_ = [("biSize", wintypes.DWORD), ("biWidth", wintypes.LONG), ("biHeight", wintypes.LONG),
+                ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
+                ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", wintypes.LONG), ("biYPelsPerMeter", wintypes.LONG),
+                ("biClrUsed", wintypes.DWORD), ("biClrImportant", wintypes.DWORD)]
+
+
+def snapshot(widget):
+    """A picture of a widget as it stands on screen (Windows PrintWindow with full content), or None. Tk cannot
+    fade or move hundreds of widgets smoothly, but it can move one picture of them."""
+    try:
+        w, h = widget.winfo_width(), widget.winfo_height()
+        if w < 2 or h < 2 or not widget.winfo_viewable():
+            return None
+        user32, gdi32 = ctypes.windll.user32, ctypes.windll.gdi32
+        hdc = user32.GetDC(0)
+        mdc = gdi32.CreateCompatibleDC(hdc)
+        bmp = gdi32.CreateCompatibleBitmap(hdc, w, h)
+        old = gdi32.SelectObject(mdc, bmp)
+        try:
+            if not user32.PrintWindow(widget.winfo_id(), mdc, 2):          # PW_RENDERFULLCONTENT
+                return None
+            info = _BitmapInfo(ctypes.sizeof(_BitmapInfo), w, -h, 1, 32, 0, 0, 0, 0, 0, 0)
+            buf = ctypes.create_string_buffer(w * h * 4)
+            gdi32.GetDIBits(mdc, bmp, 0, h, buf, ctypes.byref(info), 0)
+            return Image.frombuffer("RGB", (w, h), buf, "raw", "BGRX", 0, 1).copy()
+        finally:
+            gdi32.SelectObject(mdc, old)
+            gdi32.DeleteObject(bmp)
+            gdi32.DeleteDC(mdc)
+            user32.ReleaseDC(0, hdc)
+    except Exception:
+        return None
+
+
+def cover_over(app, widget, image):
+    """A borderless window exactly over `widget` showing `image` (a picture of the page being left). The new page
+    lays out and paints underneath, unseen, and the cover then fades away through window alpha, which Windows
+    composites on the GPU: smooth and cheap, where fading hundreds of widgets is impossible in Tk. Returns None if
+    the window cannot be made."""
+    try:
+        top = tk.Toplevel(app)
+        top.withdraw()
+        top.overrideredirect(True)
+        top.transient(app)
+        top._img = ImageTk.PhotoImage(image)
+        tk.Label(top, image=top._img, bd=0, highlightthickness=0).pack()
+        top.geometry(f"{image.width}x{image.height}+{widget.winfo_rootx()}+{widget.winfo_rooty()}")
+        top.attributes("-alpha", 1.0)
+        top.deiconify()
+        top.lift()
+        return top
+    except Exception:
+        return None
+
+
+def fade_cover(cover, duration=0.22):
+    """Fades a cover window out and destroys it. Falls back to destroying it at once."""
+    def step(t):
+        try:
+            cover.attributes("-alpha", max(0.0, 1.0 - t))
+        except Exception:
+            finish()
+
+    def finish():
+        try:
+            cover.destroy()
+        except Exception:
+            pass
+    animate(cover, duration, step, finish)
+
+
+class Lazy:
+    """Builds a long list in parts: the first units now, the rest as the user scrolls towards what is built (or
+    while the built part is still shorter than the viewport). The page opens fast and repaints fast, because only
+    what has been looked at exists as widgets. A unit is any callable that packs widgets into the list."""
+    FIRST, MORE = 8, 8
+
+    def __init__(self, frame):
+        self.frame, self.canvas, self.queue, self.job = frame, frame._parent_canvas, [], None
+        if not getattr(frame, "_lazy_hooked", False):
+            frame._lazy_hooked = True
+            bar = frame._scrollbar
+
+            def moved(a, b):
+                bar.set(a, b)
+                lazy = getattr(frame, "_lazy", None)
+                if lazy is not None and float(b) > 0.7:
+                    lazy.more()
+            self.canvas.configure(yscrollcommand=moved)
+        frame._lazy = self
+
+    def add(self, builder):
+        self.queue.append(builder)
+
+    def start(self):
+        self._build(self.FIRST)
+        self.more()
+
+    def more(self):
+        if self.queue and self.job is None and self.frame._lazy is self:
+            self.job = self.frame.after_idle(self._step)
+
+    def _step(self):
+        self.job = None
+        if self.frame._lazy is self:
+            self._build(self.MORE)       # the scroll region then grows and `moved` fires again if still near the end
+
+    def _build(self, n):
+        for _ in range(min(n, len(self.queue))):
+            try:
+                self.queue.pop(0)()
+            except Exception:
+                pass
+
+    def build_all(self):
+        self._build(len(self.queue))
+
+
 SCROLL = {"t": 0.0}          # time of the last wheel event; hover effects pause briefly after it
 
 
@@ -378,6 +500,10 @@ def page_scroll(view, what):
     canvas = target._parent_canvas
     kind, amount = what
     try:
+        lazy = getattr(target, "_lazy", None)
+        if lazy is not None and kind == "edge" and amount:
+            lazy.build_all()
+            target.update_idletasks()
         if kind == "page":
             canvas.yview("scroll", amount, "pages")
         else:
@@ -388,6 +514,29 @@ def page_scroll(view, what):
 
 if sys.platform.startswith("win"):
     ctk.CTkScrollableFrame._mouse_wheel_all = _wheel_coalesced
+
+
+_scrollbar_set = ctk.CTkScrollbar.set
+
+
+def _scrollbar_set_coalesced(self, start, end):
+    """CTkScrollbar.set redraws the bar and forces every pending layout to finish (update_idletasks) each time it
+    is called, and the canvas calls it for every widget added to a list, which made building a long page cost far
+    more than the widgets themselves. The bar is updated once per idle cycle instead."""
+    self._set_pending = (start, end)
+    if getattr(self, "_set_job", None) is None:
+        self._set_job = self.after_idle(lambda: _scrollbar_set_flush(self))
+
+
+def _scrollbar_set_flush(self):
+    self._set_job = None
+    try:
+        _scrollbar_set(self, *self._set_pending)
+    except Exception:
+        pass
+
+
+ctk.CTkScrollbar.set = _scrollbar_set_coalesced
 
 
 def hover_lift(widget, fg=None, border=None):
@@ -462,8 +611,16 @@ def surface(parent, hover=False, **kw):
     return box
 
 
+def solid(color):
+    """The colour for the current theme out of a (light, dark) pair, for plain Tk widgets."""
+    if isinstance(color, (tuple, list)):
+        return color[1] if ctk.get_appearance_mode() == "Dark" else color[0]
+    return color
+
+
 def hairline(parent, padx=20):
-    ctk.CTkFrame(parent, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", padx=padx)
+    # a plain Tk frame: one window and no canvas drawing, which matters with a hundred of them on a page
+    tk.Frame(parent, height=1, bg=solid(C["line"]), bd=0, highlightthickness=0).pack(fill="x", padx=padx)
 
 
 def heading(parent, text, sub=None, size=17):
@@ -1110,18 +1267,19 @@ class AssignmentsView(ctk.CTkFrame):
             return
         box = surface(self.list)
         box.pack(fill="x")
+        lazy = Lazy(self.list)
         for i, (a, info) in enumerate(sorted(rows, key=lambda r: sort_key(r[0]))):
-            if i:
-                hairline(box)
-            self._row(box, a, info)
+            lazy.add(lambda i=i, a=a, info=info: (hairline(box) if i else None, self._row(box, a, info)))
+        lazy.start()
 
     def _row(self, parent, a, info):
         row = ctk.CTkFrame(parent, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=12)
-        ctk.CTkFrame(row, fg_color=urgency_color(info["key"]), width=8, height=8, corner_radius=4).pack(side="left", pady=6)
-        body = ctk.CTkFrame(row, fg_color="transparent")
-        body.pack(side="left", fill="x", expand=True, padx=(12, 0))
-        ctk.CTkLabel(body, text=a.get("title", ""), font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(anchor="w")
+        row.grid_columnconfigure(1, weight=1)
+        ctk.CTkFrame(row, fg_color=urgency_color(info["key"]), width=8, height=8, corner_radius=4).grid(
+            row=0, column=0, rowspan=2, sticky="n", pady=(6, 0), padx=(0, 12))
+        ctk.CTkLabel(row, text=a.get("title", ""), font=F(LG, "semibold"), text_color=C["ink"], anchor="w").grid(
+            row=0, column=1, sticky="w")
         meta = f"{a.get('course', '')}   ·   #{a.get('assign_no', '')}   ·   Due {fmt_due(a)}"
         if a.get("is_extended") and a.get("original_due_date"):
             meta += f"   ·   extended from {a['original_due_date']}"
@@ -1130,8 +1288,8 @@ class AssignmentsView(ctk.CTkFrame):
         marks = a.get("marks", "")
         if marks and marks.lower() != "not marked yet":
             meta += f"   ·   {marks}"
-        ctk.CTkLabel(body, text=meta, font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(2, 0))
-        pill(row, info["label"], info["key"]).pack(side="right")
+        ctk.CTkLabel(row, text=meta, font=F(SM), text_color=C["muted"], anchor="w").grid(row=1, column=1, sticky="w", pady=(2, 0))
+        pill(row, info["label"], info["key"]).grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
         hover_lift(row, fg=C["surface2"], border=C["surface2"])
 
 
@@ -1218,8 +1376,10 @@ class AttendanceView(ctk.CTkFrame):
         if not shown:
             self._empty(f"No course is {self.filter_name.lower()}", "Pick another filter to see the rest.")
             return
+        lazy = Lazy(self.list)
         for c in shown:
-            self._course(c, minimum)
+            lazy.add(lambda c=c: self._course(c, minimum))
+        lazy.start()
 
     def _empty(self, title, sub):
         box = surface(self.list)
@@ -1290,19 +1450,19 @@ class AttendanceView(ctk.CTkFrame):
                 hairline(tbl, padx=0)
             r = ctk.CTkFrame(tbl, fg_color="transparent")
             r.pack(fill="x", pady=6)
+            r.grid_columnconfigure(1, weight=1)
             absent = bool(x.get("absent"))
-            ctk.CTkFrame(r, fg_color=C["red"] if absent else C["green"], width=8, height=8, corner_radius=4).pack(side="left", pady=6)
-            body = ctk.CTkFrame(r, fg_color="transparent")
-            body.pack(side="left", fill="x", expand=True, padx=(12, 0))
+            ctk.CTkFrame(r, fg_color=C["red"] if absent else C["green"], width=8, height=8, corner_radius=4).grid(
+                row=0, column=0, rowspan=2, sticky="n", pady=(6, 0), padx=(0, 12))
             d = session_date(x.get("date", ""))
             when = d.strftime("%a %d %b") if d else x.get("date", "")
-            ctk.CTkLabel(body, text="   ·   ".join(b for b in (when, x.get("type", ""), x.get("room", "")) if b),
-                         font=F(SM, "medium"), text_color=C["ink"], anchor="w").pack(anchor="w")
+            ctk.CTkLabel(r, text="   ·   ".join(b for b in (when, x.get("type", ""), x.get("room", "")) if b),
+                         font=F(SM, "medium"), text_color=C["ink"], anchor="w").grid(row=0, column=1, sticky="w")
             if x.get("topics"):
-                ctk.CTkLabel(body, text=x["topics"], font=F(SM), text_color=C["muted"], anchor="w", justify="left",
-                             wraplength=700).pack(anchor="w")
+                ctk.CTkLabel(r, text=x["topics"], font=F(SM), text_color=C["muted"], anchor="w", justify="left",
+                             wraplength=700).grid(row=1, column=1, sticky="w")
             tag = f"Absent {x.get('absent', 0):g} h" if absent else f"Present {x.get('present', 0):g} h"
-            pill(r, tag, "missed" if absent else "submitted").pack(side="right")
+            pill(r, tag, "missed" if absent else "submitted").grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
 
     def _toggle(self, code):
         if code in self.expanded:
@@ -1530,21 +1690,29 @@ class AnnouncementsView(ctk.CTkFrame):
             return
         box = surface(self.list)
         box.pack(fill="x")
+        lazy = Lazy(self.list)
         for i, a in enumerate(rows):
-            if i:
-                hairline(box)
-            r = ctk.CTkFrame(box, fg_color="transparent")
-            r.pack(fill="x", padx=20, pady=12)
-            top = ctk.CTkFrame(r, fg_color="transparent")
-            top.pack(fill="x")
-            ctk.CTkLabel(top, text=a.get("course", ""), font=F(SM, "semibold"), text_color=C["accent"], anchor="w").pack(side="left")
-            posted = a.get("posted_at") or a.get("first_seen", "")
-            ctk.CTkLabel(top, text=f"{rel_time(posted)}   ·   {a.get('posted', '')}", font=F(XS), text_color=C["dim"]).pack(side="right")
-            if a.get("title") and a["title"].lower() not in ("all", "general"):
-                ctk.CTkLabel(r, text=a["title"], font=F(MD, "semibold"), text_color=C["ink"], anchor="w", justify="left",
-                             wraplength=820).pack(anchor="w", pady=(4, 0))
-            ctk.CTkLabel(r, text=a.get("text", ""), font=F(MD), text_color=C["ink"], anchor="w", justify="left",
-                         wraplength=820).pack(anchor="w", pady=(3, 0))
+            lazy.add(lambda i=i, a=a: self._ann_row(box, i, a))
+        lazy.start()
+
+    def _ann_row(self, box, i, a):
+        if i:
+            hairline(box)
+        r = ctk.CTkFrame(box, fg_color="transparent")
+        r.pack(fill="x", padx=20, pady=12)
+        r.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(r, text=a.get("course", ""), font=F(SM, "semibold"), text_color=C["accent"], anchor="w").grid(
+            row=0, column=0, sticky="w")
+        posted = a.get("posted_at") or a.get("first_seen", "")
+        ctk.CTkLabel(r, text=f"{rel_time(posted)}   ·   {a.get('posted', '')}", font=F(XS), text_color=C["dim"]).grid(
+            row=0, column=1, sticky="e")
+        line = 1
+        if a.get("title") and a["title"].lower() not in ("all", "general"):
+            ctk.CTkLabel(r, text=a["title"], font=F(MD, "semibold"), text_color=C["ink"], anchor="w", justify="left",
+                         wraplength=820).grid(row=line, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            line += 1
+        ctk.CTkLabel(r, text=a.get("text", ""), font=F(MD), text_color=C["ink"], anchor="w", justify="left",
+                     wraplength=820).grid(row=line, column=0, columnspan=2, sticky="w", pady=(3, 0))
 
 
 # ---------------------------------------------------------------------------- lectures
@@ -1678,53 +1846,61 @@ class LecturesView(ctk.CTkFrame):
         by_course = {}
         for x in rows:
             by_course.setdefault(x["course"], []).append(x)
+        lazy = Lazy(self.list)
         for course, lecs in by_course.items():
-            box = surface(self.list)
-            box.pack(fill="x", pady=(0, 10))
-            head = ctk.CTkFrame(box, fg_color="transparent")
-            head.pack(fill="x", padx=20, pady=(16, 6))
-            ctk.CTkLabel(head, text=course, font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(side="left")
-            nfiles = sum(len(x.get("files", [])) for x in lecs)
-            ctk.CTkLabel(head, text=f"{nfiles} files" if misc else f"{len(lecs)} weeks  ·  {nfiles} files", font=F(SM),
-                         text_color=C["muted"]).pack(side="right")
+            def head(course=course, lecs=lecs):
+                box = self._box = surface(self.list)
+                box.pack(fill="x", pady=(0, 10))
+                head = ctk.CTkFrame(box, fg_color="transparent")
+                head.pack(fill="x", padx=20, pady=(16, 6))
+                ctk.CTkLabel(head, text=course, font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(side="left")
+                nfiles = sum(len(x.get("files", [])) for x in lecs)
+                ctk.CTkLabel(head, text=f"{nfiles} files" if misc else f"{len(lecs)} weeks  ·  {nfiles} files", font=F(SM),
+                             text_color=C["muted"]).pack(side="right")
+            lazy.add(head)
             for i, x in enumerate(lecs):
-                if i:
-                    hairline(box)
-                self._week(box, x, cutoff)
-            ctk.CTkLabel(box, text="", height=6).pack()
+                def week(i=i, x=x):
+                    if i:
+                        hairline(self._box)
+                    self._week(self._box, x, cutoff)
+                lazy.add(week)
+            lazy.add(lambda: ctk.CTkLabel(self._box, text="", height=6).pack())
+        lazy.start()
 
     def _week(self, parent, x, cutoff):
+        # one frame per week with a grid inside, instead of frames nested three deep: a page of ninety weeks has a
+        # few hundred fewer widgets to lay out and repaint
         r = ctk.CTkFrame(parent, fg_color="transparent")
         r.pack(fill="x", padx=20, pady=8)
-        left = ctk.CTkFrame(r, fg_color="transparent")
-        left.pack(side="left", fill="x", expand=True)
+        r.grid_columnconfigure(1, weight=1)
         is_new = False
         try:
             is_new = datetime.fromisoformat(x.get("first_seen", "")) >= cutoff
         except ValueError:
             pass
-        title = ctk.CTkFrame(left, fg_color="transparent")
-        title.pack(anchor="w")
         label = x.get("title", "") if x.get("kind") == "misc" else f"Week {x.get('week', '')}   ·   {x.get('title', '')}"
-        ctk.CTkLabel(title, text=label, font=F(MD, "semibold"), text_color=C["ink"], anchor="w").pack(side="left")
+        ctk.CTkLabel(r, text=label, font=F(MD, "semibold"), text_color=C["ink"], anchor="w").grid(row=0, column=0, sticky="w")
         if is_new:
-            pill(title, "New", "week").pack(side="left", padx=(10, 0))
+            pill(r, "New", "week").grid(row=0, column=1, sticky="w", padx=(10, 0))
+        line = 1
         files = x.get("files", [])
         for i, f in enumerate(files):
             key = (x["id"], i)
             var = ctk.BooleanVar(value=key in self.selected)
             label = f.get("filename") or f.get("label") or f"File {i + 1}"
-            cb = ctk.CTkCheckBox(left, text=label, variable=var, font=F(SM), text_color=C["muted"], checkbox_width=18,
+            cb = ctk.CTkCheckBox(r, text=label, variable=var, font=F(SM), text_color=C["muted"], checkbox_width=18,
                                  checkbox_height=18, corner_radius=4, border_width=1, fg_color=C["accent"],
                                  hover_color=C["accent_h"], border_color=C["line2"],
                                  command=lambda k=key, v=var: self._toggle(k, v))
-            cb.pack(anchor="w", pady=(4, 0))
+            cb.grid(row=line, column=0, columnspan=2, sticky="w", pady=(4, 0))
+            line += 1
         if x.get("remarks"):
-            ctk.CTkLabel(left, text=x["remarks"], font=F(XS), text_color=C["dim"], anchor="w", justify="left",
-                         wraplength=700).pack(anchor="w", pady=(3, 0))
+            ctk.CTkLabel(r, text=x["remarks"], font=F(XS), text_color=C["dim"], anchor="w", justify="left",
+                         wraplength=700).grid(row=line, column=0, columnspan=2, sticky="w", pady=(3, 0))
+            line += 1
         if x.get("videos"):
             vids = ctk.CTkFrame(r, fg_color="transparent")
-            vids.pack(side="right", padx=(10, 0))
+            vids.grid(row=0, column=2, rowspan=line, sticky="ne", padx=(10, 0))
             for j, url in enumerate(x["videos"][:3]):
                 soft_button(vids, "Video" if len(x["videos"]) == 1 else f"Video {j + 1}", lambda u=url: webbrowser.open(u),
                             width=70).pack(side="left", padx=(6, 0))
@@ -2697,18 +2873,34 @@ class App(ctk.CTk):
             self._show_syncing(True)
 
     def navigate(self, key, **kwargs):
-        if not self.views:
+        if not self.views or getattr(self, "_navigating", False):
             return
+        self._navigating = True            # the fade pumps the event loop; a second click meanwhile is ignored
+        try:
+            self._navigate(key, **kwargs)
+        finally:
+            self._navigating = False
+
+    def _navigate(self, key, **kwargs):
         for k, (b, bar) in self.nav_buttons.items():
             active = k == key
             b.configure(fg_color=C["surface2"] if active else "transparent",
                         text_color=C["ink"] if active else C["muted"],
                         font=F(LG, "semibold" if active else "normal"))
             bar.configure(fg_color=C["accent"] if active else "transparent")
-        if self.current:
-            self.views[self.current].pack_forget()
-        self.current = key
+        leaving = self.views.get(self.current) if self.current else None
         view = self.views[key]
+        # Pages cross-fade: the page being left is photographed and the picture shown in a borderless window over
+        # the page area; the pages swap and the new one paints underneath; the picture then fades out. One picture
+        # fading is the only transition Tk can do smoothly; fading hundreds of widgets is not possible.
+        cover = None
+        if ANIMATE["on"] and leaving is not None and leaving is not view:
+            before = snapshot(getattr(leaving, "_parent_frame", leaving))
+            if before is not None:
+                cover = cover_over(self, self.body, before)
+        if leaving is not None:
+            leaving.pack_forget()
+        self.current = key
         self.page_title.configure(text=dict(self.NAV)[key])
         # a page is rebuilt only when the data or the settings behind it changed since it was last drawn (the
         # dashboard also every minute for its countdowns and "now" markers, the activity log every time), and it is
@@ -2723,6 +2915,9 @@ class App(ctk.CTk):
             view.refresh()
             view._drawn_for, view._drawn_at = stamp, time.monotonic()
         view.pack(fill="both", expand=True)
+        if cover is not None:
+            self.update()                  # the new page lays out and paints under the cover
+            fade_cover(cover)
 
     # ---- data
     def reload_data(self):

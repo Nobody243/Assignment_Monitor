@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.3 - 2026-10-23
+
+- Pages cross-fade into each other. Tk cannot fade hundreds of widgets, so the app photographs the page it is leaving and the one it is opening and blends the two pictures over the page area; one image moving is smooth where moving every widget never was. Off with the Animations switch.
+- Long lists are built in parts: the Lectures, Assignments, Attendance and Announcements pages create the first screenfuls of rows at once and the rest as you scroll towards them, so a heavy page opens in a fraction of the time and repaints faster while it scrolls. Ctrl+End builds the rest first.
+- Lighter rows: the week, assignment, class and announcement rows are one frame with a grid inside instead of frames nested three deep, and separators are plain lines rather than drawn canvases; a page of ninety weeks has a few hundred fewer widgets.
+- Pages open in about half the time: CustomTkinter's scrollbar redrew itself and forced every pending layout to finish for each widget added to a list; it is now updated once per idle cycle.
+
 ## 1.4.2 - 2026-10-22
 
 - Faster, calmer window: pages are rebuilt only when the data or settings behind them changed (the dashboard also once a minute for its countdowns), and they are built before they are shown, so switching between pages is instant and a page no longer assembles itself on screen; the page slide-in is gone because it re-laid out every widget for a dozen frames; the remaining animations run at 30 frames a second.

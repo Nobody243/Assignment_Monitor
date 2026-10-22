@@ -57,7 +57,7 @@ export const STEPS = [
   { title: "Let it run", text: "Leave \"Check automatically\" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days." },
 ];
 
-export const SHOT_V = "142";
+export const SHOT_V = "143";
 export const shot = (id, theme) => `/assets/shot-${id}-${theme}.png?v=${SHOT_V}`;
 
 export const SCREENS = [
