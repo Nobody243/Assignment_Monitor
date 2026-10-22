@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.1 - 2026-10-22
+
+- Fix: the Dashboard, Exams and Settings pages could not be scrolled and their content was pinned to the window height (since 1.3.1, when the page slide-in started reconfiguring the wrong frame). Settings is reachable to the bottom again.
+- Fix: the Timetable page's own scroll region was being replaced by its resize handler.
+- Smoother fast scrolling: hover highlights pause while the wheel is turning, so rows sliding under the pointer no longer trigger a redraw storm that tore the text.
+
 ## 1.4.0 - 2026-10-22
 
 - Alerts on your phone and in your inbox. Settings → Phone, email and calendar: link your own mailbox (Gmail, Outlook, the university's Microsoft 365 or any SMTP server) with an app password, and pair a phone by scanning a QR code; no app to install, no account, and nothing passes through a server of ours. Every alert the app already raises on Windows is delivered to the linked channels too.

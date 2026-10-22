@@ -205,7 +205,7 @@
 .story-m .story-head { margin-bottom: 22px; }
 .tour-m-win { margin: 22px 0 16px; }
 .tour-m-win .spot-label { font-size: 9px; padding: 2px 6px; transform: translate(6px, -50%); }
-.tour-m-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px var(--gutter) 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tour-m-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding: 4px var(--gutter) 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .tour-m-track::-webkit-scrollbar { display: none; }
 .tour-m-card { flex: 0 0 min(84%, 420px); scroll-snap-align: center; padding: 18px 18px 22px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); opacity: 0.55; transition: border-color var(--d-2), opacity 0.4s; }
 .tour-m-card.is-active { border-color: var(--accent-a5); opacity: 1; }

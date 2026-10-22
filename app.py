@@ -301,9 +301,20 @@ def fill_bar(bar, ratio, duration=0.6):
     animate(bar, duration, lambda t: bar.set(ratio * t))
 
 
+SCROLL = {"t": 0.0}          # time of the last wheel event; hover effects pause briefly after it
+
+
+def note_scroll(_event=None):
+    SCROLL["t"] = time.monotonic()
+
+
+def scrolling() -> bool:
+    return time.monotonic() - SCROLL["t"] < 0.35
+
+
 def hover_lift(widget, fg=None, border=None):
     """Hover feedback for a card or row: the border brightens (and optionally the fill) while the pointer is over it,
-    including over its children. Cheap, no reflow."""
+    including over its children. Cheap, no reflow. Paused while the wheel is turning."""
     try:
         base_fg = widget.cget("fg_color")
         base_border = widget.cget("border_color")
@@ -314,6 +325,8 @@ def hover_lift(widget, fg=None, border=None):
     state = {"in": False}
 
     def enter(_e=None):
+        if scrolling():
+            return
         if not state["in"]:
             state["in"] = True
             try:
@@ -322,6 +335,8 @@ def hover_lift(widget, fg=None, border=None):
                 pass
 
     def leave(_e=None):
+        if scrolling() and not state["in"]:
+            return
         # ignore leaves that are really moves onto a child
         try:
             x, y = widget.winfo_pointerxy()
@@ -1240,7 +1255,7 @@ class TimetableView(ctk.CTkFrame):
         self.scroll.pack(fill="both", expand=True)
         self.pic = ctk.CTkLabel(self.scroll, text="")
         self.empty = ctk.CTkLabel(self.scroll, text="", font=F(LG), text_color=C["dim"], wraplength=700)
-        self.scroll.bind("<Configure>", lambda e: self.after(80, self._fit))
+        self.scroll.bind("<Configure>", lambda e: self.after(80, self._fit), add="+")
 
     def _student(self):
         sessions = (self.app.timetable or {}).get("sessions", [])
@@ -2446,6 +2461,7 @@ class App(ctk.CTk):
             return None
 
     def _bind_shortcuts(self):
+        self.bind_all("<MouseWheel>", note_scroll, add="+")
         self.bind("<F5>", lambda e: self.start_sync())
         for i, (key, _) in enumerate(self.NAV, start=1):
             self.bind(f"<Control-Key-{i}>", lambda e, k=key: self.navigate(k))
@@ -2594,8 +2610,11 @@ class App(ctk.CTk):
         view = self.views[key]
         view.pack(fill="both", expand=True, pady=(12, 0) if changed else 0)
         if changed:
-            # the page settles into place from a few pixels below
-            animate(view, 0.26, lambda t: view.pack_configure(pady=(int(round(12 * (1 - t))), 0)))
+            # the page settles into place from a few pixels below. A scrollable page is really its outer frame that
+            # is packed (CustomTkinter overrides pack but not pack_configure); configuring the inner frame instead
+            # packs it into its own canvas, which pins the page to the viewport height and kills scrolling.
+            packed = getattr(view, "_parent_frame", view)
+            animate(view, 0.26, lambda t: packed.pack_configure(pady=(int(round(12 * (1 - t))), 0)))
         self.page_title.configure(text=dict(self.NAV)[key])
         if key == "assignments" and kwargs:
             view.apply(kwargs.get("filter_name"), kwargs.get("course"))

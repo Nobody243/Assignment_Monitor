@@ -32,8 +32,11 @@ export default function TourMobile() {
     return () => io.disconnect();
   }, []);
   const go = (i) => {
-    const n = (i + TOUR.length) % TOUR.length;
-    track.current?.children[n]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    // scroll the caption row itself; scrollIntoView would also drag the page sideways for the last card
+    const el = track.current, card = el?.children[(i + TOUR.length) % TOUR.length];
+    if (!el || !card) return;
+    const left = card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2;
+    el.scrollTo({ left: Math.max(0, Math.min(left, el.scrollWidth - el.clientWidth)), behavior: "smooth" });
   };
   // auto-advance while on screen, until the first touch
   useEffect(() => {
