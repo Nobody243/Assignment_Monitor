@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.2 - 2026-10-22
+
+- Faster, calmer window: pages are rebuilt only when the data or settings behind them changed (the dashboard also once a minute for its countdowns), and they are built before they are shown, so switching between pages is instant and a page no longer assembles itself on screen; the page slide-in is gone because it re-laid out every widget for a dozen frames; the remaining animations run at 30 frames a second.
+- Smoother scrolling: wheel events are gathered and applied once per frame instead of repainting the page for every one of the burst a precision wheel or touchpad sends, and a notch moves 40 px instead of 20.
+- Website: screenshots retaken from this build and the dashboard tour re-aimed at the cards, which had moved down when today's classes joined the page.
+
 ## 1.4.1 - 2026-10-22
 
 - Fix: the Dashboard, Exams and Settings pages could not be scrolled and their content was pinned to the window height (since 1.3.1, when the page slide-in started reconfiguring the wrong frame). Settings is reachable to the bottom again.

@@ -27,10 +27,11 @@ export const NUMBERS = [
 ];
 
 export const TOUR = [
-  { spot: [28.2, 20.5, 59.7, 14.8], label: "Next deadline", title: "The next deadline, with a countdown", text: "Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet." },
-  { spot: [28.2, 36.4, 59.8, 10.6], label: "Six counters", title: "Pending, due today, this week, extended, overdue, submitted", text: "Each counter is a filter. Click it and the Assignments page opens on exactly that slice." },
-  { spot: [28.2, 48.2, 35.0, 37.9], label: "Attendance", title: "Your attendance margin, weakest course first", text: "Every course's percentage from the CMS. Red is under the 75% rule; the Attendance page behind it says how many classes you can still miss, or must attend." },
-  { spot: [64.1, 48.2, 23.9, 37.9], label: "Next exam", title: "Room and seat before you have to ask", text: "The seating plan from the CMS with a countdown, time, room, row and seat. A notification comes the day before and on the morning of the paper." },
+  { spot: [19.6, 17.6, 76.8, 15.6], label: "Next deadline", title: "The next deadline, with a countdown", text: "Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet." },
+  { spot: [19.6, 33.6, 76.8, 11.4], label: "Six counters", title: "Pending, due today, this week, extended, overdue, submitted", text: "Each counter is a filter. Click it and the Assignments page opens on exactly that slice." },
+  { spot: [19.6, 45.4, 76.8, 24.8], label: "Today's classes", title: "Today's classes, the one happening now highlighted", text: "Read from the CMS timetable: what is next, where, and when. The Timetable page behind it draws the whole week and saves it as a picture." },
+  { spot: [19.9, 70.8, 44.8, 24.6], label: "Attendance", title: "Your attendance margin, weakest course first", text: "Every course's percentage from the CMS. Red is under the 75% rule; the Attendance page behind it says how many classes you can still miss, or must attend." },
+  { spot: [65.6, 70.8, 30.6, 24.6], label: "Next exam", title: "Room and seat before you have to ask", text: "The seating plan from the CMS with a countdown, time, room, row and seat. A notification comes the day before and on the morning of the paper." },
   { spot: [1, 2.5, 16, 96], label: "Always a click away", title: "Light or dark, tray or window", text: "Switch the theme any time. Close the window and it keeps running in the tray; the background checks run even when it doesn't." },
 ];
 
@@ -56,7 +57,7 @@ export const STEPS = [
   { title: "Let it run", text: "Leave \"Check automatically\" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days." },
 ];
 
-export const SHOT_V = "140";
+export const SHOT_V = "142";
 export const shot = (id, theme) => `/assets/shot-${id}-${theme}.png?v=${SHOT_V}`;
 
 export const SCREENS = [

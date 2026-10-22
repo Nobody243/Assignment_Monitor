@@ -260,8 +260,8 @@ def ease_out(t):
 
 
 def animate(widget, duration, step, done=None):
-    """Runs step(t) with t eased 0..1 over `duration` seconds on the Tk loop (16 ms frames). With animations off,
-    jumps straight to the end state."""
+    """Runs step(t) with t eased 0..1 over `duration` seconds on the Tk loop (33 ms frames, 30 fps). With animations
+    off, jumps straight to the end state."""
     if not ANIMATE["on"]:
         try:
             step(1.0)
@@ -281,7 +281,7 @@ def animate(widget, duration, step, done=None):
         except Exception:
             return
         if t < 1:
-            widget.after(16, tick)
+            widget.after(33, tick)
         elif done:
             done()
     tick()
@@ -310,6 +310,40 @@ def note_scroll(_event=None):
 
 def scrolling() -> bool:
     return time.monotonic() - SCROLL["t"] < 0.35
+
+
+def _wheel_coalesced(self, event):
+    """Replaces CTkScrollableFrame's wheel handler on Windows. Wheel events arrive in bursts (several per notch from
+    precision wheels and touchpads) and the stock handler scrolls and repaints the whole page for each one, which
+    is the stutter and torn text during a fast scroll. The deltas are summed and applied once per frame, and a
+    notch moves 40 px instead of 20."""
+    if not self._check_if_valid_scroll(event.widget):
+        return
+    canvas = self._parent_canvas
+    axis = "x" if self._shift_pressed else "y"
+    if (canvas.xview() if axis == "x" else canvas.yview()) == (0.0, 1.0):
+        return
+    pend = self.__dict__.setdefault("_wheel_pending", {"x": 0, "y": 0, "job": None})
+    pend[axis] -= int(event.delta / 3)
+    if pend["job"] is None:
+        pend["job"] = canvas.after(16, lambda: _wheel_flush(self))
+
+
+def _wheel_flush(self):
+    pend = self._wheel_pending
+    pend["job"] = None
+    try:
+        if pend["x"]:
+            self._parent_canvas.xview("scroll", pend["x"], "units")
+        if pend["y"]:
+            self._parent_canvas.yview("scroll", pend["y"], "units")
+    except Exception:
+        pass
+    pend["x"] = pend["y"] = 0
+
+
+if sys.platform.startswith("win"):
+    ctk.CTkScrollableFrame._mouse_wheel_all = _wheel_coalesced
 
 
 def hover_lift(widget, fg=None, border=None):
@@ -2605,24 +2639,26 @@ class App(ctk.CTk):
             bar.configure(fg_color=C["accent"] if active else "transparent")
         if self.current:
             self.views[self.current].pack_forget()
-        changed = self.current != key
         self.current = key
         view = self.views[key]
-        view.pack(fill="both", expand=True, pady=(12, 0) if changed else 0)
-        if changed:
-            # the page settles into place from a few pixels below. A scrollable page is really its outer frame that
-            # is packed (CustomTkinter overrides pack but not pack_configure); configuring the inner frame instead
-            # packs it into its own canvas, which pins the page to the viewport height and kills scrolling.
-            packed = getattr(view, "_parent_frame", view)
-            animate(view, 0.26, lambda t: packed.pack_configure(pady=(int(round(12 * (1 - t))), 0)))
         self.page_title.configure(text=dict(self.NAV)[key])
+        # a page is rebuilt only when the data or the settings behind it changed since it was last drawn (the
+        # dashboard also every minute for its countdowns and "now" markers, the activity log every time), and it is
+        # rebuilt before it is packed, so it appears in one piece instead of assembling itself on screen
+        stamp = (self.data_version, id(self.env))
+        stale = (getattr(view, "_drawn_for", None) != stamp or key == "activity"
+                 or (key == "dashboard" and time.monotonic() - getattr(view, "_drawn_at", 0) > 60))
         if key == "assignments" and kwargs:
             view.apply(kwargs.get("filter_name"), kwargs.get("course"))
-        elif hasattr(view, "refresh"):
+            view._drawn_for, view._drawn_at = stamp, time.monotonic()
+        elif hasattr(view, "refresh") and stale:
             view.refresh()
+            view._drawn_for, view._drawn_at = stamp, time.monotonic()
+        view.pack(fill="both", expand=True)
 
     # ---- data
     def reload_data(self):
+        self.data_version = getattr(self, "data_version", 0) + 1
         self.data = load_stored_assignments()
         self.attendance = load_attendance()
         self.exams = load_exams()
