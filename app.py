@@ -1005,56 +1005,93 @@ class AssignmentsView(ctk.CTkFrame):
 
 
 # ---------------------------------------------------------------------------- attendance
-class AttendanceView(ctk.CTkScrollableFrame):
+ATT_FILTERS = ["All", "Under minimum", "At risk", "On track"]
+ATT_VIEWS = ["Summary", "All classes", "Missed only"]
+
+
+class AttendanceView(ctk.CTkFrame):
+    """Every registered course in one list, weakest first. Filter by standing (all, under the minimum, at risk, on
+    track); click a course for its classes, or switch the whole page to every class or only the missed ones."""
+
     def __init__(self, master, app):
         super().__init__(master, fg_color="transparent")
         self.app = app
+        self.filter_name = "All"
+        self.mode = "Summary"
         self.expanded = set()
 
+        bar = ctk.CTkFrame(self, fg_color="transparent")
+        bar.pack(fill="x", pady=(2, 10))
+        seg_style = dict(font=F(SM, "semibold"), height=34, corner_radius=8, selected_color=C["accent"],
+                         selected_hover_color=C["accent_h"], unselected_color=C["surface"],
+                         unselected_hover_color=C["surface2"], text_color=C["ink"], fg_color=C["line"])
+        self.seg = ctk.CTkSegmentedButton(bar, values=ATT_FILTERS, command=self._set_filter, **seg_style)
+        self.seg.set("All")
+        self.seg.pack(side="left")
+        self.mode_seg = ctk.CTkSegmentedButton(bar, values=ATT_VIEWS, command=self._set_mode, **seg_style)
+        self.mode_seg.set("Summary")
+        self.mode_seg.pack(side="right")
+
+        self.summary = ctk.CTkLabel(self, text="", font=F(SM), text_color=C["muted"], anchor="w")
+        self.summary.pack(fill="x", pady=(0, 6))
+        self.list = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.list.pack(fill="both", expand=True)
+
+    def apply(self, filter_name=None, mode=None):
+        if filter_name in ATT_FILTERS:
+            self.filter_name = filter_name
+            self.seg.set(filter_name)
+        if mode in ATT_VIEWS:
+            self.mode = mode
+            self.mode_seg.set(mode)
+        self.refresh()
+
+    def _set_filter(self, v):
+        self.filter_name = v
+        self.refresh()
+
+    def _set_mode(self, v):
+        self.mode = v
+        self.refresh()
+
     def refresh(self):
-        for w in self.winfo_children():
+        for w in self.list.winfo_children():
             w.destroy()
+        try:
+            self.list._parent_canvas.yview_moveto(0)
+        except Exception:
+            pass
         env = self.app.env
         minimum = int(env.get("ATTENDANCE_MIN", 75))
-        att = sorted([c for c in self.app.attendance.values()], key=lambda c: (c.get("total", 0) == 0, c.get("percent", 0)))
         if not env.get("TRACK_ATTENDANCE", True):
+            self.summary.configure(text="")
             self._empty("Attendance tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
             return
+        att = sorted(self.app.attendance.values(), key=lambda c: (c.get("total", 0) == 0, c.get("percent", 0)))
         if not att:
+            self.summary.configure(text="")
             self._empty("No attendance yet", "Press Sync now (or F5). Attendance is read from the CMS with every check.")
             return
         with_hours = [c for c in att if c.get("total")]
-        below = [c for c in with_hours if not c.get("ok", True)]
+        standing = {id(c): att_color(c)[2] for c in att}
+        counts = {k: sum(1 for c in with_hours if standing[id(c)] == k) for k in ATT_FILTERS[1:]}
+        shown = att if self.filter_name == "All" else [c for c in with_hours if standing[id(c)] == self.filter_name]
         total_present = sum(c.get("present", 0) for c in with_hours)
         total_hours = sum(c.get("total", 0) for c in with_hours)
         overall = total_present / total_hours * 100 if total_hours else 0
-        strip = surface(self)
-        strip.pack(fill="x", pady=(2, 12))
-        cells = [(f"{overall:.0f}%", "Overall this semester"), (str(len(below)), f"Under {minimum}%"),
-                 (f"{sum(c.get('absent', 0) for c in with_hours):g} h", "Hours missed"),
-                 (f"{total_hours:g} h", "Hours held")]
-        for i, (val, lbl) in enumerate(cells):
-            strip.grid_columnconfigure(i, weight=1, uniform="att")
-            cell = ctk.CTkFrame(strip, fg_color="transparent")
-            cell.grid(row=0, column=i, sticky="nsew")
-            if i:
-                ctk.CTkFrame(cell, fg_color=C["line"], width=1, height=2, corner_radius=0).pack(side="left", fill="y", pady=16)
-            inner = ctk.CTkFrame(cell, fg_color="transparent")
-            inner.pack(side="left", fill="x", expand=True, padx=18, pady=14)
-            vl = ctk.CTkLabel(inner, text=val, font=F(H1, "semibold", display=True),
-                              text_color=C["red"] if (i == 1 and below) else C["ink"])
-            vl.pack(anchor="w")
-            if val.endswith("%"):
-                count_up(vl, int(val[:-1]), "%")
-            ctk.CTkLabel(inner, text=lbl, font=F(SM), text_color=C["muted"]).pack(anchor="w")
-        ctk.CTkLabel(self, text=f"Minimum {minimum}% (change it in Settings). Margins assume the usual class length; "
-                                "the portal's own figures are authoritative.",
-                     font=F(SM), text_color=C["muted"], anchor="w").pack(fill="x", pady=(0, 8))
-        for c in att:
+        bits = [f"{len(att)} courses" if self.filter_name == "All" else f"{len(shown)} of {len(att)} courses",
+                f"overall {overall:.0f}%", f"{counts['Under minimum']} under {minimum}%", f"{counts['At risk']} at risk",
+                f"{sum(c.get('absent', 0) for c in with_hours):g} of {total_hours:g} hours missed",
+                f"minimum {minimum}% (Settings)"]
+        self.summary.configure(text="   ·   ".join(bits))
+        if not shown:
+            self._empty(f"No course is {self.filter_name.lower()}", "Pick another filter to see the rest.")
+            return
+        for c in shown:
             self._course(c, minimum)
 
     def _empty(self, title, sub):
-        box = surface(self)
+        box = surface(self.list)
         box.pack(fill="x")
         ctk.CTkLabel(box, text=title, font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
         ctk.CTkLabel(box, text=sub, font=F(MD), text_color=C["muted"]).pack(pady=(0, 28))
@@ -1062,68 +1099,79 @@ class AttendanceView(ctk.CTkScrollableFrame):
     def _course(self, c, minimum):
         color, tint, label = att_color(c)
         code = c.get("code", "")
-        box = surface(self)
-        box.pack(fill="x", pady=(0, 10))
-        head = ctk.CTkFrame(box, fg_color="transparent")
-        head.pack(fill="x", padx=20, pady=(16, 0))
-        left = ctk.CTkFrame(head, fg_color="transparent")
-        left.pack(side="left", fill="x", expand=True)
+        sessions = c.get("sessions") or []
+        missed = [x for x in sessions if x.get("absent")]
+        opened = self.mode != "Summary" or code in self.expanded
+        box = surface(self.list, hover=True)
+        box.pack(fill="x", pady=(0, 8))
+        row = ctk.CTkFrame(box, fg_color="transparent")
+        row.pack(fill="x", padx=18, pady=(12, 12))
+        row.grid_columnconfigure(0, weight=1)
+
+        left = ctk.CTkFrame(row, fg_color="transparent")
+        left.grid(row=0, column=0, sticky="ew")
         ctk.CTkLabel(left, text=f"{code}  ·  {c.get('title', '')}", font=F(LG, "semibold"), text_color=C["ink"],
                      anchor="w").pack(anchor="w")
         ch = str(c.get("credit_hours", "") or "")
         credits = f"{ch} credit hour{'' if ch == '1' else 's'}" if ch else ""
-        meta = "   ·   ".join(b for b in (c.get("teacher", ""), c.get("class", ""), credits) if b)
-        ctk.CTkLabel(left, text=meta, font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(1, 0))
-        right = ctk.CTkFrame(head, fg_color="transparent")
-        right.pack(side="right")
+        meta = [b for b in (c.get("teacher", ""), c.get("class", ""), credits) if b]
+        if sessions:
+            meta.append(f"{len(sessions)} classes" + (f", {len(missed)} missed" if missed else ""))
+        ctk.CTkLabel(left, text="   ·   ".join(meta), font=F(SM), text_color=C["muted"], anchor="w").pack(anchor="w", pady=(1, 0))
+
         if c.get("total"):
+            mid = ctk.CTkFrame(row, fg_color="transparent")
+            mid.grid(row=0, column=1, padx=(18, 18))
+            bar = ctk.CTkProgressBar(mid, width=200, height=6, progress_color=color, fg_color=C["surface2"], corner_radius=3)
+            bar.pack(anchor="w", pady=(6, 4))
+            fill_bar(bar, min(1.0, c.get("percent", 0) / 100))
+            if c.get("ok", True):
+                margin = f"Present {c.get('present', 0):g} of {c.get('total', 0):g} h  ·  can miss {c.get('can_miss', 0):g} h"
+            else:
+                margin = f"Present {c.get('present', 0):g} of {c.get('total', 0):g} h  ·  need {c.get('need', 0):g} h straight"
+            if c.get("new_absent_hours"):
+                margin += f"  ·  {c['new_absent_hours']:g} h new"
+            ctk.CTkLabel(mid, text=margin, font=F(XS), text_color=C["muted"], anchor="w").pack(anchor="w")
+            right = ctk.CTkFrame(row, fg_color="transparent")
+            right.grid(row=0, column=2, sticky="e")
             ctk.CTkLabel(right, text=f"{c.get('percent', 0):.1f}%", font=F(H2, "semibold", display=True), text_color=color).pack(anchor="e")
             pill(right, label, color).pack(anchor="e")
         else:
-            ctk.CTkLabel(right, text="No classes yet", font=F(SM), text_color=C["dim"]).pack(anchor="e")
-        if c.get("total"):
-            bar = ctk.CTkProgressBar(box, height=6, progress_color=color, fg_color=C["surface2"], corner_radius=3)
-            bar.pack(fill="x", padx=20, pady=(10, 6))
-            fill_bar(bar, min(1.0, c.get("percent", 0) / 100))
-            if c.get("ok", True):
-                margin = (f"Present {c.get('present', 0):g} of {c.get('total', 0):g} hours. You can miss {c.get('can_miss', 0):g} more "
-                          f"hour{'s' if c.get('can_miss', 0) != 1 else ''} and stay at {minimum}%.")
-            else:
-                margin = (f"Present {c.get('present', 0):g} of {c.get('total', 0):g} hours. Attend the next {c.get('need', 0):g} hours "
-                          f"without a miss to get back to {minimum}%.")
-            if c.get("new_absent_hours"):
-                margin += f"  Last sync recorded {c['new_absent_hours']:g} new absent hour{'s' if c['new_absent_hours'] != 1 else ''}."
-            ctk.CTkLabel(box, text=margin, font=F(SM), text_color=C["muted"], anchor="w", justify="left",
-                         wraplength=820).pack(anchor="w", padx=20)
-        sessions = c.get("sessions") or []
-        foot = ctk.CTkFrame(box, fg_color="transparent")
-        foot.pack(fill="x", padx=20, pady=(8, 14))
-        if sessions:
-            missed = [x for x in sessions if x.get("absent")]
-            missed_txt = f"  ·  {len(missed)} missed" if missed else ""
-            txt = "Hide classes" if code in self.expanded else f"Show {len(sessions)} classes{missed_txt}"
-            soft_button(foot, txt, lambda k=code: self._toggle(k)).pack(side="left")
-        if code in self.expanded and sessions:
-            tbl = ctk.CTkFrame(box, fg_color="transparent")
-            tbl.pack(fill="x", padx=20, pady=(0, 14))
-            for i, x in enumerate(reversed(sessions)):
-                if i:
-                    hairline(tbl, padx=0)
-                r = ctk.CTkFrame(tbl, fg_color="transparent")
-                r.pack(fill="x", pady=7)
-                absent = bool(x.get("absent"))
-                ctk.CTkFrame(r, fg_color=C["red"] if absent else C["green"], width=8, height=8, corner_radius=4).pack(side="left", pady=6)
-                body = ctk.CTkFrame(r, fg_color="transparent")
-                body.pack(side="left", fill="x", expand=True, padx=(12, 0))
-                d = session_date(x.get("date", ""))
-                when = d.strftime("%a %d %b") if d else x.get("date", "")
-                ctk.CTkLabel(body, text=f"{when}   ·   {x.get('type', '')}   ·   {x.get('room', '')}", font=F(SM, "medium"),
-                             text_color=C["ink"], anchor="w").pack(anchor="w")
-                if x.get("topics"):
-                    ctk.CTkLabel(body, text=x["topics"], font=F(SM), text_color=C["muted"], anchor="w", justify="left",
-                                 wraplength=700).pack(anchor="w")
-                tag = f"Absent {x.get('absent', 0):g} h" if absent else f"Present {x.get('present', 0):g} h"
-                pill(r, tag, "missed" if absent else "submitted").pack(side="right")
+            ctk.CTkLabel(row, text="No classes yet", font=F(SM), text_color=C["dim"]).grid(row=0, column=2, sticky="e")
+
+        if self.mode == "Summary":
+            bind_click(box, lambda k=code: self._toggle(k), lift=False)
+        if not opened:
+            return
+        hairline(box, padx=18)
+        rows = missed if self.mode == "Missed only" else sessions
+        if not sessions:
+            ctk.CTkLabel(box, text="No class record yet. It is read with the next sync.", font=F(SM), text_color=C["dim"],
+                         anchor="w").pack(anchor="w", padx=18, pady=12)
+            return
+        if not rows:
+            ctk.CTkLabel(box, text="No classes missed.", font=F(SM), text_color=C["green"], anchor="w").pack(anchor="w", padx=18, pady=12)
+            return
+        tbl = ctk.CTkFrame(box, fg_color="transparent")
+        tbl.pack(fill="x", padx=18, pady=(4, 10))
+        for i, x in enumerate(reversed(rows)):
+            if i:
+                hairline(tbl, padx=0)
+            r = ctk.CTkFrame(tbl, fg_color="transparent")
+            r.pack(fill="x", pady=6)
+            absent = bool(x.get("absent"))
+            ctk.CTkFrame(r, fg_color=C["red"] if absent else C["green"], width=8, height=8, corner_radius=4).pack(side="left", pady=6)
+            body = ctk.CTkFrame(r, fg_color="transparent")
+            body.pack(side="left", fill="x", expand=True, padx=(12, 0))
+            d = session_date(x.get("date", ""))
+            when = d.strftime("%a %d %b") if d else x.get("date", "")
+            ctk.CTkLabel(body, text="   ·   ".join(b for b in (when, x.get("type", ""), x.get("room", "")) if b),
+                         font=F(SM, "medium"), text_color=C["ink"], anchor="w").pack(anchor="w")
+            if x.get("topics"):
+                ctk.CTkLabel(body, text=x["topics"], font=F(SM), text_color=C["muted"], anchor="w", justify="left",
+                             wraplength=700).pack(anchor="w")
+            tag = f"Absent {x.get('absent', 0):g} h" if absent else f"Present {x.get('present', 0):g} h"
+            pill(r, tag, "missed" if absent else "submitted").pack(side="right")
 
     def _toggle(self, code):
         if code in self.expanded:

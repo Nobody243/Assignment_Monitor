@@ -105,7 +105,7 @@ export default function Features() {
     if (e.button !== undefined && e.button !== 0) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic or already-released pointer */ }
     const t = performance.now();
-    s.drag = { x: e.clientX, t0: t, th0: s.theta, samples: [[t, s.theta]] };
+    s.drag = { x: e.clientX, t0: t, th0: s.theta, last: t, samples: [[t, s.theta]] };
     s.target = null; s.hold = 0; s.omega = 0;
     e.currentTarget.classList.add("is-dragging");
   };
@@ -114,16 +114,20 @@ export default function Features() {
     const dx = e.clientX - s.drag.x; s.drag.x = e.clientX;
     s.theta += dx * s.degPerPx;
     const now = performance.now();
+    s.drag.last = now;
     s.drag.samples.push([now, s.theta]);
     if (s.drag.samples.length > 2) s.drag.samples = s.drag.samples.filter(([t], k, arr) => k === arr.length - 1 || now - t < 160);
   };
   const onUp = (e) => {
     if (!s.drag) return;
     const now = performance.now();
-    // release velocity from the last ~160 ms of movement, or the whole drag when events were coalesced
-    let [t0, th0] = s.drag.samples[0];
-    if (now - t0 < 16) { t0 = s.drag.t0; th0 = s.drag.th0; }
-    const v = now - t0 > 16 ? ((s.theta - th0) / (now - t0)) * 1000 : 0;
+    // release velocity: the last ~160 ms of movement, or the whole drag when the browser coalesced the moves;
+    // a finger that stopped before lifting throws nothing
+    const [t0, th0] = s.drag.samples[0];
+    const vWin = now - t0 > 16 ? ((s.theta - th0) / (now - t0)) * 1000 : 0;
+    const vAll = now - s.drag.t0 > 16 ? ((s.theta - s.drag.th0) / (now - s.drag.t0)) * 1000 : 0;
+    let v = Math.abs(vAll) > Math.abs(vWin) && Math.sign(vAll) === Math.sign(vWin || vAll) ? vAll : vWin;
+    if (now - s.drag.last > 120) v = 0;
     s.omega = Math.max(-MAX_OMEGA, Math.min(MAX_OMEGA, v));
     if (Math.abs(s.omega) > 40) s.thrownUntil = now + 2600;
     s.drag = null;

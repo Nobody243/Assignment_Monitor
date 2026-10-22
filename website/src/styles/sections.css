@@ -43,12 +43,12 @@
 .story-head h2 { margin-top: 14px; }
 .story-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr); gap: 56px; align-items: center; padding: 28px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
 .story-visual { max-width: min(100%, calc(60vh * 1.524)); }
-.story-visual .shot-body { position: relative; line-height: 0; }
-.story-visual .shot-body img { display: block; width: 100%; height: auto; }
-.story-visual .spot { position: absolute; left: var(--sx); top: var(--sy); width: var(--sw); height: var(--sh); border-radius: 10px; border: 1px solid var(--accent);
+.story-visual .shot-body, .tour-m-win .shot-body { position: relative; line-height: 0; }
+.story-visual .shot-body img, .tour-m-win .shot-body img { display: block; width: 100%; height: auto; }
+.story-visual .spot, .tour-m-win .spot { position: absolute; left: var(--sx); top: var(--sy); width: var(--sw); height: var(--sh); border-radius: 10px; border: 1px solid var(--accent);
   box-shadow: 0 0 0 9999px rgba(10, 10, 11, 0.74), 0 0 30px var(--accent-a4); pointer-events: none;
   transition: left 0.7s var(--ease-std), top 0.7s var(--ease-std), width 0.7s var(--ease-std), height 0.7s var(--ease-std); }
-.story-visual .spot-label { position: absolute; left: var(--sx); top: var(--sy); transform: translate(8px, -50%); padding: 3px 8px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); font-family: var(--mono); font-size: var(--t-2xs); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.4; transition: left 0.7s var(--ease-std), top 0.7s var(--ease-std); }
+.story-visual .spot-label, .tour-m-win .spot-label { position: absolute; left: var(--sx); top: var(--sy); transform: translate(8px, -50%); padding: 3px 8px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); font-family: var(--mono); font-size: var(--t-2xs); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.4; transition: left 0.7s var(--ease-std), top 0.7s var(--ease-std); }
 .story-side { display: grid; grid-template-columns: 44px 1fr; gap: 22px; align-items: stretch; }
 .story-rail { list-style: none; margin: 0; padding: 0; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
 .story-rail::before { content: ""; position: absolute; left: 21px; top: 20px; bottom: 20px; width: 1px; background: var(--line-2); }
@@ -114,7 +114,8 @@
 .card ul { margin: 18px 0 0; padding: 0; list-style: none; font-size: var(--t-sm); }
 .card ul li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .card ul li span { font-family: var(--mono); font-size: var(--t-2xs); color: var(--ink-3); letter-spacing: 0.04em; }
-@media (max-width: 600px) { .feat-head { flex-direction: column; align-items: flex-start; } .card { padding: 26px 22px 28px; } .card .mono { margin-bottom: 26px; } .feat-wheel { padding-top: 20px; perspective: 1100px; } .feat-dots button { width: 28px; } }
+@media (max-width: 600px) { .feat-head { flex-direction: column; align-items: flex-start; } .card { padding: 24px 20px 26px; } .card .mono { margin-bottom: 24px; } .feat-wheel { padding: 20px 0 22px; perspective: 900px; perspective-origin: 50% 20%; }
+  .feat-ring .card3d { width: 74vw; margin-left: -37vw; } .feat-dots button { width: 28px; } }
 
 /* ============================================================ steps */
 /* setup timeline: a line drawn as the section scrolls in, with a current flowing along it, and nodes that light up */
@@ -202,20 +203,20 @@
 .story-m { padding: 0 0 var(--section); }
 .story-m .wrap { padding-top: 96px; }
 .story-m .story-head { margin-bottom: 22px; }
-.tour-m-track { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 var(--gutter) 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tour-m-win { margin: 22px 0 16px; }
+.tour-m-win .spot-label { font-size: 9px; padding: 2px 6px; transform: translate(6px, -50%); }
+.tour-m-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px var(--gutter) 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .tour-m-track::-webkit-scrollbar { display: none; }
-.tour-m-card { flex: 0 0 min(86%, 420px); scroll-snap-align: center; padding: 14px 14px 22px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); transition: border-color var(--d-2), transform var(--d-2) var(--ease-out); }
-.tour-m-card.is-active { border-color: var(--accent-a5); }
-.tour-m-crop { position: relative; aspect-ratio: 1.6; overflow: hidden; border-radius: 12px; border: 1px solid var(--line-2); background: #e9eaee; margin-bottom: 16px; }
-.tour-m-crop::after { content: ""; position: absolute; inset: 0; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35), inset 0 -40px 60px -30px rgba(0,0,0,0.25); pointer-events: none; }
-.tour-m-crop img { position: absolute; left: 50%; top: 50%; max-width: none; height: auto; }
+.tour-m-card { flex: 0 0 min(84%, 420px); scroll-snap-align: center; padding: 18px 18px 22px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); opacity: 0.55; transition: border-color var(--d-2), opacity 0.4s; }
+.tour-m-card.is-active { border-color: var(--accent-a5); opacity: 1; }
 .tour-m-card .mono { display: block; color: var(--accent); margin-bottom: 10px; }
 .tour-m-card h3 { font-size: var(--t-lg); margin-bottom: 8px; }
 .tour-m-card p { color: var(--ink-3); font-size: var(--t-sm); }
-.tour-m-dots { display: flex; justify-content: center; gap: 4px; margin-top: 10px; }
-.tour-m-dots button { position: relative; width: 44px; height: 44px; }
+.tour-m-nav { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; }
+.tour-m-dots { display: flex; justify-content: center; gap: 0; }
+.tour-m-dots button { position: relative; width: 36px; height: 44px; }
 .tour-m-dots button::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 4px; background: var(--line-3); transition: width var(--d-2) var(--ease-out), background var(--d-2); }
-.tour-m-dots button[aria-selected="true"]::after { width: 26px; background: var(--accent); }
+.tour-m-dots button[aria-selected="true"]::after { width: 24px; background: var(--accent); }
 
 /* ============================================================ phones: shorter sections */
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 - 2026-10-22
+
+- Attendance page rebuilt as one list of every registered course, weakest first, with filters for courses under the minimum, at risk and on track. Click a course for its classes, or switch the page to every class or only the missed ones.
+
 ## 1.3.2 - 2026-10-22
 
 - New colour scheme in both themes: cool slate greys with a single indigo accent, calmer state colours, and a sidebar and status bar a shade off the page so the shell frames the content. Pills are fully rounded and nav items a little softer.
