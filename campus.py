@@ -268,3 +268,109 @@ def parse_lectures(page_html: str, course: str) -> List[dict]:
         out.append({"id": key, "course": course, "week": week, "title": title, "files": files, "videos": videos,
                     "remarks": cells[5] if len(cells) > 5 else ""})
     return out
+
+
+# ---------------------------------------------------------------------------- timetable
+DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+_TT_RANGE = re.compile(r"(\d{1,2}:\d{2})\s*([AP]M)\s*-\s*(\d{1,2}:\d{2})\s*([AP]M)", re.I)
+_SEMESTER = re.compile(r"^(Spring|Fall|Summer)-\d{4}$")
+
+
+def _to_24h(hhmm: str, ampm: str) -> str:
+    h, m = hhmm.split(":")
+    h = int(h) % 12 + (12 if ampm.upper() == "PM" else 0)
+    return f"{h:02d}:{m}"
+
+
+def minutes(hhmm: str) -> int:
+    """'13:30' -> 810."""
+    h, m = hhmm.split(":")
+    return int(h) * 60 + int(m)
+
+
+def parse_timetable(page_html: str) -> dict:
+    """The CMS 'Time Table' page: one row per day; every class is a td.event whose inner div's title attribute holds
+    the course, teacher, class, room and the time range, one per line. Returns {"semester", "sessions": [...]} with
+    sessions sorted by day then start, times as 24-hour 'HH:MM'."""
+    tree = html.fromstring(page_html)
+    semester = ""
+    for txt in tree.xpath("//text()"):
+        t = _clean(txt)
+        if _SEMESTER.match(t):
+            semester = t
+            break
+    sessions = []
+    for row in tree.xpath("//table[@id='timeTable']//tr"):
+        cells = row.xpath("./td|./th")
+        if not cells:
+            continue
+        day = _clean(cells[0].text_content())[:3].title()
+        if day not in DAY_ORDER:
+            continue
+        for td in row.xpath("./td[contains(@class,'event')]"):
+            box = td.xpath("./div[@title]")
+            title = (box[0].get("title") if box else "") or ""
+            lines = [ln.strip() for ln in title.split("\n") if ln.strip()]
+            m = _TT_RANGE.search(title)
+            if not m:
+                continue
+
+            def sub(cls, td=td):
+                el = td.xpath(f".//div[contains(@class,'{cls}')]//span")
+                return _clean(el[0].text_content()) if el else ""
+            teacher = lines[1] if len(lines) > 1 else ""
+            sessions.append({
+                "day": day,
+                "start": _to_24h(m.group(1), m.group(2)),
+                "end": _to_24h(m.group(3), m.group(4)),
+                "course": lines[0] if lines else sub("title"),
+                "abbr": sub("title"),
+                "teacher": teacher.title() if teacher.isupper() else teacher,
+                "initials": sub("facultyMember"),
+                "class": lines[2] if len(lines) > 2 else sub("class"),
+                "room": sub("room") or (lines[3] if len(lines) > 3 else ""),
+            })
+    sessions.sort(key=lambda x: (DAY_ORDER.index(x["day"]), x["start"]))
+    # the portal splits one class into back-to-back slots now and then; join them
+    merged: List[dict] = []
+    for x in sessions:
+        last = merged[-1] if merged else None
+        if (last and last["day"] == x["day"] and last["course"] == x["course"] and last["room"] == x["room"]
+                and last["class"] == x["class"] and last["end"] == x["start"]):
+            last["end"] = x["end"]
+        else:
+            merged.append(dict(x))
+    return {"semester": semester, "sessions": merged}
+
+
+def sessions_on(sessions: List[dict], day: str) -> List[dict]:
+    """The classes of one weekday ('Mon'…'Sun'), in order."""
+    return [x for x in sessions if x.get("day") == day]
+
+
+# ---------------------------------------------------------------------------- miscellaneous files
+def parse_misc(page_html: str, course: str) -> List[dict]:
+    """The LMS 'Miscellaneous' table for one course: one row per file with a type and a remark. Returned in the
+    lecture-record shape (one record per file, week 0, title = the type) so the Lectures page and the downloader
+    can treat them like lecture notes; 'kind' is 'misc'."""
+    tree = html.fromstring(page_html)
+    out = []
+    for row in tree.xpath("//table//tr"):
+        cells = row.xpath("./td")
+        if len(cells) < 3 or not _clean(cells[0].text_content()).isdigit():
+            continue
+        kind = _clean(cells[1].text_content()) or "File"
+        remarks = _clean(cells[3].text_content()) if len(cells) > 3 else ""
+        files = []
+        for a in cells[2].xpath(".//a[@href]"):
+            href = a.get("href", "")
+            if "Download.php" not in href:
+                continue
+            name = filename_from_link(href)
+            files.append({"label": name or _clean(a.text_content()), "href": href, "filename": name})
+        if not files:
+            continue
+        ident = hashlib.sha1(f"{course}|misc|{kind}|{files[0]['filename'] or files[0]['href']}".encode("utf-8")).hexdigest()[:16]
+        out.append({"id": ident, "kind": "misc", "course": course, "week": 0, "title": kind, "files": files,
+                    "videos": [], "remarks": remarks})
+    return out

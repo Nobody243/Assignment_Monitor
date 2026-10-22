@@ -11,16 +11,17 @@ from lxml import html
 from playwright.sync_api import sync_playwright
 
 from campus import (parse_announcements, parse_attendance, parse_attendance_detail, parse_exam_seats, parse_lectures,
-                    safe_name)
+                    parse_misc, parse_timetable, safe_name)
 from config import (PROFILE_DIR, DATA_DIR, BROWSERS_DIR, LOGIN_URL, SSO_URL, ASSIGNMENTS_URL, ATTENDANCE_URL,
-                    EXAMS_URL, ANNOUNCEMENTS_URL, LECTURES_URL, LMS_BASE_URL, load_env, save_meta, campus_name)
+                    EXAMS_URL, ANNOUNCEMENTS_URL, LECTURES_URL, MISC_URL, TIMETABLE_URL, LMS_BASE_URL, load_env, save_meta,
+                    campus_name)
 from deadlines import parse_deadline
 
 log = logging.getLogger("bahria.scraper")
 
 LOCK_PATH = DATA_DIR / "sync.lock"
 LOCK_STALE_SECONDS = 15 * 60
-ALL_COLLECTORS = ("assignments", "attendance", "exams", "announcements", "lectures")
+ALL_COLLECTORS = ("assignments", "attendance", "exams", "announcements", "lectures", "timetable")
 
 
 class LoginError(RuntimeError):
@@ -272,13 +273,29 @@ def _collect_exams(s: PortalSession) -> List[dict]:
 
 
 def _collect_lectures(s: PortalSession) -> List[dict]:
+    """Lecture notes and the Miscellaneous files of every course, in one list (misc records carry kind='misc')."""
     page = s.lms(LECTURES_URL)
     out: List[dict] = []
     for course_val, course_name in s.lms_courses():
         s.select_course(course_val)
         out.extend(parse_lectures(page.content(), course_name))
     log.info("Lecture notes: %d weeks across all courses.", len(out))
+    page = s.lms(MISC_URL)
+    n = 0
+    for course_val, course_name in s.lms_courses():
+        s.select_course(course_val)
+        items = parse_misc(page.content(), course_name)
+        n += len(items)
+        out.extend(items)
+    log.info("Miscellaneous files: %d across all courses.", n)
     return out
+
+
+def _collect_timetable(s: PortalSession) -> dict:
+    page = s.cms(TIMETABLE_URL)
+    data = parse_timetable(page.content())
+    log.info("Timetable: %d classes a week (%s).", len(data["sessions"]), data.get("semester") or "semester unknown")
+    return data
 
 
 def _collect_announcements(s: PortalSession) -> List[dict]:
@@ -333,6 +350,7 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     ("exams", "Reading the exam schedule", lambda: _collect_exams(session)),
                     ("announcements", "Reading announcements", lambda: _collect_announcements(session)),
                     ("lectures", "Reading lecture notes", lambda: _collect_lectures(session)),
+                    ("timetable", "Reading the timetable", lambda: _collect_timetable(session)),
                 ]
                 for key, label, fn in steps:
                     if key not in collect:
@@ -359,6 +377,8 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     summary.append(f"{len(result['announcements'])} announcements")
                 if "lectures" in result:
                     summary.append(f"{len(result['lectures'])} lecture weeks")
+                if "timetable" in result:
+                    summary.append(f"{len(result['timetable'].get('sessions', []))} classes a week")
                 meta["last_sync"] = datetime.now().isoformat(timespec="seconds")
                 meta["last_result"] = ", ".join(summary)
                 save_meta(meta)
@@ -389,7 +409,7 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
     wanted = {}
     for lec in selection:
         for f in lec.get("files", []):
-            wanted.setdefault(lec["course"], []).append((lec, f))
+            wanted.setdefault((lec["course"], lec.get("kind", "lecture")), []).append((lec, f))
     total = sum(len(v) for v in wanted.values())
     result = {"saved": [], "skipped": 0, "failed": []}
     if not total:
@@ -406,9 +426,13 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                 session.lms(LECTURES_URL)
                 courses = dict((name, val) for val, name in session.lms_courses())
                 done = 0
-                for course, items in wanted.items():
+                current_kind = "lecture"
+                for (course, kind), items in wanted.items():
                     if stop():
                         break
+                    if kind != current_kind:
+                        session.lms(MISC_URL if kind == "misc" else LECTURES_URL)
+                        current_kind = kind
                     val = courses.get(course)
                     if not val:
                         for _lec, f in items:
@@ -417,7 +441,8 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                         continue
                     session.select_course(val)
                     fresh = {}
-                    for lec in parse_lectures(page.content(), course):
+                    live_items = parse_misc(page.content(), course) if kind == "misc" else parse_lectures(page.content(), course)
+                    for lec in live_items:
                         for f in lec["files"]:
                             fresh[(lec["week"], lec["title"], f["label"])] = f
                     for lec, f in items:
@@ -425,7 +450,9 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                             break
                         done += 1
                         name = f.get("filename") or safe_name(lec["title"])
-                        folder = dest / safe_name(course) / f"Week {str(lec['week']).zfill(2)} - {safe_name(lec['title'], 60)}"
+                        sub = (f"Miscellaneous - {safe_name(lec['title'], 60)}" if kind == "misc"
+                               else f"Week {str(lec['week']).zfill(2)} - {safe_name(lec['title'], 60)}")
+                        folder = dest / safe_name(course) / sub
                         target = folder / name
                         say(f"{course[:30]} · week {lec['week']} · {name[:40]}", done, total)
                         if target.exists() and target.stat().st_size > 0:

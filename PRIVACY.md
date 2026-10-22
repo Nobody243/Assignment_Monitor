@@ -4,7 +4,7 @@
 
 ## What it does
 
-With your permission, the app signs in to the Bahria University CMS/LMS portal using the enrollment number and password you provide, and reads your own pages, the same way you would in a browser: the LMS assignments, announcements and lecture-notes lists for each course, and the CMS attendance, attendance detail and exam seating plan. Each of these can be switched off in Settings. Lecture files themselves are downloaded only when you select them and click Download, into a folder on your PC that you choose. It does this on your PC, on a schedule you control, and stores the results on your PC only.
+With your permission, the app signs in to the Bahria University CMS/LMS portal using the enrollment number and password you provide, and reads your own pages, the same way you would in a browser: the LMS assignments, announcements, lecture-notes and Miscellaneous-files lists for each course, and the CMS attendance, attendance detail, exam seating plan and timetable. Each of these can be switched off in Settings. Lecture files themselves are downloaded only when you select them and click Download, into a folder on your PC that you choose. It does this on your PC, on a schedule you control, and stores the results on your PC only.
 
 ## What it does not do
 
@@ -27,3 +27,9 @@ Uninstalling closes the app, removes the background tasks and the program, and a
 ## Warranty
 
 The app is provided "as is" under the MIT license, without warranty of any kind. Deadlines shown by the app come from the portal and can be wrong or out of date; always confirm on the LMS itself.
+
+## Phone, email and calendar (optional, off by default)
+
+- **Email** is sent from your own mailbox to your own address, over TLS, using an app password that is stored encrypted with Windows DPAPI like the portal password. No third party receives the mail.
+- **Phone pushes** use the Web Push standard. The signing keys are generated on your PC. When you pair a phone, the page on assignment-monitor.vercel.app hands your PC the phone's push address once, encrypted with a key that only the QR code carried, through a single-use topic on the public relay ntfy.sh; the relay sees only ciphertext and the topic is never used again. After that, alerts travel from your PC to the phone's browser push service (Google's, Apple's or Mozilla's, depending on the browser), encrypted end to end as the standard requires. The website has no accounts and no database and cannot see who paired or what is sent.
+- **Calendar** writes an .ics file in Documents › Assignment Monitor on your PC. If you also enable invites, they go out by the email channel above.

@@ -65,6 +65,11 @@ def _notify(title: str, body: str, voice: str = "") -> None:
         send_toast(f"{APP_NAME}: {title}", body)
     if voice:
         speak_voice(voice)
+    try:
+        from channels import send_all
+        send_all(title, body)
+    except Exception as e:
+        log.warning("Channel delivery could not start: %s", e)
 
 
 def alert_assignments(pending: list, extended: list) -> None:
@@ -174,5 +179,6 @@ def alert_lectures(new_items: list) -> None:
     lines = []
     for c, xs in list(by_course.items())[:3]:
         more = f" +{len(xs) - 2}" if len(xs) > 2 else ""
-        lines.append(f"- {c[:28]}: " + ", ".join(f"week {x['week']} {x['title'][:24]}" for x in xs[:2]) + more)
+        lines.append(f"- {c[:28]}: " + ", ".join(
+            (f"{x['title'][:24]} file" if x.get("kind") == "misc" else f"week {x['week']} {x['title'][:24]}") for x in xs[:2]) + more)
     _notify(f"New lecture notes in {_plural(len(by_course), 'course')}", "\n".join(lines))

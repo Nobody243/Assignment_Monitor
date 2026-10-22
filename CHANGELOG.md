@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 - 2026-10-22
+
+- Alerts on your phone and in your inbox. Settings → Phone, email and calendar: link your own mailbox (Gmail, Outlook, the university's Microsoft 365 or any SMTP server) with an app password, and pair a phone by scanning a QR code; no app to install, no account, and nothing passes through a server of ours. Every alert the app already raises on Windows is delivered to the linked channels too.
+- Calendar: an .ics file of deadlines and exams in Documents › Assignment Monitor, rewritten after every sync, and optional emailed calendar invites that appear in Google Calendar or Outlook on the phone. Both off until you turn them on.
+- Timetable: the CMS week drawn as a clean grid, in the app and saved as PNG, JPG or PDF. Today's classes on the dashboard with the one happening now highlighted.
+- Miscellaneous files: the LMS Miscellaneous page of every course (project briefs, templates, past papers) under a toggle on the Lectures page, downloadable like lecture notes into course / Miscellaneous folders.
+- Attendance: the first read of a new file kind never fires alerts for files that were already there.
+
 ## 1.3.3 - 2026-10-22
 
 - Attendance page rebuilt as one list of every registered course, weakest first, with filters for courses under the minimum, at risk and on track. Click a course for its classes, or switch the page to every class or only the missed ones.

@@ -51,6 +51,10 @@ def main():
         "--collect-all", "customtkinter",
         "--collect-all", "playwright",          # bundles the Node driver: no Python or Node needed
         "--hidden-import", "winotify",
+        "--hidden-import", "pywebpush",
+        "--hidden-import", "py_vapid",
+        "--hidden-import", "http_ece",
+        "--collect-submodules", "qrcode",
         "--hidden-import", "pystray._win32",
         "--exclude-module", "tkinter.test",
         str(ROOT / "app.py"),

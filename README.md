@@ -11,7 +11,9 @@ A desktop app that keeps an eye on your LMS and CMS so you don't have to: assign
 - **Attendance** per course with the margin to your minimum, class-by-class, and an alert when an absence is recorded
 - **Exam seating plan** with room and seat, a countdown, a reminder the day before and on the morning of each paper
 - **Announcements** from every course in one place, with an alert for each new one
-- **Lecture notes** from every course in one list; tick the files you want and download them into tidy course / week folders
+- **Lecture notes** and **Miscellaneous files** from every course in one list; tick the files you want and download them into tidy folders
+- **Timetable** from the CMS drawn as a clean week grid, saved as PNG, JPG or PDF; today's classes on the dashboard
+- **Phone and email alerts** through your own mailbox and your phone's browser, and an optional **calendar** of deadlines and exams
 - Lives in the **system tray**, can start with Windows, light and dark themes, keyboard shortcuts
 
 ## Install
@@ -37,11 +39,12 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | **Attendance** | Every course's hours and percentage, how many hours you can still miss (or need to attend) for your minimum, and the class-by-class record with topics. |
 | **Exams** | The seating plan: date, session, time, room, row and seat for each paper, with a countdown; papers not yet scheduled are listed too. |
 | **Announcements** | Every course's LMS announcements, newest first, filterable by course. |
-| **Lectures** | Every course's lecture notes by week with a checkbox per file. Download the selection into a folder you choose, organised as course / week - title; existing files are skipped. |
-| **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), campus tracking (attendance minimum, exam reminder lead, what to read), automatic checks, data folder, privacy and licenses. |
+| **Timetable** | The week as a grid, one row per day, colour per course, with room and teacher. Save as PNG, JPG or PDF. |
+| **Lectures** | Every course's lecture notes by week, and under a toggle the Miscellaneous files, with a checkbox per file. Download the selection into a folder you choose, organised as course / week - title (or course / Miscellaneous - type); existing files are skipped. |
+| **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), phone, email and calendar, campus tracking (attendance minimum, exam reminder lead, what to read), automatic checks, data folder, privacy and licenses. |
 | **Activity** | Log of every sync and reminder, including the scheduled background runs. |
 
-Shortcuts: **F5** sync · **Ctrl+1…8** switch pages · **Ctrl+F** search · **Esc** clear search.
+Shortcuts: **F5** sync · **Ctrl+1…9** switch pages · **Ctrl+F** search · **Esc** clear search.
 
 **Tray:** closing the window keeps the app in the system tray (switchable in Settings). Right-click the tray icon to open, sync now, or quit. "Start with Windows" opens it minimized to the tray at sign-in. Launching the app while it is already running just brings the window back.
 
@@ -139,6 +142,8 @@ The website lives in `website/`: `npm install`, `npm run dev` for a dev server, 
 - **"Sign-in failed"** – check enrollment, password and campus in Settings. The portal's own error text is shown.
 - **Nothing happens at 7 PM** – the PC must be on and you signed in. Settings → Automatic checks should say "Enabled".
 - **Details** – Activity tab, or the log file in the data folder.
+- **Email test fails** – use an app password, not your normal one (Gmail: 2-Step Verification → App passwords; Outlook: Security → App passwords). Corporate or university mailboxes sometimes block SMTP; the Advanced button lets you set the server.
+- **Phone pushes stop** – the phone's browser rotated its push address or you cleared the site's data. Press Pair a phone again; it takes ten seconds.
 
 ## License
 

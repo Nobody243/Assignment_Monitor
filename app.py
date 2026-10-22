@@ -62,7 +62,7 @@ def main():
     parser.add_argument("--enable-automation", action="store_true", help="register the background tasks, then exit")
     parser.add_argument("--disable-automation", action="store_true", help="remove the background tasks, then exit")
     parser.add_argument("--view", default="dashboard",
-                        choices=["dashboard", "assignments", "attendance", "exams", "announcements", "lectures", "settings",
+                        choices=["dashboard", "assignments", "attendance", "exams", "timetable", "announcements", "lectures", "settings",
                                  "activity"])
     args = parser.parse_args()
     setup_logging(to_console=not FROZEN)
@@ -152,17 +152,20 @@ def _signal_event(name: str) -> bool:
 # ============================================================================ GUI
 import customtkinter as ctk                      # noqa: E402  (imported after the CLI fast path)
 import tkinter.font as tkfont                    # noqa: E402
-from tkinter import filedialog, messagebox       # noqa: E402
+from tkinter import filedialog, messagebox, simpledialog  # noqa: E402
 
 import automation                                                                           # noqa: E402
 import updater                                                                              # noqa: E402
 from tray import TrayIcon                                                                   # noqa: E402
 from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
-                     load_exams, load_announcements, load_lectures)
+                     load_exams, load_announcements, load_lectures, load_timetable)
 from lms_scraper import run_sync, download_lectures, LoginError, _release_lock              # noqa: E402
 from notifier import send_toast, speak_voice, list_voices                                   # noqa: E402
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
-from campus import upcoming_exams, seat_text, session_date                                 # noqa: E402
+from campus import upcoming_exams, seat_text, session_date, sessions_on, minutes            # noqa: E402
+from timetable_render import render_timetable, save_timetable                              # noqa: E402
+import channels                                                                             # noqa: E402
+from calendar_export import calendar_path                                                   # noqa: E402
 from jobs import process_sync, collectors_for                                               # noqa: E402
 
 # ---------------------------------------------------------------------------- design tokens
@@ -746,6 +749,8 @@ class DashboardView(ctk.CTkScrollableFrame):
         exams = self.app.exams if env.get("TRACK_EXAMS", True) else []
         anns = self.app.announcements if env.get("TRACK_ANNOUNCEMENTS", True) else []
         show_att = env.get("TRACK_ATTENDANCE", True) and att
+        if env.get("TRACK_TIMETABLE", True) and (self.app.timetable or {}).get("sessions"):
+            self._today_card(now)
         if show_att or exams:
             row = ctk.CTkFrame(self, fg_color="transparent")
             row.pack(fill="x", pady=(10, 0))
@@ -773,6 +778,39 @@ class DashboardView(ctk.CTkScrollableFrame):
                              wraplength=820).pack(anchor="w", pady=(2, 0))
             ctk.CTkLabel(box, text="", height=6).pack()
             bind_click(box, lambda: self.app.navigate("announcements"))
+
+    def _today_card(self, now):
+        todays = sessions_on((self.app.timetable or {}).get("sessions", []), now.strftime("%a"))
+        nowm = now.hour * 60 + now.minute
+        nxt = next((x for x in todays if minutes(x["end"]) > nowm), None)
+        if not todays:
+            sub = "No classes today"
+        elif nxt is None:
+            sub = f"{len(todays)} class{'es' if len(todays) != 1 else ''}, all done for today"
+        elif minutes(nxt["start"]) <= nowm:
+            sub = f"Now: {nxt['course']} in {nxt['room']} until {nxt['end']}"
+        else:
+            sub = f"Next: {nxt['course']} at {nxt['start']} in {nxt['room']}"
+        box = surface(self)
+        box.pack(fill="x", pady=(10, 0))
+        heading(box, f"{now.strftime('%A')}'s classes", sub).pack(anchor="w", padx=20, pady=(18, 10))
+        if todays:
+            row = ctk.CTkFrame(box, fg_color="transparent")
+            row.pack(fill="x", padx=20, pady=(0, 18))
+            for x in todays:
+                done = minutes(x["end"]) <= nowm
+                live = minutes(x["start"]) <= nowm < minutes(x["end"])
+                chip = ctk.CTkFrame(row, fg_color=C["accent"] if live else C["surface2"], corner_radius=10)
+                chip.pack(side="left", padx=(0, 8))
+                ink = C["on_accent"] if live else (C["dim"] if done else C["ink"])
+                sub_ink = C["on_accent"] if live else (C["dim"] if done else C["muted"])
+                ctk.CTkLabel(chip, text=f"{x['start']} – {x['end']}", font=F(XS, "semibold"),
+                             text_color=sub_ink).pack(anchor="w", padx=12, pady=(8, 0))
+                ctk.CTkLabel(chip, text=x.get("abbr") or x["course"][:18], font=F(MD, "semibold"), text_color=ink).pack(anchor="w", padx=12)
+                ctk.CTkLabel(chip, text=x.get("room", ""), font=F(XS), text_color=sub_ink).pack(anchor="w", padx=12, pady=(0, 8))
+        else:
+            ctk.CTkLabel(box, text="", height=8).pack()
+        bind_click(box, lambda: self.app.navigate("timetable"))
 
     def _attendance_card(self, parent, att, minimum):
         card = surface(parent)
@@ -1181,6 +1219,88 @@ class AttendanceView(ctk.CTkFrame):
         self.refresh()
 
 
+# ---------------------------------------------------------------------------- timetable
+class TimetableView(ctk.CTkFrame):
+    """The week as the app draws it (the same picture the exports use), fitted to the window, with Save buttons."""
+
+    def __init__(self, master, app):
+        super().__init__(master, fg_color="transparent")
+        self.app = app
+        self._light = self._dark = None
+        self._img = None
+        self._last_w = 0
+        bar = ctk.CTkFrame(self, fg_color="transparent")
+        bar.pack(fill="x", pady=(2, 8))
+        self.summary = ctk.CTkLabel(bar, text="", font=F(SM), text_color=C["muted"], anchor="w")
+        self.summary.pack(side="left")
+        soft_button(bar, "Save as PDF", lambda: self._save("pdf"), width=110).pack(side="right")
+        soft_button(bar, "Save as JPG", lambda: self._save("jpg"), width=110).pack(side="right", padx=(0, 8))
+        soft_button(bar, "Save as PNG", lambda: self._save("png"), width=110).pack(side="right", padx=(0, 8))
+        self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll.pack(fill="both", expand=True)
+        self.pic = ctk.CTkLabel(self.scroll, text="")
+        self.empty = ctk.CTkLabel(self.scroll, text="", font=F(LG), text_color=C["dim"], wraplength=700)
+        self.scroll.bind("<Configure>", lambda e: self.after(80, self._fit))
+
+    def _student(self):
+        sessions = (self.app.timetable or {}).get("sessions", [])
+        return sessions[0].get("class", "") if sessions else ""
+
+    def refresh(self):
+        env = self.app.env
+        data = self.app.timetable or {}
+        sessions = data.get("sessions", [])
+        self.pic.pack_forget()
+        self.empty.pack_forget()
+        self._light = self._dark = None
+        if not env.get("TRACK_TIMETABLE", True):
+            self.summary.configure(text="The timetable is not being read (Settings → Campus tracking).")
+            self.empty.configure(text="Turn it on in Settings → Campus tracking and sync again.")
+            self.empty.pack(pady=50)
+            return
+        if not sessions:
+            self.summary.configure(text="")
+            self.empty.configure(text="No timetable yet. Press Sync now (or F5); it is read from the CMS with every check.")
+            self.empty.pack(pady=50)
+            return
+        days = {x["day"] for x in sessions}
+        bits = [data.get("semester", ""), f"{len(sessions)} classes a week over {len(days)} days",
+                f"read {rel_time(data['read_at'])}" if data.get("read_at") else ""]
+        self.summary.configure(text="   ·   ".join(b for b in bits if b))
+        self._light = render_timetable(data, "light", scale=2, student=self._student())
+        self._dark = render_timetable(data, "dark", scale=2, student=self._student())
+        self._last_w = 0
+        self.pic.pack(anchor="w")
+        self._fit()
+
+    def _fit(self):
+        if self._light is None:
+            return
+        w = max(640, self.scroll.winfo_width() - 20)
+        if abs(w - self._last_w) < 6:
+            return
+        self._last_w = w
+        h = int(self._light.height * w / self._light.width)
+        self._img = ctk.CTkImage(light_image=self._light, dark_image=self._dark, size=(w, h))
+        self.pic.configure(image=self._img)
+
+    def _save(self, fmt):
+        data = self.app.timetable or {}
+        if not data.get("sessions"):
+            return
+        sem = (data.get("semester") or "timetable").replace("/", "-")
+        path = filedialog.asksaveasfilename(title="Save timetable", defaultextension=f".{fmt}",
+                                            initialfile=f"Timetable {sem}.{fmt}", filetypes=[(fmt.upper(), f"*.{fmt}")])
+        if not path:
+            return
+        try:
+            save_timetable(data, path, "dark" if self.app.theme == "dark" else "light", student=self._student())
+            self.app.status_lbl.configure(text=f"Saved {os.path.basename(path)}")
+            os.startfile(path)
+        except Exception as e:
+            messagebox.showerror(APP_NAME, f"Could not save the timetable:\n{e}")
+
+
 # ---------------------------------------------------------------------------- exams
 class ExamsView(ctk.CTkScrollableFrame):
     def __init__(self, master, app):
@@ -1343,14 +1463,21 @@ class LecturesView(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         self.app = app
         self.course = "All courses"
+        self.kind = "lecture"          # or "misc": the LMS Miscellaneous files, same list and downloader
         self.selected = set()          # (lecture id, file index)
         self.busy = False
         self.stop_flag = False
 
         bar = ctk.CTkFrame(self, fg_color="transparent")
         bar.pack(fill="x", pady=(2, 8))
+        self.kind_seg = ctk.CTkSegmentedButton(bar, values=["Lecture notes", "Miscellaneous"], font=F(SM, "semibold"), height=34,
+                                               corner_radius=8, selected_color=C["accent"], selected_hover_color=C["accent_h"],
+                                               unselected_color=C["surface"], unselected_hover_color=C["surface2"],
+                                               text_color=C["ink"], fg_color=C["line"], command=self._set_kind)
+        self.kind_seg.set("Lecture notes")
+        self.kind_seg.pack(side="left")
         self.summary = ctk.CTkLabel(bar, text="", font=F(SM), text_color=C["muted"], anchor="w")
-        self.summary.pack(side="left")
+        self.summary.pack(side="left", padx=(14, 0))
         self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=250, font=F(SM),
                                              fg_color=C["surface"], text_color=C["ink"], button_color=C["surface2"],
                                              button_hover_color=C["line2"], dropdown_font=F(SM), command=self._set_course)
@@ -1380,8 +1507,15 @@ class LecturesView(ctk.CTkFrame):
         self.course = v
         self.refresh()
 
+    def _set_kind(self, v):
+        self.kind = "misc" if v == "Miscellaneous" else "lecture"
+        if self.kind_seg.get() != v:
+            self.kind_seg.set(v)
+        self.refresh()
+
     def _visible(self):
-        return [x for x in self.app.lectures if self.course == "All courses" or x.get("course") == self.course]
+        return [x for x in self.app.lectures if x.get("kind", "lecture") == self.kind
+                and (self.course == "All courses" or x.get("course") == self.course)]
 
     def _select(self, on):
         keys = {(x["id"], i) for x in self._visible() for i in range(len(x.get("files", [])))}
@@ -1436,12 +1570,16 @@ class LecturesView(ctk.CTkFrame):
             return
         rows = self._visible()
         files = sum(len(x.get("files", [])) for x in rows)
-        self.summary.configure(text=f"{len(rows)} week{'s' if len(rows) != 1 else ''}  ·  {files} file{'s' if files != 1 else ''}"
-                                    + ("" if self.course != "All courses" else f"  ·  {len(courses) - 1} courses"))
+        misc = self.kind == "misc"
+        unit = f"{files} file{'s' if files != 1 else ''}" if misc else \
+            f"{len(rows)} week{'s' if len(rows) != 1 else ''}  ·  {files} file{'s' if files != 1 else ''}"
+        self.summary.configure(text=unit + ("" if self.course != "All courses" else f"  ·  {len(courses) - 1} courses"))
         self._update_button()
         if not rows:
-            ctk.CTkLabel(self.list, text="No lecture notes yet. They are read from every course page with each sync.",
-                         font=F(LG), text_color=C["dim"]).pack(pady=50)
+            ctk.CTkLabel(self.list, text=("No miscellaneous files yet. Teachers put project briefs, templates and past papers "
+                                          "here; they are read with each sync." if misc else
+                                          "No lecture notes yet. They are read from every course page with each sync."),
+                         font=F(LG), text_color=C["dim"], wraplength=700).pack(pady=50)
             return
         cutoff = datetime.now() - timedelta(days=3)
         by_course = {}
@@ -1454,7 +1592,8 @@ class LecturesView(ctk.CTkFrame):
             head.pack(fill="x", padx=20, pady=(16, 6))
             ctk.CTkLabel(head, text=course, font=F(LG, "semibold"), text_color=C["ink"], anchor="w").pack(side="left")
             nfiles = sum(len(x.get("files", [])) for x in lecs)
-            ctk.CTkLabel(head, text=f"{len(lecs)} weeks  ·  {nfiles} files", font=F(SM), text_color=C["muted"]).pack(side="right")
+            ctk.CTkLabel(head, text=f"{nfiles} files" if misc else f"{len(lecs)} weeks  ·  {nfiles} files", font=F(SM),
+                         text_color=C["muted"]).pack(side="right")
             for i, x in enumerate(lecs):
                 if i:
                     hairline(box)
@@ -1473,8 +1612,8 @@ class LecturesView(ctk.CTkFrame):
             pass
         title = ctk.CTkFrame(left, fg_color="transparent")
         title.pack(anchor="w")
-        ctk.CTkLabel(title, text=f"Week {x.get('week', '')}   ·   {x.get('title', '')}", font=F(MD, "semibold"), text_color=C["ink"],
-                     anchor="w").pack(side="left")
+        label = x.get("title", "") if x.get("kind") == "misc" else f"Week {x.get('week', '')}   ·   {x.get('title', '')}"
+        ctk.CTkLabel(title, text=label, font=F(MD, "semibold"), text_color=C["ink"], anchor="w").pack(side="left")
         if is_new:
             pill(title, "New", "week").pack(side="left", padx=(10, 0))
         files = x.get("files", [])
@@ -1658,6 +1797,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         soft_button(btns, "Preview voice", self._preview_voice).pack(side="left", padx=(0, 8))
         soft_button(btns, "Send a test alert", self._test_alert).pack(side="left")
 
+        self._channels_section(env)
+
         camp = self._section("Campus tracking",
                              "Besides assignments, each sync can read these from the portal. "
                              "Alerts follow the notification settings above.")
@@ -1668,6 +1809,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.track_ann = self._switch(camp, "Course announcements, with an alert for each new one", env.get("TRACK_ANNOUNCEMENTS", True))
         self.track_lec = self._switch(camp, "Lecture notes from every course, with an alert when new ones are uploaded "
                                             "(downloads happen only when you ask, from the Lectures page)", env.get("TRACK_LECTURES", True))
+        self.track_tt = self._switch(camp, "Timetable from the CMS, drawn as a week grid you can save as PNG, JPG or PDF",
+                                     env.get("TRACK_TIMETABLE", True))
         min_row = ctk.CTkFrame(camp, fg_color="transparent")
         min_row.pack(fill="x", padx=20, pady=(8, 4))
         ctk.CTkLabel(min_row, text="Minimum attendance", font=F(MD), text_color=C["ink"]).pack(side="left")
@@ -1745,6 +1888,248 @@ class SettingsView(ctk.CTkScrollableFrame):
         return sw
 
     # -- actions
+    # ---- phone, email and calendar
+    def _channels_section(self, env):
+        box = self._section("Phone, email and calendar",
+                            "The same alerts, delivered where you are. Email uses your own mailbox; phone pushes go "
+                            "straight from this PC to your phone's browser. Nothing passes through a server of ours.")
+        # email
+        row = ctk.CTkFrame(box, fg_color="transparent")
+        row.pack(fill="x", padx=20, pady=(0, 2))
+        self.email_sw = ctk.CTkSwitch(row, text="Email me each alert", font=F(MD), text_color=C["ink"],
+                                      progress_color=C["accent"], command=self._save_channels)
+        self.email_sw.select() if env.get("EMAIL_ENABLED") else self.email_sw.deselect()
+        self.email_sw.pack(side="left")
+        self.email_msg = ctk.CTkLabel(row, text="", font=F(SM), text_color=C["muted"])
+        self.email_msg.pack(side="left", padx=14)
+        grid = ctk.CTkFrame(box, fg_color="transparent")
+        grid.pack(fill="x", padx=20, pady=(6, 4))
+        grid.grid_columnconfigure((0, 1), weight=1, uniform="em")
+        left = ctk.CTkFrame(grid, fg_color="transparent")
+        left.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        right = ctk.CTkFrame(grid, fg_color="transparent")
+        right.grid(row=0, column=1, sticky="ew")
+        ctk.CTkLabel(left, text="Your email address", font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w")
+        self.email_to = ctk.CTkEntry(left, height=38, font=F(MD), fg_color=C["field"], border_color=C["line2"], text_color=C["ink"],
+                                     placeholder_text="name@gmail.com")
+        self.email_to.insert(0, env.get("EMAIL_TO", ""))
+        self.email_to.pack(fill="x", pady=(2, 0))
+        self.email_to.bind("<KeyRelease>", lambda e: self._email_hint())
+        ctk.CTkLabel(right, text="App password (not your normal password)", font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w")
+        self.email_pass = ctk.CTkEntry(right, height=38, font=F(MD), fg_color=C["field"], border_color=C["line2"], text_color=C["ink"],
+                                       show="•", placeholder_text="16 characters from your mail provider")
+        self.email_pass.insert(0, env.get("EMAIL_PASS", ""))
+        self.email_pass.pack(fill="x", pady=(2, 0))
+        self.email_hint = ctk.CTkLabel(box, text="", font=F(XS), text_color=C["dim"], anchor="w", justify="left", wraplength=820)
+        self.email_hint.pack(fill="x", padx=20, pady=(6, 0))
+        self._email_hint()
+        act = ctk.CTkFrame(box, fg_color="transparent")
+        act.pack(fill="x", padx=20, pady=(8, 14))
+        primary_button(act, "Save and send a test email", self._test_email, height=34, width=220).pack(side="left")
+        soft_button(act, "Advanced (SMTP server)", self._smtp_advanced, width=170).pack(side="left", padx=(8, 0))
+        hairline(box)
+
+        # phone
+        row = ctk.CTkFrame(box, fg_color="transparent")
+        row.pack(fill="x", padx=20, pady=(14, 4))
+        self.push_sw = ctk.CTkSwitch(row, text="Push each alert to my phone", font=F(MD), text_color=C["ink"], progress_color=C["accent"],
+                                     command=self._save_channels)
+        self.push_sw.select() if env.get("PUSH_ENABLED") else self.push_sw.deselect()
+        self.push_sw.pack(side="left")
+        self.push_msg = ctk.CTkLabel(row, text="", font=F(SM), text_color=C["muted"])
+        self.push_msg.pack(side="left", padx=14)
+        ctk.CTkLabel(box, text="No app to install: scan a code with the phone's camera, tap Allow on the page that opens, done. "
+                              "Works on Android (Chrome, Samsung Internet) and on iPhone with iOS 16.4 or newer after "
+                              "adding the page to the Home Screen.",
+                     font=F(XS), text_color=C["dim"], anchor="w", justify="left", wraplength=820).pack(fill="x", padx=20)
+        act = ctk.CTkFrame(box, fg_color="transparent")
+        act.pack(fill="x", padx=20, pady=(8, 14))
+        primary_button(act, "Pair a phone", self._pair_phone, height=34, width=140).pack(side="left")
+        soft_button(act, "Send a test push", self._test_push, width=140).pack(side="left", padx=(8, 0))
+        soft_button(act, "Unpair", self._unpair, width=90).pack(side="left", padx=(8, 0))
+        self._push_status()
+        hairline(box)
+
+        # calendar
+        self.cal_sw = ctk.CTkSwitch(box, text="Keep a calendar file of deadlines and exams up to date (Documents \u203a "
+                                              "Assignment Monitor \u203a Assignment Monitor.ics)",
+                                    font=F(MD), text_color=C["ink"], progress_color=C["accent"], command=self._save_channels)
+        self.cal_sw.select() if env.get("CALENDAR_ENABLED") else self.cal_sw.deselect()
+        self.cal_sw.pack(anchor="w", padx=20, pady=(14, 4))
+        self.cal_inv_sw = ctk.CTkSwitch(box, text="Also email me a calendar invite for each new deadline and exam "
+                                                  "(they appear in Google Calendar or Outlook on the phone)",
+                                        font=F(MD), text_color=C["ink"], progress_color=C["accent"], command=self._save_channels)
+        self.cal_inv_sw.select() if env.get("CALENDAR_INVITES") else self.cal_inv_sw.deselect()
+        self.cal_inv_sw.pack(anchor="w", padx=20, pady=(0, 6))
+        act = ctk.CTkFrame(box, fg_color="transparent")
+        act.pack(fill="x", padx=20, pady=(4, 18))
+        soft_button(act, "Open calendar file", self._open_calendar, width=150).pack(side="left")
+        ctk.CTkLabel(act, text="Import it once into Google Calendar or Outlook; it is rewritten after every sync.",
+                     font=F(XS), text_color=C["dim"]).pack(side="left", padx=12)
+
+    def _email_hint(self):
+        addr = self.email_to.get().strip()
+        smtp_env = {"EMAIL_HOST": self.app.env.get("EMAIL_HOST", ""), "EMAIL_PORT": self.app.env.get("EMAIL_PORT", 587)}
+        host, port = channels.smtp_for(addr, smtp_env) if "@" in addr else ("", 587)
+        tip = channels.APP_PASSWORD_HELP.get(host, "")
+        self.email_hint.configure(text=(f"Sends through {host}:{port}.  " if host else "") + tip)
+
+    def _save_channels(self, quiet=False):
+        env = dict(self.app.env)
+        env["EMAIL_ENABLED"] = bool(self.email_sw.get())
+        env["EMAIL_TO"] = self.email_to.get().strip()
+        env["EMAIL_USER"] = env["EMAIL_TO"]
+        env["EMAIL_PASS"] = self.email_pass.get().strip()
+        env["PUSH_ENABLED"] = bool(self.push_sw.get()) and bool(env.get("PUSH_SUB"))
+        env["CALENDAR_ENABLED"] = bool(self.cal_sw.get())
+        env["CALENDAR_INVITES"] = bool(self.cal_inv_sw.get())
+        save_env(env)
+        self.app.env = load_env()
+        if self.push_sw.get() and not env.get("PUSH_SUB"):
+            self.push_sw.deselect()
+            self.push_msg.configure(text="Pair a phone first.")
+        if env["CALENDAR_ENABLED"]:
+            self._refresh_calendar()
+
+    def _refresh_calendar(self):
+        try:
+            from calendar_export import events_from, write_calendar
+            write_calendar(events_from(self.app.data.values(), self.app.exams))
+        except Exception as e:
+            log.warning("Calendar file: %s", e)
+
+    def _test_email(self):
+        self._save_channels()
+        env = self.app.env
+        if not env.get("EMAIL_TO") or not env.get("EMAIL_PASS"):
+            self.email_msg.configure(text="Enter your address and an app password first.", text_color=C["red"])
+            return
+        self.email_msg.configure(text="Sending…", text_color=C["muted"])
+
+        def work():
+            try:
+                channels.send_email(f"{APP_NAME} is connected",
+                                    "This is the test email. Alerts from the app will arrive like this.", env)
+                self.after(0, lambda: self.email_msg.configure(text="Sent. Check your inbox.", text_color=C["green"]))
+            except Exception as e:
+                msg = str(e)[:140]
+                self.after(0, lambda: self.email_msg.configure(text=f"Failed: {msg}", text_color=C["red"]))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _smtp_advanced(self):
+        env = self.app.env
+        host = simpledialog.askstring(APP_NAME, "SMTP server (leave empty to pick it from your address):",
+                                      initialvalue=env.get("EMAIL_HOST", ""), parent=self.app)
+        if host is None:
+            return
+        port = simpledialog.askinteger(APP_NAME, "Port (587 for STARTTLS, 465 for SSL):",
+                                       initialvalue=int(env.get("EMAIL_PORT") or 587), parent=self.app, minvalue=1, maxvalue=65535)
+        env = dict(env)
+        env["EMAIL_HOST"] = host.strip()
+        env["EMAIL_PORT"] = int(port or 587)
+        save_env(env)
+        self.app.env = load_env()
+        self._email_hint()
+
+    def _push_status(self):
+        env = self.app.env
+        if env.get("PUSH_SUB"):
+            self.push_msg.configure(text=f"Paired: {channels.push_device(env)}", text_color=C["green"])
+        else:
+            self.push_msg.configure(text="No phone paired yet.", text_color=C["muted"])
+
+    def _pair_phone(self):
+        pairing = channels.pairing_start(self.app.env)
+        self.app.env = load_env()
+        dlg = ctk.CTkToplevel(self.app)
+        dlg.title("Pair a phone")
+        dlg.geometry("460x600")
+        dlg.resizable(False, False)
+        dlg.transient(self.app)
+        dlg.configure(fg_color=C["bg"])
+        ctk.CTkLabel(dlg, text="Scan with your phone's camera", font=F(H3, "semibold", display=True),
+                     text_color=C["ink"]).pack(pady=(24, 4))
+        ctk.CTkLabel(dlg, text="A page on assignment-monitor.vercel.app opens. Tap Allow notifications.\n"
+                               "On iPhone, first add the page to the Home Screen, then open it from there.",
+                     font=F(SM), text_color=C["muted"], justify="center").pack()
+        import qrcode
+        qr = qrcode.QRCode(border=1, box_size=8)
+        qr.add_data(pairing["url"])
+        qr.make(fit=True)
+        pil = qr.make_image(fill_color="#14161b", back_color="#ffffff").convert("RGB")
+        img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(300, 300))
+        holder = ctk.CTkFrame(dlg, fg_color="#ffffff", corner_radius=14)
+        holder.pack(pady=18)
+        ctk.CTkLabel(holder, text="", image=img).pack(padx=14, pady=14)
+        ctk.CTkLabel(dlg, text=f"Code  {pairing['code']}", font=F(LG, "semibold"), text_color=C["ink"]).pack()
+        status = ctk.CTkLabel(dlg, text="Waiting for the phone…", font=F(SM), text_color=C["muted"])
+        status.pack(pady=(6, 0))
+        def copy_link():
+            self.app.clipboard_clear()
+            self.app.clipboard_append(pairing["url"])
+            status.configure(text="Link copied. Open it on the phone.")
+        soft_button(dlg, "Copy link instead", copy_link, width=150).pack(pady=(10, 0))
+        state = {"done": False}
+
+        def poll():
+            if state["done"] or not dlg.winfo_exists():
+                return
+            if time.time() - pairing["started"] > 600:
+                status.configure(text="The code expired. Close this and try again.", text_color=C["red"])
+                return
+
+            def work():
+                sub = channels.pairing_poll(pairing)
+                if sub and not state["done"]:
+                    state["done"] = True
+                    channels.save_subscription(sub, self.app.env)
+                    self.app.env = load_env()
+
+                    def ok():
+                        self.push_sw.select()
+                        self._push_status()
+                        status.configure(text="Paired. Sending a test…", text_color=C["green"])
+                        dlg.after(1800, dlg.destroy)
+                    self.after(0, ok)
+                    try:
+                        channels.send_push(f"{APP_NAME} is connected", "Alerts from your PC will arrive here.", env=self.app.env)
+                    except Exception as e:
+                        log.warning("Test push failed: %s", e)
+                elif dlg.winfo_exists():
+                    dlg.after(2500, poll)
+            threading.Thread(target=work, daemon=True).start()
+        dlg.after(1500, poll)
+
+    def _test_push(self):
+        if not self.app.env.get("PUSH_SUB"):
+            self.push_msg.configure(text="Pair a phone first.", text_color=C["red"])
+            return
+        self.push_msg.configure(text="Sending…", text_color=C["muted"])
+
+        def work():
+            try:
+                channels.send_push(f"{APP_NAME} test", "If you can read this on your phone, pushes work.", env=self.app.env)
+                self.after(0, lambda: self.push_msg.configure(text="Sent.", text_color=C["green"]))
+            except Exception as e:
+                msg = str(e)[:140]
+                self.after(0, lambda: self.push_msg.configure(text=f"Failed: {msg}", text_color=C["red"]))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _unpair(self):
+        channels.save_subscription(None, self.app.env)
+        self.app.env = load_env()
+        self.push_sw.deselect()
+        self._push_status()
+
+    def _open_calendar(self):
+        self._save_channels()
+        self._refresh_calendar()
+        path = calendar_path()
+        if path.exists():
+            os.startfile(path.parent)
+        else:
+            messagebox.showinfo(APP_NAME, "Turn the calendar file on first; it is written after the next sync.")
+
     def _save_prefs(self):
         env = dict(self.app.env)
         env["ENABLE_VOICE"] = bool(self.voice.get())
@@ -1762,6 +2147,7 @@ class SettingsView(ctk.CTkScrollableFrame):
             env["ATTENDANCE_MIN"] = int(self.att_min.get())
             env["EXAM_REMIND_DAYS"] = self.EXAM_LEAD.get(self.exam_days.get(), 1)
             env["TRACK_LECTURES"] = bool(self.track_lec.get())
+            env["TRACK_TIMETABLE"] = bool(self.track_tt.get())
         if hasattr(self, "rate"):
             env["VOICE_NAME"], env["VOICE_VOLUME"], env["VOICE_RATE"] = self._voice_prefs()
         save_env(env)
@@ -1900,7 +2286,8 @@ class ActivityView(ctk.CTkFrame):
 # ---------------------------------------------------------------------------- main window
 class App(ctk.CTk):
     NAV = [("dashboard", "Dashboard"), ("assignments", "Assignments"), ("attendance", "Attendance"), ("exams", "Exams"),
-           ("announcements", "Announcements"), ("lectures", "Lectures"), ("settings", "Settings"), ("activity", "Activity")]
+           ("timetable", "Timetable"), ("announcements", "Announcements"), ("lectures", "Lectures"), ("settings", "Settings"),
+           ("activity", "Activity")]
     CONTENT_MAX = 1120
 
     def __init__(self, start_view="dashboard", force_setup=False, start_hidden=False):
@@ -1933,6 +2320,7 @@ class App(ctk.CTk):
         self.exams = []
         self.announcements = []
         self.lectures = []
+        self.timetable = {"semester": "", "sessions": []}
         self.syncing = False
         self.views = {}
         self.current = None
@@ -2171,7 +2559,7 @@ class App(ctk.CTk):
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
         self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")
         self.status_lbl.pack(side="left", padx=32, pady=4)
-        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–8 pages  ·  v{APP_VERSION}", font=F(XS),
+        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–9 pages  ·  v{APP_VERSION}", font=F(XS),
                      text_color=C["dim"]).pack(side="right", padx=32)
 
         self.views = {
@@ -2179,6 +2567,7 @@ class App(ctk.CTk):
             "assignments": AssignmentsView(self.body, self),
             "attendance": AttendanceView(self.body, self),
             "exams": ExamsView(self.body, self),
+            "timetable": TimetableView(self.body, self),
             "announcements": AnnouncementsView(self.body, self),
             "lectures": LecturesView(self.body, self),
             "settings": SettingsView(self.body, self),
@@ -2220,6 +2609,7 @@ class App(ctk.CTk):
         self.exams = load_exams()
         self.announcements = load_announcements()
         self.lectures = load_lectures()
+        self.timetable = load_timetable()
         self.meta = load_meta()
         if "last_sync_lbl" in self.__dict__:
             ls = self.meta.get("last_sync")

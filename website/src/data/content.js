@@ -15,14 +15,14 @@ export const LINKS = {
 
 export const TICKER = [
   "Checks every evening at 19:00", "Catch-up check after you sign in", "Hourly voice reminder on due days", "Catches extended deadlines",
-  "Attendance margin per course", "Exam room and seat, with a countdown", "Course announcements in one feed", "Lecture notes, downloaded into tidy folders", "Runs in the tray, no window needed",
+  "Attendance margin per course", "Exam room and seat, with a countdown", "Course announcements in one feed", "Lecture notes, downloaded into tidy folders", "Timetable as a clean PNG or PDF", "Alerts on your phone and in your inbox", "Runs in the tray, no window needed",
   "Islamabad · Lahore · Karachi campuses", "Nothing sent anywhere but the portal",
 ];
 
 export const NUMBERS = [
   { value: 19, suffix: ":00", text: "Automatic check every evening, plus a catch-up when you sign in" },
   { value: 60, suffix: " min", text: "Between voice reminders while an unsubmitted assignment is due today" },
-  { value: 5, suffix: " things", text: "Watched for you: assignments, attendance, the exam seating plan, announcements and lecture notes" },
+  { value: 6, suffix: " things", text: "Watched for you: assignments, attendance, the exam seating plan, announcements, lecture notes and the timetable" },
   { value: 3, suffix: " campuses", text: "Islamabad, Lahore and Karachi. Pick yours at sign-in; nothing of yours leaves your PC" },
 ];
 
@@ -40,11 +40,14 @@ export const FEATURES = [
   { n: "03", tag: "Attendance", title: "Knows your attendance margin", text: "Every course's hours and percentage from the CMS, how many classes you can still miss for the 75% rule, and a notification the day an absence is recorded.", list: [["Under minimum", "needs 10 h present"], ["At risk", "can miss 1 h"], ["On track", "can miss 6 h"]] },
   { n: "04", tag: "Exams", title: "Carries your seating plan", text: "Date, session, time, room, row and seat for every paper, a countdown on the dashboard, and a notification the day before and on the morning of the exam." },
   { n: "05", tag: "Announcements", title: "Reads every course's notices", text: "Announcements from all your course pages in one feed, newest first, with a notification for each new one. Deadline extensions are often posted here first." },
-  { n: "06", tag: "Lectures", title: "Collects your lecture notes", text: "Every course's notes in one list by week. Tick the files you want and they download through the app's own sign-in into course / week folders; what you already have is skipped." },
-  { n: "07", tag: "Automation", title: "Runs itself", text: "Three Windows tasks under your own account. No admin rights, no service, and they work with the window closed.", list: [["Daily check", "19:00"], ["Catch-up check", "2 min after sign-in"], ["Due-today reminder", "hourly"]] },
-  { n: "08", tag: "Tray", title: "Lives in the tray", text: "Close the window and it keeps running quietly. Right-click the icon to open, sync now, or quit. Optionally starts with Windows." },
-  { n: "09", tag: "Updates", title: "Updates itself, safely", text: "Checks the project's GitHub releases on start (switchable). One click downloads the new installer, closes, reinstalls and reopens. Your sign-in and data are kept." },
-  { n: "10", tag: "Source", title: "Open, auditable, yours", text: "MIT licensed. Every release is built by GitHub Actions from the public repository, with tests and a dependency audit on every commit." },
+  { n: "06", tag: "Lectures", title: "Collects your lecture notes", text: "Every course's notes in one list by week, and its Miscellaneous files under a toggle. Tick the files you want and they download through the app's own sign-in into course / week folders; what you already have is skipped." },
+  { n: "07", tag: "Timetable", title: "Draws your week properly", text: "The CMS timetable as a clean grid: one row per day, a colour per course, room and teacher on every block. In the app, and saved as PNG, JPG or PDF for your lock screen or a print." },
+  { n: "08", tag: "Phone", title: "Reaches your phone and inbox", text: "Pair a phone by scanning a code, no app and no account, and link your own mailbox with an app password. Every alert arrives there too; the checking still happens on your PC." },
+  { n: "09", tag: "Calendar", title: "Puts deadlines on your calendar", text: "An .ics of deadlines and exams kept up to date on your PC, and, if you want, calendar invites by email that land in Google Calendar or Outlook on the phone. Off until you turn it on." },
+  { n: "10", tag: "Automation", title: "Runs itself", text: "Three Windows tasks under your own account. No admin rights, no service, and they work with the window closed.", list: [["Daily check", "19:00"], ["Catch-up check", "2 min after sign-in"], ["Due-today reminder", "hourly"]] },
+  { n: "11", tag: "Tray", title: "Lives in the tray", text: "Close the window and it keeps running quietly. Right-click the icon to open, sync now, or quit. Optionally starts with Windows." },
+  { n: "12", tag: "Updates", title: "Updates itself, safely", text: "Checks the project's GitHub releases on start (switchable). One click downloads the new installer, closes, reinstalls and reopens. Your sign-in and data are kept." },
+  { n: "13", tag: "Source", title: "Open, auditable, yours", text: "MIT licensed. Every release is built by GitHub Actions from the public repository, with tests and a dependency audit on every commit." },
 ];
 
 export const STEPS = [
@@ -53,36 +56,39 @@ export const STEPS = [
   { title: "Let it run", text: "Leave \"Check automatically\" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days." },
 ];
 
-export const SHOT_V = "134";
+export const SHOT_V = "140";
 export const shot = (id, theme) => `/assets/shot-${id}-${theme}.png?v=${SHOT_V}`;
 
 export const SCREENS = [
   { id: "dashboard", label: "Dashboard", caption: "Dashboard: next deadline, counters, attention list, course progress." },
   { id: "attendance", label: "Attendance", caption: "Attendance: every course's hours, the margin to the 75% rule, and the class-by-class record." },
   { id: "exams", label: "Exams", caption: "Exams: the seating plan with room, row and seat, and a countdown to each paper." },
+  { id: "timetable", label: "Timetable", caption: "Timetable: the week as a clean grid, one row per day and a colour per course; save it as PNG, JPG or PDF." },
   { id: "lectures", label: "Lectures", caption: "Lectures: every course's notes by week; tick files and download them into course / week folders." },
   { id: "announcements", label: "Announcements", caption: "Announcements: every course's notices in one feed, newest first." },
   { id: "assignments", label: "Assignments", caption: "Assignments: filters, course picker, search, extension history and marks." },
-  { id: "settings", label: "Settings", caption: "Settings: account, theme, tray, voice and notifications, campus tracking, automatic checks, privacy." },
+  { id: "settings", label: "Settings", caption: "Settings: account, theme, tray, voice and notifications, phone, email and calendar, campus tracking, automatic checks, privacy." },
   { id: "setup", label: "Sign-in", caption: "First run: sign in once, tick automatic checks, done." },
 ];
 
 export const PRIVACY_CARDS = [
   { tag: "Encrypted by Windows", title: "DPAPI, your account only", text: "The portal password is protected with Windows Data Protection for your user account. Another user or another PC cannot read it, and it is never written to the log." },
-  { tag: "Two hosts, HTTPS", title: "Talks only to the portal", text: "The only connections are to cms.bahria.edu.pk and lms.bahria.edu.pk, plus an optional, switchable check of GitHub for new versions. No analytics, no telemetry." },
+  { tag: "Two hosts, HTTPS", title: "Talks only to the portal", text: "The only connections are to cms.bahria.edu.pk and lms.bahria.edu.pk, plus an optional, switchable check of GitHub for new versions. Phone and email alerts, if you turn them on, go from your PC to your own mailbox and your phone's browser; this site runs no server and keeps no accounts. No analytics, no telemetry." },
   { tag: "Read the code", title: "Open source, built in public", text: "MIT licensed. Releases are built by GitHub Actions straight from the repository, and you can build the same thing yourself with one command." },
 ];
 
 export const FAQ = [
   { q: "Windows says \"Windows protected your PC\". Is it safe?", a: "Yes. The warning appears because the installer is not yet code-signed; the project is applying for a free open-source certificate. Click \"More info\", then \"Run anyway\". If you prefer, build it yourself from the source code with one command; the result is identical." },
   { q: "Is this an official Bahria University app?", a: "No. Assignment Monitor is an independent student project. It is not affiliated with, endorsed by, or supported by Bahria University." },
-  { q: "What does it do with my account?", a: "It signs in with your own credentials and reads your own pages, the same way you would in a browser: the LMS assignments, announcements and lecture-notes lists, and the CMS attendance and exam seating plan. Each can be switched off in Settings. Lecture files are downloaded only when you tick them and click Download, to a folder you choose. It never submits, uploads or changes anything on the portal, and it never sends your data anywhere." },
+  { q: "What does it do with my account?", a: "It signs in with your own credentials and reads your own pages, the same way you would in a browser: the LMS assignments, announcements, lecture-notes and Miscellaneous-files lists, and the CMS attendance, exam seating plan and timetable. Each can be switched off in Settings. Lecture files are downloaded only when you tick them and click Download, to a folder you choose. It never submits, uploads or changes anything on the portal, and it never sends your data anywhere." },
   { q: "Do I need Google Chrome?", a: "If Chrome is installed it is used in the background. If not, a browser engine is downloaded once automatically. You never see a browser window." },
   { q: "Which alerts are spoken?", a: "Only assignment reminders use the voice: the due-today reminder and the after-sync summary. Attendance, exam and announcement alerts are ordinary Windows notifications, and every category can be switched off in Settings." },
+  { q: "How do alerts reach my phone without an app?", a: "Through the phone's browser. In the app press Pair a phone, scan the code with the phone's camera, tap Allow on the page that opens, done. Pushes then go straight from your PC to the phone's browser push service, encrypted end to end; the website only passes the phone's address to your PC once, encrypted, during pairing. Android works with Chrome or Samsung Internet; iPhone needs iOS 16.4 or newer and the page added to the Home Screen. No VPN, no Telegram, no WhatsApp, and it costs nothing." },
+  { q: "Which email accounts work?", a: "Any mailbox with SMTP: Gmail, Outlook, the university's Microsoft 365 account, Yahoo, iCloud or your own server. The app sends from your mailbox to itself using an app password, which is stored encrypted on your PC. The Advanced button sets the server by hand when the guess is wrong." },
   { q: "Does my PC need to be on at 7 PM?", a: "For the 7 PM check, yes, but if it was off a catch-up check runs two minutes after you next sign in to Windows. The hourly reminder only fires while something is due that day." },
   { q: "How do I uninstall?", a: "Windows Settings → Apps → Assignment Monitor → Uninstall. It closes the app, removes the background tasks and the Startup entry, deletes the program, and asks whether to delete your saved sign-in and cached data too." },
   { q: "Installer or portable zip?", a: "The installer is the easy path: Start Menu and Desktop icons, in-app updates, clean uninstall. The zip is the same program without an installer; unzip it anywhere and run AssignmentMonitor.exe. Both keep their data in your local app-data folder." },
-  { q: "Where is my data kept?", a: "In %LOCALAPPDATA%\\Assignment Monitor: your encrypted sign-in, preferences, the cached assignments, attendance, exam plan and announcements, a log and the browser profile. Nothing is stored anywhere else." },
+  { q: "Where is my data kept?", a: "In %LOCALAPPDATA%\\Assignment Monitor: your encrypted sign-in and channel keys, preferences, the cached assignments, attendance, exam plan, announcements, file lists and timetable, a log and the browser profile. The optional calendar file lives in Documents. Nothing is stored anywhere else." },
   { q: "Can I run it from source?", a: "Yes. Clone the repository, install the pinned requirements and run python app.py. The README has the exact steps, and python build.py produces the same installer the releases ship." },
 ];
 

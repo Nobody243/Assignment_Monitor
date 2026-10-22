@@ -1,0 +1,14 @@
+{
+  "name": "Assignment Monitor",
+  "short_name": "Assignment Monitor",
+  "description": "Phone alerts from Assignment Monitor on your PC.",
+  "start_url": "/phone",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07080c",
+  "theme_color": "#07080c",
+  "icons": [
+    { "src": "/assets/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

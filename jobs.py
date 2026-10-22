@@ -9,7 +9,8 @@ from lms_scraper import LoginError, run_sync
 from notifier import (alert_assignments, alert_announcements, alert_attendance, alert_exam_today,
                       alert_exams_scheduled, alert_exams_soon, alert_lectures, send_toast, speak_voice)
 from tracker import (compare_announcements, compare_assignments, compare_attendance, compare_lectures, exams_within,
-                     load_attendance, load_stored_assignments, mark_reminder, reminder_sent, save_exams)
+                     load_attendance, load_exams, load_stored_assignments, mark_reminder, reminder_sent, save_exams,
+                     save_timetable)
 
 log = logging.getLogger("bahria.jobs")
 
@@ -24,6 +25,8 @@ def collectors_for(env: dict) -> tuple:
         out.append("announcements")
     if env.get("TRACK_LECTURES", True):
         out.append("lectures")
+    if env.get("TRACK_TIMETABLE", True):
+        out.append("timetable")
     return tuple(out)
 
 
@@ -83,6 +86,19 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
             log.info("  lecture  %-30s week %s: %s", x["course"][:30], x["week"], x["title"][:60])
         if notify:
             alert_lectures(new_lec)
+    if "timetable" in result:
+        save_timetable(result["timetable"])
+        summary["timetable"] = len(result["timetable"].get("sessions", []))
+    if env.get("CALENDAR_ENABLED"):
+        try:
+            from calendar_export import sync_calendar
+            from channels import send_email
+            cal = sync_calendar(load_stored_assignments().values(), load_exams(), env,
+                                send=lambda subject, body, ics: send_email(subject, body, env, ics=ics),
+                                sent_before=reminder_sent, mark_sent=mark_reminder)
+            summary["calendar"] = cal["events"]
+        except Exception as e:
+            log.warning("Calendar update failed: %s", str(e)[:200])
     for key, err in (result.get("errors") or {}).items():
         log.warning("  %s could not be read this time: %s", key, err)
     return summary

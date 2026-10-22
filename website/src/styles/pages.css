@@ -21,3 +21,14 @@
 .faq-page { padding-top: 0; }
 .faq-page .faq { max-width: 960px; }
 .faq-page .cta-card { margin-top: 48px; }
+
+/* phone pairing page */
+.phone-page { padding: 10px 0 80px; }
+.phone-card { margin-bottom: 22px; }
+.phone-msg { margin-top: 16px; color: var(--ink-3); font-size: var(--t-sm); }
+.phone-msg.is-error { color: var(--warn, #f0b35a); }
+.phone-note { margin-top: 14px; color: var(--ink-4); font-size: var(--t-sm); }
+.phone-how { padding: 26px 28px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
+.phone-how h3 { margin-bottom: 10px; }
+.phone-how ul { margin: 0; padding-left: 20px; color: var(--ink-3); font-size: var(--t-sm); }
+.phone-how li { margin: 6px 0; }

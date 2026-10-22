@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from campus import attendance_margin, upcoming_exams
-from config import (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH)
+from config import (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH,
+                    TIMETABLE_PATH)
 from deadlines import is_open_pending
 
 log = logging.getLogger("bahria.tracker")
@@ -43,7 +44,8 @@ def save_assignments(assignments: Dict[str, dict]) -> None:
 
 
 def clear_stored_assignments() -> None:
-    for path in (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH):
+    for path in (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH,
+                 TIMETABLE_PATH):
         try:
             path.unlink()
         except FileNotFoundError:
@@ -211,18 +213,32 @@ def compare_lectures(current: List[dict]) -> List[dict]:
     """Merges a fresh read and returns weeks not seen before (silent on the very first read)."""
     stored = {x["id"]: x for x in _load_json(LECTURES_PATH, [])}
     first_read = not LECTURES_PATH.exists()
+    # the first time a kind (lecture notes, miscellaneous files) is read, its existing items are not "new"
+    seen_kinds = {x.get("kind", "lecture") for x in stored.values()}
     now_iso = datetime.now().isoformat(timespec="seconds")
     new = []
     merged = {}
     for x in current:
         old = stored.get(x["id"])
         x["first_seen"] = old.get("first_seen", now_iso) if old else now_iso
-        if old is None and not first_read:
+        if old is None and not first_read and x.get("kind", "lecture") in seen_kinds:
             new.append(x)
         merged[x["id"]] = x
     if current or first_read:
         _save_json(LECTURES_PATH, list(merged.values()))   # weeks removed from the LMS disappear here too
     return new
+
+
+# ---------------------------------------------------------------------------- timetable
+def load_timetable() -> dict:
+    return _load_json(TIMETABLE_PATH, {"semester": "", "sessions": []})
+
+
+def save_timetable(data: dict) -> None:
+    if data and data.get("sessions") is not None:
+        data = dict(data)
+        data["read_at"] = datetime.now().isoformat(timespec="seconds")
+        _save_json(TIMETABLE_PATH, data)
 
 
 # ---------------------------------------------------------------------------- one-shot reminders

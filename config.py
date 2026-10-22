@@ -14,9 +14,10 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "1.3.3"
+APP_VERSION = "1.4.0"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
+SITE_URL = "https://assignment-monitor.vercel.app"
 
 FROZEN = bool(getattr(sys, "frozen", False))
 SOURCE_DIR = Path(__file__).resolve().parent
@@ -53,6 +54,7 @@ EXAMS_PATH = DATA_DIR / "exams.json"
 ANNOUNCEMENTS_PATH = DATA_DIR / "announcements.json"
 REMINDERS_PATH = DATA_DIR / "reminders.json"
 LECTURES_PATH = DATA_DIR / "lectures.json"
+TIMETABLE_PATH = DATA_DIR / "timetable.json"
 LOG_PATH = DATA_DIR / "app.log"
 
 for _d in (DATA_DIR, PROFILE_DIR):
@@ -68,8 +70,10 @@ SSO_URL = f"{CMS_BASE_URL}/Sys/Common/GoToLMS.aspx"
 ASSIGNMENTS_URL = f"{LMS_BASE_URL}/Student/Assignments.php"
 ANNOUNCEMENTS_URL = f"{LMS_BASE_URL}/Student/Announcements.php"
 LECTURES_URL = f"{LMS_BASE_URL}/Student/LectureNotes.php"
+MISC_URL = f"{LMS_BASE_URL}/Student/Miscellaneous.php"
 ATTENDANCE_URL = f"{CMS_BASE_URL}/Sys/Student/ClassAttendance/StudentWiseAttendance.aspx"
 EXAMS_URL = f"{CMS_BASE_URL}/Sys/Student/ExamSeatingPlan/ExamSeats"
+TIMETABLE_URL = f"{CMS_BASE_URL}/Sys/Student/CourseRegistration/TimeTable.aspx"
 
 # (display name, CMS institute id). Order matters for the setup dropdown.
 CAMPUSES = [
@@ -114,13 +118,29 @@ DEFAULTS = {
     "ATTENDANCE_MIN": 75,
     "EXAM_REMIND_DAYS": 1,
     "TRACK_LECTURES": True,
+    "TRACK_TIMETABLE": True,
+    # phone, email and calendar (secrets are stored encrypted, like the password)
+    "EMAIL_ENABLED": False,
+    "EMAIL_TO": "",
+    "EMAIL_USER": "",
+    "EMAIL_HOST": "",
+    "EMAIL_PORT": 587,
+    "EMAIL_PASS": "",
+    "PUSH_ENABLED": False,
+    "PUSH_SUB": "",
+    "PUSH_VAPID": "",
+    "CALENDAR_ENABLED": False,
+    "CALENDAR_INVITES": False,
     "LECTURES_DIR": "",
     "ANIMATIONS": True,
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
-              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "ANIMATIONS")
+              "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
+              "ANIMATIONS", "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES")
+_SECRET_KEYS = ("PASSWORD", "EMAIL_PASS", "PUSH_SUB", "PUSH_VAPID")
+_TEXT_KEYS = ("EMAIL_TO", "EMAIL_USER", "EMAIL_HOST")
 _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE": (-5, 5),
-             "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14)}
+             "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14), "EMAIL_PORT": (1, 65535)}
 
 
 def app_command(*args: str) -> list:
@@ -159,7 +179,7 @@ def load_env() -> dict:
                 config[key] = min(hi, max(lo, int(val)))
             except ValueError:
                 pass
-        elif key in ("PASSWORD", "PASSWORD_ENC"):
+        elif key in _SECRET_KEYS or key.endswith("_ENC"):
             continue
         elif key == "THEME":
             config[key] = "light" if val.lower() == "light" else "dark"
@@ -182,6 +202,13 @@ def load_env() -> dict:
         except Exception:
             pass
     config["PASSWORD"] = password
+    for key in _SECRET_KEYS[1:]:
+        if raw.get(key + "_ENC"):
+            try:
+                from secure_store import decrypt_secret
+                config[key] = decrypt_secret(raw[key + "_ENC"])
+            except Exception as e:
+                logging.getLogger("bahria.config").warning("Stored %s could not be decrypted (%s).", key, e)
     return config
 
 
@@ -215,6 +242,18 @@ def save_env(config: dict) -> None:
         lines.append(f"LECTURES_DIR={merged['LECTURES_DIR']}")
     if merged.get("WINDOW_GEOMETRY"):
         lines.append(f"WINDOW_GEOMETRY={merged['WINDOW_GEOMETRY']}")
+    for key in _TEXT_KEYS:
+        if merged.get(key):
+            lines.append(f"{key}={merged[key]}")
+    lines.append(f"EMAIL_PORT={int(merged['EMAIL_PORT'])}")
+    for key in _SECRET_KEYS[1:]:
+        value = merged.get(key) or ""
+        if value:
+            try:
+                from secure_store import encrypt_secret
+                lines.append(f"{key}_ENC={encrypt_secret(value)}")
+            except Exception:
+                pass
     for key in _BOOL_KEYS:
         lines.append(f"{key}={'True' if merged[key] else 'False'}")
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
