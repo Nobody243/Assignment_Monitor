@@ -152,6 +152,7 @@ def _signal_event(name: str) -> bool:
 # ============================================================================ GUI
 import customtkinter as ctk                      # noqa: E402  (imported after the CLI fast path)
 import tkinter.font as tkfont                    # noqa: E402
+from tkinter import Text as tk_text_cls, Entry as tk_entry_cls  # noqa: E402
 from tkinter import filedialog, messagebox, simpledialog  # noqa: E402
 
 import automation                                                                           # noqa: E402
@@ -312,34 +313,77 @@ def scrolling() -> bool:
     return time.monotonic() - SCROLL["t"] < 0.35
 
 
+def _owns_wheel(self, widget):
+    """Whether this scrollable frame should take a wheel event that happened over `widget`: inside it (the stock
+    rule), or anywhere else on a page whose one list it is, so the wheel also works over the page's toolbar."""
+    if self._check_if_valid_scroll(widget):
+        return True
+    w = widget
+    while w is not None:
+        if isinstance(w, (ctk.CTkScrollbar, ctk.CTkSlider, ctk.CTkTextbox, ctk.CTkScrollableFrame)):
+            return False
+        owner = getattr(w, "_page_scroller", None)
+        if owner is not None:
+            return owner is self
+        w = w.master
+    return False
+
+
 def _wheel_coalesced(self, event):
     """Replaces CTkScrollableFrame's wheel handler on Windows. Wheel events arrive in bursts (several per notch from
     precision wheels and touchpads) and the stock handler scrolls and repaints the whole page for each one, which
-    is the stutter and torn text during a fast scroll. The deltas are summed and applied once per frame, and a
-    notch moves 40 px instead of 20."""
-    if not self._check_if_valid_scroll(event.widget):
+    is the stutter and torn text during a fast scroll. The deltas are summed and applied once per frame, each step
+    waits for its repaint to finish before the next is applied, and a notch moves 40 px instead of 20."""
+    if not _owns_wheel(self, event.widget):
         return
     canvas = self._parent_canvas
     axis = "x" if self._shift_pressed else "y"
     if (canvas.xview() if axis == "x" else canvas.yview()) == (0.0, 1.0):
         return
-    pend = self.__dict__.setdefault("_wheel_pending", {"x": 0, "y": 0, "job": None})
+    pend = self.__dict__.setdefault("_wheel_pending", {"x": 0, "y": 0, "job": None, "painting": False})
     pend[axis] -= int(event.delta / 3)
-    if pend["job"] is None:
+    if pend["job"] is None and not pend["painting"]:
         pend["job"] = canvas.after(16, lambda: _wheel_flush(self))
 
 
 def _wheel_flush(self):
     pend = self._wheel_pending
     pend["job"] = None
+    canvas = self._parent_canvas
     try:
-        if pend["x"]:
-            self._parent_canvas.xview("scroll", pend["x"], "units")
-        if pend["y"]:
-            self._parent_canvas.yview("scroll", pend["y"], "units")
+        dx, dy = pend["x"], pend["y"]
+        pend["x"] = pend["y"] = 0
+        if dx:
+            canvas.xview("scroll", dx, "units")
+        if dy:
+            canvas.yview("scroll", dy, "units")
+        # a page of a few hundred widgets takes 20-80 ms to repaint after a move, longer than a frame: finish the
+        # repaint now, so the next step never lands on a half-painted page (that was the torn, striped text)
+        pend["painting"] = True
+        try:
+            canvas.update()
+        finally:
+            pend["painting"] = False
+        if (pend["x"] or pend["y"]) and pend["job"] is None:
+            pend["job"] = canvas.after(1, lambda: _wheel_flush(self))
     except Exception:
         pass
-    pend["x"] = pend["y"] = 0
+
+
+def page_scroll(view, what):
+    """Keyboard scrolling of the page's list: what is ("page", +/-1) or ("edge", 0 top / 1 bottom)."""
+    target = view if isinstance(view, ctk.CTkScrollableFrame) else getattr(view, "_page_scroller", None)
+    if target is None:
+        return
+    canvas = target._parent_canvas
+    kind, amount = what
+    try:
+        if kind == "page":
+            canvas.yview("scroll", amount, "pages")
+        else:
+            canvas.yview_moveto(amount)
+    except Exception:
+        pass
 
 
 if sys.platform.startswith("win"):
@@ -2497,9 +2541,19 @@ class App(ctk.CTk):
     def _bind_shortcuts(self):
         self.bind_all("<MouseWheel>", note_scroll, add="+")
         self.bind("<F5>", lambda e: self.start_sync())
+        keys = (("<Prior>", ("page", -1)), ("<Next>", ("page", 1)), ("<Control-Home>", ("edge", 0)), ("<Control-End>", ("edge", 1)))
+        for seq, what in keys:
+            self.bind(seq, lambda e, w=what: self._key_scroll(w))
         for i, (key, _) in enumerate(self.NAV, start=1):
             self.bind(f"<Control-Key-{i}>", lambda e, k=key: self.navigate(k))
         self.bind("<Control-f>", lambda e: (self.navigate("assignments"), self.views["assignments"].focus_search()))
+
+    def _key_scroll(self, what):
+        focus = self.focus_get()
+        if isinstance(focus, (tk_text_cls, tk_entry_cls)):
+            return
+        if self.current:
+            page_scroll(self.views[self.current], what)
 
     # ---- theme
     def set_theme(self, theme):
@@ -2623,6 +2677,20 @@ class App(ctk.CTk):
             "settings": SettingsView(self.body, self),
             "activity": ActivityView(self.body, self),
         }
+        def lists_in(w, depth=0):
+            # a scrollable frame sits two levels under its outer frame (outer frame > canvas > the frame itself)
+            found = []
+            for c in w.winfo_children():
+                if isinstance(c, ctk.CTkScrollableFrame):
+                    found.append(c)
+                elif depth < 3:
+                    found += lists_in(c, depth + 1)
+            return found
+        for view in self.views.values():
+            # a page that holds exactly one list scrolls it with the wheel anywhere on the page (toolbar included)
+            lists = lists_in(view)
+            if not isinstance(view, ctk.CTkScrollableFrame) and len(lists) == 1:
+                view._page_scroller = lists[0]
         self.reload_data()
         self.navigate("dashboard")
         if self.syncing:

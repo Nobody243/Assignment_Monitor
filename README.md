@@ -44,7 +44,7 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), phone, email and calendar, campus tracking (attendance minimum, exam reminder lead, what to read), automatic checks, data folder, privacy and licenses. |
 | **Activity** | Log of every sync and reminder, including the scheduled background runs. |
 
-Shortcuts: **F5** sync · **Ctrl+1…9** switch pages · **Ctrl+F** search · **Esc** clear search.
+Shortcuts: **F5** sync · **Ctrl+1…9** switch pages · **Ctrl+F** search · **Esc** clear search · **PageUp / PageDown** scroll a screen · **Ctrl+Home / Ctrl+End** top and bottom of a page.
 
 ### Phone, email and calendar
 

@@ -3,7 +3,8 @@
 ## 1.4.2 - 2026-10-22
 
 - Faster, calmer window: pages are rebuilt only when the data or settings behind them changed (the dashboard also once a minute for its countdowns), and they are built before they are shown, so switching between pages is instant and a page no longer assembles itself on screen; the page slide-in is gone because it re-laid out every widget for a dozen frames; the remaining animations run at 30 frames a second.
-- Smoother scrolling: wheel events are gathered and applied once per frame instead of repainting the page for every one of the burst a precision wheel or touchpad sends, and a notch moves 40 px instead of 20.
+- Smoother scrolling: wheel events are gathered and applied once per frame instead of repainting the page for every one of the burst a precision wheel or touchpad sends, each step waits for its repaint before the next lands (the striped, half-drawn text while scrolling fast came from steps landing on a page that was still painting), and a notch moves 40 px instead of 20.
+- The wheel scrolls a page anywhere on it, including over the toolbar above the list on Assignments, Attendance, Timetable, Announcements and Lectures. PageUp / PageDown scroll by a screen, Ctrl+Home / Ctrl+End jump to the ends.
 - Website: screenshots retaken from this build and the dashboard tour re-aimed at the cards, which had moved down when today's classes joined the page.
 
 ## 1.4.1 - 2026-10-22
