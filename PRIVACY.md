@@ -8,7 +8,7 @@ With your permission, the app signs in to the Bahria University CMS/LMS portal u
 
 ## What it does not do
 
-- It does not send your credentials or your data to the author or to any third party.
+- It does not send your credentials or your data to the author or to any third party. The optional phone and email channels deliver alerts only to your own mailbox and your own phone (see below).
 - It does not access anyone else's account or data.
 - It does not change anything on the portal: it never submits, uploads, or posts.
 - It does not collect analytics, crash reports, or usage statistics.
@@ -22,7 +22,7 @@ With your permission, the app signs in to the Bahria University CMS/LMS portal u
 
 ## Deleting your data
 
-Uninstalling closes the app, removes the background tasks and the program, and asks whether to delete your saved sign-in, settings and cached data (assignments, attendance, exam plan, announcements). Say yes and nothing remains; otherwise delete the folder `%LOCALAPPDATA%\Assignment Monitor` yourself.
+Uninstalling closes the app, removes the background tasks and the program, and asks whether to delete your saved sign-in, settings, channel keys and cached data (assignments, attendance, exam plan, announcements, lecture and file lists, timetable). Say yes and nothing remains in `%LOCALAPPDATA%\Assignment Monitor`; otherwise delete that folder yourself. Files you chose to download and the optional calendar file live in `Documents\Assignment Monitor` and are yours to keep or delete. A paired phone keeps its notification permission for the website until you remove it in the phone's browser settings; without the keys on your PC it can never receive another push.
 
 ## Warranty
 

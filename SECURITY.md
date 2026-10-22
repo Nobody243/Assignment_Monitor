@@ -27,7 +27,8 @@ Running from source, the same files live in the project folder and are git-ignor
 - Background tasks run as your own Windows user, with your normal privileges; the installer and the app never ask for administrator rights.
 - One sync at a time: a lock file prevents the scheduled task and the window from signing in simultaneously.
 - Dependencies are pinned in `requirements.txt` and audited in CI with `pip-audit`.
-- The executable is not code-signed (that costs money), so Windows SmartScreen warns on first run. You can verify what you run by building from source with `python build.py`.
+- Releases are not yet code-signed, so Windows SmartScreen warns on first run; the project has applied to SignPath Foundation's free programme for open source (see `CODE_SIGNING_POLICY.md`). You can verify what you run by building from source with `python build.py`.
+- The phone pairing QR code carries the one-time key that protects the hand-off; treat a screenshot of it like a password while a pairing is open (ten minutes). Push keys are made per PC, so a leaked subscription from one PC is useless to another.
 
 ## Reporting a problem
 
