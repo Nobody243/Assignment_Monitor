@@ -1,0 +1,131 @@
+name: Clean-machine install test
+
+# Installs a release on a fresh Windows runner the way a student would meet it: no Google Chrome, no Playwright
+# browsers, nothing of ours on the machine. Then: the background tasks register, a test alert runs, a real check
+# runs (so the app has to fetch its own browser engine), the first-run window is screenshotted, and a silent
+# uninstall must leave no program folder and no tasks behind. Needs the repository secrets PORTAL_ENROLLMENT and
+# PORTAL_PASSWORD for the check. Prints exit codes, counts and a few log lines only; never the data it read.
+# Manual only (every release build already runs the unit tests).
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to test, for example v1.5.4 (empty = the latest release)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download the installer from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ inputs.tag }}"
+          if ($tag) { gh release download $tag -R ${{ github.repository }} --pattern AssignmentMonitor-Setup.exe }
+          else { gh release download -R ${{ github.repository }} --pattern AssignmentMonitor-Setup.exe }
+          $f = Get-Item AssignmentMonitor-Setup.exe
+          "installer: $([math]::Round($f.Length / 1MB)) MB, release $(if ($tag) { $tag } else { 'latest' })"
+
+      - name: Make the runner look like a student's laptop (no Chrome, no Playwright browsers)
+        run: |
+          foreach ($d in @("C:\Program Files\Google\Chrome", "C:\Program Files (x86)\Google\Chrome", "$env:LOCALAPPDATA\Google\Chrome")) {
+            if (Test-Path $d) { Rename-Item -Path $d -NewName ((Split-Path $d -Leaf) + ".hidden"); "hid $d" }
+          }
+          if (Test-Path "$env:LOCALAPPDATA\ms-playwright") { Remove-Item -Recurse -Force "$env:LOCALAPPDATA\ms-playwright"; "removed the Playwright browser cache" }
+          "Windows: $((Get-CimInstance Win32_OperatingSystem).Caption) $((Get-CimInstance Win32_OperatingSystem).Version)"
+
+      - name: Install silently
+        run: |
+          $p = Start-Process -FilePath .\AssignmentMonitor-Setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=install.log' -Wait -PassThru
+          "installer exit code: $($p.ExitCode)"
+          $dir = "$env:LOCALAPPDATA\Programs\Assignment Monitor"
+          $exe = "$dir\AssignmentMonitor.exe"
+          if (-not (Test-Path $exe)) { Get-Content install.log | Select-Object -Last 30; throw "AssignmentMonitor.exe not found after the install" }
+          $files = (Get-ChildItem $dir -Recurse -File | Measure-Object -Sum Length)
+          "installed: $($files.Count) files, $([math]::Round($files.Sum / 1MB)) MB"
+          "APP_EXE=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "APP_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
+
+      - name: Background tasks register in the wake-to-run format
+        run: |
+          $p = Start-Process -FilePath $env:APP_EXE -ArgumentList '--enable-automation' -Wait -PassThru
+          "enable-automation exit code: $($p.ExitCode)"
+          foreach ($n in "AssignmentMonitor_DailyCheck","AssignmentMonitor_HourlyReminder","AssignmentMonitor_LogonCheck") {
+            $xml = (schtasks /Query /TN $n /XML 2>&1) -join "`n"
+            if ($LASTEXITCODE -ne 0) { throw "task $n is missing: $xml" }
+            "$n : wake=$($xml -match '<WakeToRun>true</WakeToRun>') onBattery=$($xml -match '<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>')"
+          }
+          if ($p.ExitCode -ne 0) { throw "enable-automation exit code $($p.ExitCode)" }
+
+      - name: Test alert (toast and voice must not crash on a machine without a desktop user)
+        run: |
+          $p = Start-Process -FilePath $env:APP_EXE -ArgumentList '--test-alert' -Wait -PassThru
+          "test-alert exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "test-alert exit code $($p.ExitCode)" }
+
+      - name: First-run window (screenshot of the sign-in screen, no data on it)
+        continue-on-error: true
+        run: |
+          $p = Start-Process -FilePath $env:APP_EXE -PassThru
+          Start-Sleep -Seconds 25
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$env:GITHUB_WORKSPACE\first-run.png")
+          "screen: $($b.Width)x$($b.Height); app still running: $(-not $p.HasExited)"
+          Get-Process AssignmentMonitor -ErrorAction SilentlyContinue | Stop-Process -Force
+      - uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: first-run-screenshot
+          path: first-run.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: A real check, which has to fetch its own browser engine
+        env:
+          AM_ENROLLMENT: ${{ secrets.PORTAL_ENROLLMENT }}
+          AM_PASSWORD: ${{ secrets.PORTAL_PASSWORD }}
+          AM_INSTITUTE_ID: "1"
+        run: |
+          $t = [Diagnostics.Stopwatch]::StartNew()
+          $p = Start-Process -FilePath $env:APP_EXE -ArgumentList '--check','--quiet' -Wait -PassThru
+          "check exit code: $($p.ExitCode) after $([int]$t.Elapsed.TotalSeconds) s"
+          $log = Get-ChildItem "$env:LOCALAPPDATA\Assignment Monitor" -Recurse -Filter app.log -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($log) {
+            "--- key log lines:"
+            Get-Content $log.FullName | Select-String -Pattern 'Chrome could not|Chromium|ownload|browser|Found \d+ enrolled|Collected|Attendance: \d|Lecture notes:|Announcements: \d|classes a week|Sync complete|could not|failed|Error' |
+              ForEach-Object { $_.Line } | Select-Object -Last 40
+          } else { "no app.log found under $env:LOCALAPPDATA\Assignment Monitor" }
+          $pw = Get-ChildItem "$env:LOCALAPPDATA\ms-playwright" -Directory -ErrorAction SilentlyContinue | ForEach-Object Name
+          "browser engines present after the check: $($pw -join ', ')"
+          if ($p.ExitCode -ne 0) { throw "check exit code $($p.ExitCode)" }
+
+      - name: Silent uninstall leaves no program folder and no tasks
+        run: |
+          $un = Get-ChildItem "$env:APP_DIR\unins*.exe" | Select-Object -First 1
+          $p = Start-Process -FilePath $un.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          "uninstaller exit code: $($p.ExitCode)"
+          $gone = $false
+          for ($i = 0; $i -lt 30 -and -not $gone; $i++) { Start-Sleep -Seconds 2; $gone = -not (Test-Path $env:APP_DIR) }
+          "program folder removed: $gone"
+          $left = @()
+          foreach ($n in "AssignmentMonitor_DailyCheck","AssignmentMonitor_HourlyReminder","AssignmentMonitor_LogonCheck") {
+            schtasks /Query /TN $n 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { $left += $n }
+          }
+          "tasks left behind: $(if ($left) { $left -join ', ' } else { 'none' })"
+          "data folder kept (a silent uninstall keeps it by design): $(Test-Path "$env:LOCALAPPDATA\Assignment Monitor")"
+          if (-not $gone) { throw "the program folder is still there" }
+          if ($left) { throw "scheduled tasks left behind" }

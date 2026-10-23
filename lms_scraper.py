@@ -19,6 +19,13 @@ from deadlines import parse_deadline
 
 log = logging.getLogger("bahria.scraper")
 
+
+def mask_enrollment(enrollment: str) -> str:
+    """The enrollment number as it may appear in the log: last three characters only. Students paste logs into
+    issues, and the log is one Open log button away."""
+    e = (enrollment or "").strip()
+    return ("•" * max(0, len(e) - 3)) + e[-3:] if len(e) > 3 else "•" * len(e)
+
 LOCK_PATH = DATA_DIR / "sync.lock"
 LOCK_STALE_SECONDS = 15 * 60
 ALL_COLLECTORS = ("assignments", "attendance", "exams", "announcements", "lectures", "timetable")
@@ -141,7 +148,7 @@ class PortalSession:
         page.goto(LOGIN_URL, wait_until="networkidle")
         time.sleep(1.5)
         if page.locator("#BodyPH_tbEnrollment").count() > 0:
-            log.info("Signing in as %s (%s)...", self.enrollment, campus_name(self.institute_id))
+            log.info("Signing in as %s (%s)...", mask_enrollment(self.enrollment), campus_name(self.institute_id))
             page.fill("#BodyPH_tbEnrollment", self.enrollment)
             page.fill("#BodyPH_tbPassword", self.password)
             if page.locator("#BodyPH_ddlInstituteID").count() > 0:

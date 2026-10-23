@@ -41,3 +41,10 @@ def test_parse_course_table():
 
 def test_rows_with_too_few_cells_are_ignored():
     assert _parse_course_table("<table><tr><td>a</td><td>b</td></tr></table>", "X") == []
+
+
+def test_enrollment_is_masked_in_the_log_line():
+    from lms_scraper import mask_enrollment
+    assert mask_enrollment("01-134212-034") == "•" * 10 + "034"
+    assert mask_enrollment("ab") == "••"
+    assert mask_enrollment("") == ""
