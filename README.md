@@ -72,7 +72,7 @@ The CMS timetable is read with every sync and drawn the app's way: one row per d
 | `AssignmentMonitor_LogonCheck` | 2 min after sign-in | Catch-up sync if the PC was off at 19:00 |
 | `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today, plus one reminder on the morning of an exam. Never wakes the PC |
 
-They run even when the app is closed, on battery as well as mains. Turn them off any time from Settings; uninstalling removes them too. A PC that is shut down cannot check; sleep and hibernate are fine (some laptops only wake from sleep while plugged in, a BIOS setting the app cannot change).
+They run even when the app is closed, on battery as well as mains. Turn them off any time from Settings; uninstalling removes them too, and offers to turn off cloud checks if they are on. A PC that is shut down cannot check; sleep and hibernate are fine (some laptops only wake from sleep while plugged in, a BIOS setting the app cannot change).
 
 **Updating:** the app checks GitHub for a newer numbered release when it starts and shows "Update available · Install" at the top. One click downloads the installer and reinstalls over the current version; your sign-in and data are kept. You can turn the check off in Settings.
 

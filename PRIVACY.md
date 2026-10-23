@@ -22,7 +22,7 @@ With your permission, the app signs in to the Bahria University CMS/LMS portal u
 
 ## Deleting your data
 
-Uninstalling closes the app, removes the background tasks and the program, and asks whether to delete your saved sign-in, settings, channel keys and cached data (assignments, attendance, exam plan, announcements, lecture and file lists, timetable). Say yes and nothing remains in `%LOCALAPPDATA%\Assignment Monitor`; otherwise delete that folder yourself. Files you chose to download and the optional calendar file live in `Documents\Assignment Monitor` and are yours to keep or delete. A paired phone keeps its notification permission for the website until you remove it in the phone's browser settings; without the keys on your PC it can never receive another push.
+Uninstalling closes the app, removes the background tasks and the program, and asks whether to delete your saved sign-in, settings, channel keys and cached data (assignments, attendance, exam plan, announcements, lecture and file lists, timetable). Say yes and nothing remains in `%LOCALAPPDATA%\Assignment Monitor`; otherwise delete that folder yourself. Files you chose to download and the optional calendar file live in `Documents\Assignment Monitor` and are yours to keep or delete. A paired phone keeps its notification permission for the website until you remove it in the phone's browser settings; without the keys on your PC it can never receive another push. If cloud checks are on, the uninstaller offers to turn them off as well (removing your login and the workflow from your GitHub repository); say yes unless you mean to keep them running without the app.
 
 ## Warranty
 

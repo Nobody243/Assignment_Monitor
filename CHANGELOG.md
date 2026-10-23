@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.3 - 2026-10-23
+
+- Uninstalling with cloud checks on now offers to turn them off, so your portal login does not stay in a GitHub workflow that keeps running after the app is gone. Silent uninstalls leave the cloud alone. The same is available from the command line as `--disable-cloud`.
+
 ## 1.5.2 - 2026-10-23
 
 - Pillow updated to 13.0.0, which closes eight published vulnerabilities in the image library (CVE-2026-96636 to 96644 and GHSA-78g4-xqwv-q3g8); the dependency audit is clean again.

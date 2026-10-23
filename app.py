@@ -62,6 +62,8 @@ def main():
     parser.add_argument("--quit", action="store_true", help="ask a running instance to quit, then exit")
     parser.add_argument("--enable-automation", action="store_true", help="register the background tasks, then exit")
     parser.add_argument("--disable-automation", action="store_true", help="remove the background tasks, then exit")
+    parser.add_argument("--disable-cloud", action="store_true",
+                        help="turn off cloud checks (remove the secrets and workflow from your GitHub repository), then exit")
     parser.add_argument("--view", default="dashboard",
                         choices=["dashboard", "assignments", "attendance", "exams", "timetable", "announcements", "lectures", "settings",
                                  "activity"])
@@ -81,6 +83,14 @@ def main():
         sys.exit(code)
     if args.quit:
         sys.exit(0 if _signal_event(QUIT_EVENT_NAME) else 1)
+    if args.disable_cloud:
+        import cloud
+        if not cloud.enabled():
+            print("Cloud checks are not on.")
+            sys.exit(0)
+        url = cloud.teardown()
+        print(f"Cloud checks are off. The empty repository remains at {url.rsplit('/settings', 1)[0] if url else 'GitHub'}.")
+        sys.exit(0)
     if args.enable_automation or args.disable_automation:
         import automation
         ok, msg = automation.enable() if args.enable_automation else automation.disable()
