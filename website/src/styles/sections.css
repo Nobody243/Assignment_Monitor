@@ -1,23 +1,24 @@
 /* ============================================================ hero */
-.hero { position: relative; min-height: 100svh; padding: calc(var(--nav-h) + 78px) 0 20vh; display: flex; align-items: flex-start; justify-content: center; text-align: center; }
+/* the hero is one screen: eyebrow, two-line headline, a three-line lede at most, the two buttons and one row of
+   pills, with every gap scaling with the viewport height so a 720px laptop shows all of it */
+.hero { position: relative; min-height: 100svh; padding: calc(var(--nav-h) + clamp(24px, 6vh, 64px)) 0 clamp(24px, 8vh, 96px); display: flex; align-items: flex-start; justify-content: center; text-align: center; }
 .hero-copy { position: relative; z-index: 2; max-width: 880px; display: flex; flex-direction: column; align-items: center; transform-origin: 50% 60%; }
 .hero-copy::before { content: ""; position: absolute; inset: -14% -22% -6%; z-index: -1; pointer-events: none; border-radius: 50%;
   background: radial-gradient(ellipse at 50% 45%, rgba(7, 8, 13, 0.55) 0%, rgba(7, 8, 13, 0.28) 45%, rgba(7, 8, 13, 0) 70%);
   -webkit-mask-image: linear-gradient(to bottom, #000 50%, transparent 82%); mask-image: linear-gradient(to bottom, #000 50%, transparent 82%); }   /* fades out well above the planet's limb */
 .hero-stack { display: flex; flex-direction: column; align-items: center; }
-.hero h1 { font-size: var(--h-hero); margin: 22px 0 22px; max-width: 15ch; }
+.hero h1 { font-size: var(--h-hero); margin: clamp(12px, 2vh, 22px) 0 clamp(14px, 2.4vh, 22px); max-width: 17ch; }
 .hero h1 .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding: 0.04em 0.03em 0.18em; margin: -0.04em 0.09em -0.18em; }
 .hero h1 .w > span { display: inline-block; }
-.hero .lede { margin: 0 auto; max-width: 62ch; color: var(--ink-2); }
-.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 32px; }
-.hero-meta { list-style: none; margin: 22px 0 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.hero .lede { margin: 0 auto; max-width: 56ch; color: var(--ink-2); text-wrap: balance; }
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: clamp(18px, 3.2vh, 32px); }
+.hero-meta { list-style: none; margin: clamp(14px, 2.2vh, 22px) 0 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .hero-meta li { font-family: var(--mono); font-size: var(--t-2xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); padding: 6px 12px; border-radius: var(--r-pill); background: rgba(7, 8, 13, 0.55); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.hero-pins { list-style: none; margin: 16px 0 0; padding: 0; display: inline-flex; gap: 22px; color: var(--accent); font-size: var(--t-2xs); padding: 7px 14px; border-radius: var(--r-pill); background: rgba(7, 8, 13, 0.55); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.hero-pins::before { content: "Works at:"; color: var(--ink-3); }
-.hero-pins li { display: inline-flex; align-items: center; gap: 8px; }
-.hero-pins li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-a4); }
-@media (max-width: 1024px) { .hero { padding-bottom: 12vh; } .hero-copy::before { display: none; } }
-@media (max-width: 640px) { .hero { padding: calc(var(--nav-h) + 48px) 0 30vh; } .hero-cta .btn, .cta .btn { width: 100%; white-space: normal; } .hero-cta .btn small, .page-hero-actions .btn small { display: none; } .page-hero-actions .btn { width: 100%; } .hero-pins { display: none; } }
+.hero-meta .hero-cities { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); }
+.hero-meta .hero-cities span { display: inline-flex; align-items: center; gap: 7px; }
+.hero-meta .hero-cities span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-a4); }
+@media (max-width: 1024px) { .hero-copy::before { display: none; } }
+@media (max-width: 640px) { .hero { padding: calc(var(--nav-h) + 40px) 0 26vh; } .hero h1 { max-width: 12ch; } .hero-cta .btn, .cta .btn { width: 100%; white-space: normal; } .hero-cta .btn small, .page-hero-actions .btn small { display: none; } .page-hero-actions .btn { width: 100%; } .hero-meta .hero-cities { display: none; } }
 
 /* ============================================================ ticker */
 .ticker { position: relative; z-index: 2; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; padding: 14px 0; background: rgba(10, 11, 16, 0.45); }

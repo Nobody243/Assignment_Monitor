@@ -27,13 +27,15 @@ export default function Hero() {
             {WORDS.map((w) => <span className="w" key={w} aria-hidden="true"><motion.span variants={word}>{w}</motion.span></span>)}
             <span className="w" aria-hidden="true"><motion.span className="heading-accent hero-accent" variants={word}>again.</motion.span></span>
           </h1>
-          <motion.p className="lede" variants={rise}>Assignment Monitor signs in to the portal for you and keeps watch on what matters: every course's assignments, with the extended deadlines the LMS hides; your attendance margin; your exam room and seat; course announcements; your lecture notes and timetable. It reminds you out loud on the day something is due, and on your phone and in your inbox if you want.</motion.p>
+          <motion.p className="lede" variants={rise}>It signs in to the Bahria portal for you and watches every deadline, your attendance margin, exam seat, announcements, lecture notes and timetable. Then it tells you: out loud, on your phone, or by email.</motion.p>
           <motion.div className="hero-cta" variants={rise}>
             <DownloadActions size="lg" />
           </motion.div>
           <PlatformNote as={motion.p} variants={rise} />
-          <motion.ul className="hero-meta" variants={rise}><li>No account</li><li>No server</li><li>Password never leaves your PC</li><li>MIT</li></motion.ul>
-          <motion.ul className="hero-pins mono" variants={rise} aria-hidden="true"><li>Islamabad</li><li>Lahore</li><li>Karachi</li></motion.ul>
+          <motion.ul className="hero-meta" variants={rise}>
+            <li>No account</li><li>No server</li><li>Password never leaves your PC</li><li>MIT</li>
+            <li className="hero-cities" aria-label="Works at the Islamabad, Lahore and Karachi campuses"><span>Islamabad</span><span>Lahore</span><span>Karachi</span></li>
+          </motion.ul>
         </motion.div>
       </motion.div>
     </section>
