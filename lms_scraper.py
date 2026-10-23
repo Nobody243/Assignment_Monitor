@@ -397,6 +397,8 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     summary.append(f"{len(result['lectures'])} lecture weeks")
                 if "timetable" in result:
                     summary.append(f"{len(result['timetable'].get('sessions', []))} classes a week")
+                result["semester"] = meta["semester"]
+                result["courses"] = list(meta["courses"])
                 meta["last_sync"] = datetime.now().isoformat(timespec="seconds")
                 meta["last_result"] = ", ".join(summary)
                 save_meta(meta)

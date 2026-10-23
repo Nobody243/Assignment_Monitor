@@ -175,9 +175,11 @@ def load_announcements() -> List[dict]:
     return sorted(items, key=lambda a: (a.get("posted_at") or "", a.get("first_seen") or ""), reverse=True)
 
 
-def compare_announcements(current: List[dict]) -> List[dict]:
+def compare_announcements(current: List[dict], semester: str = None) -> List[dict]:
     """Merges a fresh read and returns the announcements not seen before. On the very first read nothing is
-    reported as new (everything would be), but it is all stored."""
+    reported as new (everything would be), but it is all stored. Each item carries the semester it was read in;
+    once a later semester's read returns anything, items from earlier semesters are dropped, so the list does
+    not grow across years. An empty read (between semesters) keeps everything."""
     stored = {a["id"]: a for a in _load_json(ANNOUNCEMENTS_PATH, [])}
     first_read = not ANNOUNCEMENTS_PATH.exists()
     now_iso = datetime.now().isoformat(timespec="seconds")
@@ -189,7 +191,14 @@ def compare_announcements(current: List[dict]) -> List[dict]:
             a["first_seen"] = now_iso
             if not first_read:
                 new.append(a)
+        if semester:
+            a["semester"] = semester
         stored[a["id"]] = a
+    if current and semester:
+        for key, a in list(stored.items()):
+            a.setdefault("semester", semester)      # items stored before this field existed were read this semester
+            if a["semester"] != semester:
+                del stored[key]
     if current or first_read:
         _save_json(ANNOUNCEMENTS_PATH, list(stored.values()))
     return new

@@ -169,6 +169,10 @@ The website lives in `website/`: `npm install`, `npm run dev` for a dev server, 
 - **Details** – Activity tab, or the log file in the data folder.
 - **Email test fails** – use an app password, not your normal one (Gmail: 2-Step Verification → App passwords; Outlook: Security → App passwords). Corporate or university mailboxes sometimes block SMTP; the Advanced button lets you set the server.
 - **Phone pushes stop** – the phone's browser rotated its push address or you cleared the site's data. Press Pair a phone again; it takes ten seconds.
+- **Between semesters** – while the portal lists no courses (registration not done yet) every page says so and alerts pause. Nothing is deleted; the pages fill in on the first check after your courses appear, and announcements from the previous semester are cleared then.
+- **Checks keep failing** – one failed check (portal down, no internet) is silent. After three in a row the app says so once, and the Dashboard's "Last sync" line turns amber with the count; Activity has the reason. A rejected sign-in is reported straight away, once.
+- **"Something went wrong"** – an error inside the window. Copy details or Report on GitHub opens a pre-filled issue with the app version, your Windows version and the error lines, nothing else. Open log shows the full log.
+- **Alerts stopped and nothing is wrong on your side** – the portal's pages may have changed. Please [open an issue](https://github.com/Nobody243/Assignment_Monitor/issues); a fix helps every student using it.
 
 ## License
 

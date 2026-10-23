@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.4 - 2026-10-23
+
+- Between semesters: when the portal lists no courses yet, every page says so instead of showing last semester's data, alerts pause after one notice, and everything fills in on the first check after registration. Announcements from an earlier semester are cleared once the new one has data.
+- Failed background checks are counted, not announced one by one: a portal outage is reported after three failures in a row (and every third after that), a rejected sign-in once. The Dashboard's "Last sync" line shows how many checks have failed since the last good one.
+- A "Something went wrong" dialog for errors inside the window, with Copy details, Open log and a pre-filled GitHub issue (app version, Windows version and the error lines; nothing else). Until now such errors were invisible in the packaged app.
+
 ## 1.5.3 - 2026-10-23
 
 - Uninstalling with cloud checks on now offers to turn them off, so your portal login does not stay in a GitHub workflow that keeps running after the app is gone. Silent uninstalls leave the cloud alone. The same is available from the command line as `--disable-cloud`.

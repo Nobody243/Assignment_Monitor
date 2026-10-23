@@ -76,3 +76,20 @@ def test_clear_removes_files(db):
     tracker.compare_assignments([item()])
     tracker.clear_stored_assignments()
     assert not db.exists()
+
+
+def test_announcements_from_an_earlier_semester_are_dropped_once_the_new_one_has_data(tmp_path, monkeypatch):
+    monkeypatch.setattr(tracker, "ANNOUNCEMENTS_PATH", tmp_path / "announcements.json")
+    tracker.compare_announcements([{"id": "a1", "course": "Old Course", "text": "old"}], "Spring 2026")
+    assert tracker.compare_announcements([], "Fall 2026") == []           # an empty read keeps everything
+    assert [a["id"] for a in tracker.load_announcements()] == ["a1"]
+    new = tracker.compare_announcements([{"id": "b1", "course": "New Course", "text": "new"}], "Fall 2026")
+    assert [a["id"] for a in new] == ["b1"]
+    assert {a["id"] for a in tracker.load_announcements()} == {"b1"}
+
+
+def test_announcements_stored_before_the_semester_field_are_kept(tmp_path, monkeypatch):
+    monkeypatch.setattr(tracker, "ANNOUNCEMENTS_PATH", tmp_path / "announcements.json")
+    tracker._save_json(tracker.ANNOUNCEMENTS_PATH, [{"id": "legacy", "course": "C", "text": "t", "first_seen": "2026-09-01T00:00:00"}])
+    tracker.compare_announcements([{"id": "n1", "course": "C", "text": "u"}], "Fall 2026")
+    assert {a["id"] for a in tracker.load_announcements()} == {"legacy", "n1"}

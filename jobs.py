@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 from campus import seat_text
-from config import APP_NAME, DB_PATH, has_credentials, load_env
+from config import APP_NAME, DB_PATH, has_credentials, load_env, load_meta, save_meta
 from deadlines import classify, is_open_pending, sort_key
 from lms_scraper import LoginError, run_sync
 from notifier import (alert_assignments, alert_announcements, alert_attendance, alert_exam_today,
@@ -43,7 +43,18 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
     for e in extended:
         log.info("  extended %-40s now %s (was %s)", e["title"][:40], e["due_date"],
                  e.get("previous_due_date") or e.get("original_due_date"))
-    if notify:
+    # Between semesters the portal lists no courses at all: say so once, then stay quiet until registration.
+    no_courses = "assignments" in result and result.get("courses") == []
+    summary["courses"] = len(result.get("courses") or [])
+    if no_courses:
+        log.info("The portal lists no courses (%s); nothing to track until registration.",
+                 result.get("semester") or "no semester shown")
+        if notify and not reminder_sent("empty-semester"):
+            send_toast(f"{APP_NAME}: No courses yet",
+                       "The portal lists no courses for this semester. Checks continue in the background; "
+                       "alerts resume once registration goes through.")
+            mark_reminder("empty-semester")
+    elif notify:
         alert_assignments(pending, extended)
 
     minimum = int(env.get("ATTENDANCE_MIN", 75))
@@ -71,7 +82,7 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
                 mark_reminder(f"exam-soon:{e['id']}:{e['date']}")
 
     if "announcements" in result:
-        new_ann = compare_announcements(result["announcements"])
+        new_ann = compare_announcements(result["announcements"], result.get("semester"))
         summary["announcements"] = len(result["announcements"])
         summary["new_announcements"] = len(new_ann)
         for a in new_ann:
@@ -104,8 +115,23 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
     return summary
 
 
+def _note_failure(kind: str, message: str) -> int:
+    """Counts failed checks in a row in meta.json (a successful sync rewrites that file, which resets the count)
+    and returns the length of the streak. The Dashboard's "Last sync" line shows it."""
+    meta = load_meta()
+    streak = int(meta.get("fail_streak") or 0) + 1
+    meta.update({"fail_streak": streak, "last_failure": datetime.now().isoformat(timespec="seconds"),
+                 "last_failure_kind": kind, "last_failure_msg": message[:300]})
+    save_meta(meta)
+    return streak
+
+
 def run_check(quiet: bool = False, headless: bool = None) -> int:
-    """Full sync followed by notifications. Returns a process exit code."""
+    """Full sync followed by notifications. Returns a process exit code.
+
+    Failures are counted, not announced one by one: a rejected sign-in is said once per streak (it needs the
+    user), and anything else (portal down, no internet) is said after three in a row and every third after that,
+    so a bad night does not become a toast per check."""
     env = load_env()
     if not has_credentials(env):
         log.error("No credentials saved. Open %s and sign in first.", APP_NAME)
@@ -117,11 +143,16 @@ def run_check(quiet: bool = False, headless: bool = None) -> int:
         result = run_sync(headless=headless, collect=collectors_for(env), previous_attendance=load_attendance())
     except LoginError as e:
         log.error("%s", e)
-        send_toast(f"{APP_NAME}: Sign-in failed", f"{e}\nOpen the app to update your credentials.")
+        if _note_failure("login", str(e)) == 1:
+            send_toast(f"{APP_NAME}: Sign-in failed", f"{e}\nOpen the app to update your credentials.")
         return 3
     except Exception as e:
         log.error("Sync failed: %s", e)
-        send_toast(f"{APP_NAME}: Sync failed", str(e)[:200])
+        streak = _note_failure("sync", str(e))
+        if streak % 3 == 0:
+            send_toast(f"{APP_NAME}: Checks are failing",
+                       f"{streak} checks in a row could not read the portal. Last error: {str(e)[:120]}\n"
+                       "Open the app → Activity for details.")
         return 1
     process_sync(result, env, notify=not quiet)
     if env.get("CLOUD_ENABLED") and not quiet:

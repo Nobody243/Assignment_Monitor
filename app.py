@@ -113,9 +113,12 @@ def run_gui(start_view="dashboard", force_setup=False, start_hidden=False):
         pass
     log.info("%s %s started (%s)", APP_NAME, APP_VERSION, "packaged" if FROZEN else "source")
     try:
-        App(start_view=start_view, force_setup=force_setup, start_hidden=start_hidden).mainloop()
+        app = App(start_view=start_view, force_setup=force_setup, start_hidden=start_hidden)
+        crash.install(app, app.show_crash)
+        app.mainloop()
     except Exception:
         log.exception("The app crashed")
+        crash.last_resort(sys.exc_info())
         raise
     finally:
         _exit_cleanly()
@@ -183,6 +186,7 @@ import channels                                                                 
 import cloud                                                                                # noqa: E402
 from calendar_export import calendar_path                                                   # noqa: E402
 from jobs import process_sync, collectors_for                                               # noqa: E402
+import crash                                                                                  # noqa: E402
 
 # ---------------------------------------------------------------------------- design tokens
 # Direction: calm and editorial. Warm neutral surfaces, one accent, three type weights (regular, medium, semibold;
@@ -747,6 +751,16 @@ class QueueHandler(logging.Handler):
 
 
 # ---------------------------------------------------------------------------- sign-in screen
+def empty_semester_box(parent, app, title="No courses registered yet"):
+    """What every page shows after a check that found no courses on the portal (between semesters)."""
+    box = surface(parent)
+    box.pack(fill="x")
+    ctk.CTkLabel(box, text=title, font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
+    ctk.CTkLabel(box, text=app.empty_semester_text(), font=F(MD), text_color=C["muted"], wraplength=700,
+                 justify="center").pack(padx=24, pady=(0, 28))
+    return box
+
+
 class SetupView(ctk.CTkFrame):
     def __init__(self, master, app):
         super().__init__(master, fg_color=C["bg"])
@@ -943,6 +957,9 @@ class DashboardView(ctk.CTkScrollableFrame):
                 campus_name(self.app.env.get("INSTITUTE_ID", "1"))]
         ctk.CTkLabel(self, text="  ·  ".join(b for b in bits if b), font=F(MD), text_color=C["muted"]).pack(anchor="w", pady=(0, 18))
 
+        if self.app.semester_empty:
+            empty_semester_box(self, self.app)
+            return
         if not data:
             box = surface(self)
             box.pack(fill="x")
@@ -1275,6 +1292,10 @@ class AssignmentsView(ctk.CTkFrame):
 
         for w in self.list.winfo_children():
             w.destroy()
+        if self.app.semester_empty:
+            self.summary.configure(text="")
+            empty_semester_box(self.list, self.app)
+            return
         self.summary.configure(text=f"{len(rows)} of {len(data)} assignments")
         if not rows:
             ctk.CTkLabel(self.list, text="Nothing matches this filter.", font=F(LG), text_color=C["dim"]).pack(pady=50)
@@ -1369,6 +1390,10 @@ class AttendanceView(ctk.CTkFrame):
         if not env.get("TRACK_ATTENDANCE", True):
             self.summary.configure(text="")
             self._empty("Attendance tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
+            return
+        if self.app.semester_empty:
+            self.summary.configure(text="")
+            empty_semester_box(self.list, self.app)
             return
         att = sorted(self.app.attendance.values(), key=lambda c: (c.get("total", 0) == 0, c.get("percent", 0)))
         if not att:
@@ -1525,6 +1550,11 @@ class TimetableView(ctk.CTkFrame):
             self.empty.configure(text="Turn it on in Settings → Campus tracking and sync again.")
             self.empty.pack(pady=50)
             return
+        if self.app.semester_empty:
+            self.summary.configure(text="")
+            self.empty.configure(text="No courses registered yet. " + self.app.empty_semester_text())
+            self.empty.pack(pady=50)
+            return
         if not sessions:
             self.summary.configure(text="")
             self.empty.configure(text="No timetable yet. Press Sync now (or F5); it is read from the CMS with every check.")
@@ -1581,6 +1611,9 @@ class ExamsView(ctk.CTkScrollableFrame):
         exams = self.app.exams
         if not env.get("TRACK_EXAMS", True):
             self._empty("Exam tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
+            return
+        if self.app.semester_empty:
+            empty_semester_box(self, self.app)
             return
         if not exams:
             self._empty("No exam schedule yet", "Press Sync now (or F5). The seating plan is read from the CMS with every check.")
@@ -1696,6 +1729,10 @@ class AnnouncementsView(ctk.CTkFrame):
             w.destroy()
         if not env.get("TRACK_ANNOUNCEMENTS", True):
             self.summary.configure(text="Announcement tracking is off (Settings → Campus tracking).")
+            return
+        if self.app.semester_empty:
+            self.summary.configure(text="")
+            empty_semester_box(self.list, self.app)
             return
         self.summary.configure(text=f"{len(rows)} announcement{'s' if len(rows) != 1 else ''}" + ("" if not anns else "  ·  newest first"))
         if not rows:
@@ -1842,6 +1879,11 @@ class LecturesView(ctk.CTkFrame):
         if not env.get("TRACK_LECTURES", True):
             self.summary.configure(text="Lecture notes are not being read (Settings → Campus tracking).")
             self._update_button()
+            return
+        if self.app.semester_empty:
+            self.summary.configure(text="")
+            self._update_button()
+            empty_semester_box(self.list, self.app)
             return
         rows = self._visible()
         files = sum(len(x.get("files", [])) for x in rows)
@@ -3235,6 +3277,58 @@ class App(ctk.CTk):
             fade_cover(cover)
 
     # ---- data
+    @property
+    def semester_empty(self):
+        """True after a check that found no courses on the portal: between semesters, before registration."""
+        return bool(self.meta.get("last_sync")) and "courses" in self.meta and not self.meta.get("courses")
+
+    def empty_semester_text(self):
+        sem = (self.meta.get("semester") or "").strip()
+        return ((f"The portal lists no courses for {sem}." if sem else "The portal lists no courses yet.")
+                + " There is nothing to track until registration goes through; checks keep running in the "
+                  "background and this page fills in on its own.")
+
+    def show_crash(self, details):
+        """One dialog for an error inside the window: what happened, a Copy button, the log, a pre-filled issue."""
+        try:
+            dlg = ctk.CTkToplevel(self)
+            dlg.title("Something went wrong")
+            dlg.geometry("620x468")
+            dlg.resizable(False, False)
+            dlg.transient(self)
+            dlg.configure(fg_color=C["bg"])
+            body = ctk.CTkFrame(dlg, fg_color="transparent")
+            body.pack(fill="both", expand=True, padx=28, pady=22)
+            ctk.CTkLabel(body, text="Something went wrong", font=F(H3, "semibold", display=True), text_color=C["ink"],
+                         anchor="w").pack(fill="x")
+            ctk.CTkLabel(body, text="A part of the app hit an error and stopped what it was doing. The rest keeps running; "
+                                    "if things look off, close and reopen the app. Nothing of yours was lost.",
+                         font=F(SM), text_color=C["muted"], wraplength=560, justify="left", anchor="w").pack(fill="x", pady=(6, 12))
+            box = ctk.CTkTextbox(body, height=150, font=F(XS), fg_color=C["surface2"], text_color=C["ink"], wrap="word",
+                                 corner_radius=10)
+            box.pack(fill="x")
+            box.insert("1.0", details)
+            box.configure(state="disabled")
+            ctk.CTkLabel(body, text="Report on GitHub opens a pre-filled issue with the app version, your Windows version and "
+                                    "the lines above, nothing else. Read it over before you post it.",
+                         font=F(XS), text_color=C["dim"], wraplength=560, justify="left", anchor="w").pack(fill="x", pady=(10, 14))
+            btns = ctk.CTkFrame(body, fg_color="transparent")
+            btns.pack(fill="x", side="bottom")
+
+            def copy():
+                self.clipboard_clear()
+                self.clipboard_append(details)
+                copy_btn.configure(text="Copied")
+                dlg.after(1500, lambda: copy_btn.configure(text="Copy details"))
+            copy_btn = soft_button(btns, "Copy details", copy, width=120)
+            copy_btn.pack(side="left")
+            soft_button(btns, "Open log", lambda: os.startfile(LOG_PATH), width=100).pack(side="left", padx=8)
+            soft_button(btns, "Report on GitHub", lambda: webbrowser.open(crash.report_url(details)), width=150).pack(side="left")
+            primary_button(btns, "Close", dlg.destroy, width=100).pack(side="right")
+            dlg.after(50, dlg.lift)
+        except Exception:
+            log.exception("The crash dialog itself failed")
+
     def reload_data(self):
         self.data_version = getattr(self, "data_version", 0) + 1
         self.data = load_stored_assignments()
@@ -3251,7 +3345,11 @@ class App(ctk.CTk):
                     ls = datetime.fromisoformat(ls).strftime("%d %b, %I:%M %p").replace(" 0", " ")
                 except ValueError:
                     pass
-            self.last_sync_lbl.configure(text=f"Last sync {ls}" if ls else "Not synced yet")
+            text = f"Last sync {ls}" if ls else "Not synced yet"
+            streak = int(self.meta.get("fail_streak") or 0)
+            if streak:
+                text += f"  ·  {streak} check{'s' if streak != 1 else ''} failed since (Activity has the reason)"
+            self.last_sync_lbl.configure(text=text, text_color=C["amber"] if streak else C["muted"])
         self.update_tray_tooltip()
         if self.current and self.current in self.views and hasattr(self.views[self.current], "refresh"):
             self.views[self.current].refresh()
