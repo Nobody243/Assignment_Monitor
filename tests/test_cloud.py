@@ -23,17 +23,29 @@ def test_workflow_runs_twice_a_day_from_the_pinned_release():
     env = check["env"]
     assert env["ASSIGNMENT_MONITOR_RUNNER"] == "cloud"
     assert env["AM_ENABLE_WINDOWS_TOAST"] == "False" and env["AM_ENABLE_VOICE"] == "False"
-    for key in cloud.CLOUD_KEYS:
+    for key in cloud.SECRET_KEYS:
         assert env[f"AM_{key}"] == "${{ secrets.AM_%s }}" % key
+    for key in cloud.PLAIN_KEYS:
+        assert env[f"AM_{key}"] == ""                     # no settings given: empty, so the runner keeps defaults
+    d2 = yaml.safe_load(cloud.workflow_yaml("1.5.0", {"INSTITUTE_ID": "3", "TRACK_EXAMS": False, "EMAIL_PORT": 465,
+                                                    "EMAIL_TO": 'a"b@x.pk'}))
+    env2 = next(s for s in d2["jobs"]["check"]["steps"] if s.get("name") == "Check")["env"]
+    assert env2["AM_INSTITUTE_ID"] == "3" and env2["AM_TRACK_EXAMS"] == "False" and env2["AM_EMAIL_PORT"] == "465"
+    assert env2["AM_EMAIL_TO"] == 'a"b@x.pk'
     assert "cloud_check.py" in check["run"]
     assert steps[-1]["if"] == "always()" and "git push" in steps[-1]["run"]
 
 
-def test_secret_values_cover_every_cloud_key_as_text():
-    env = {"ENROLLMENT": "01-1-1", "PASSWORD": "p", "TRACK_EXAMS": False, "EMAIL_PORT": 465, "PUSH_SUB": ""}
+def test_only_real_secrets_become_repository_secrets():
+    env = {"ENROLLMENT": "01-1-1", "PASSWORD": "p", "TRACK_EXAMS": False, "EMAIL_PORT": 465, "PUSH_SUB": "",
+           "INSTITUTE_ID": "1"}
     v = cloud.secret_values(env)
-    assert v["AM_ENROLLMENT"] == "01-1-1" and v["AM_TRACK_EXAMS"] == "False" and v["AM_EMAIL_PORT"] == "465"
-    assert v["AM_PUSH_SUB"] == "" and set(v) == {f"AM_{k}" for k in cloud.CLOUD_KEYS}
+    assert v["AM_ENROLLMENT"] == "01-1-1" and v["AM_PUSH_SUB"] == ""
+    assert set(v) == {f"AM_{k}" for k in cloud.SECRET_KEYS}
+    assert "AM_INSTITUTE_ID" not in v                     # "1" as a secret would mask every 1 in the logs
+    p = cloud.plain_values(env)
+    assert p["AM_INSTITUTE_ID"] == "1" and p["AM_TRACK_EXAMS"] == "False" and p["AM_EMAIL_PORT"] == "465"
+    assert not (set(p) & set(v))
 
 
 def test_seal_is_a_libsodium_sealed_box_for_the_repo_key():
@@ -109,6 +121,7 @@ def test_sync_secrets_only_sends_when_the_settings_changed(monkeypatch):
     sent = []
     saved = {}
     monkeypatch.setattr(cloud, "set_secrets", lambda t, r, v: sent.append(v) or len(v))
+    monkeypatch.setattr(cloud, "put_file", lambda *a, **k: None)
     monkeypatch.setattr(cloud, "save_env", lambda env: saved.update(env))
     env = {"CLOUD_ENABLED": True, "CLOUD_REPO": "me/r", "GITHUB_TOKEN": "t", "PASSWORD": "a", "CLOUD_HASH": ""}
     assert cloud.sync_secrets(env) is True and len(sent) == 1
@@ -116,6 +129,9 @@ def test_sync_secrets_only_sends_when_the_settings_changed(monkeypatch):
     assert cloud.sync_secrets(env) is False and len(sent) == 1          # nothing changed
     env["PASSWORD"] = "b"
     assert cloud.sync_secrets(env) is True and len(sent) == 2
+    env["CLOUD_HASH"] = saved["CLOUD_HASH"]
+    env["ATTENDANCE_MIN"] = 80                                           # a plain setting counts too
+    assert cloud.sync_secrets(env) is True and saved["CLOUD_VERSION"] == cloud.APP_VERSION
     assert cloud.sync_secrets({"CLOUD_ENABLED": False}) is False
 
 

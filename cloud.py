@@ -32,11 +32,14 @@ API = "https://api.github.com"
 REPO_NAME = "assignment-monitor-cloud"
 WORKFLOW_PATH = ".github/workflows/check.yml"
 SCOPES = "repo workflow"
-# settings that travel to the cloud as secrets (AM_<KEY> in the runner's environment); the rest keep their defaults
-CLOUD_KEYS = ("ENROLLMENT", "PASSWORD", "INSTITUTE_ID", "NOTIFY_DAYS_AHEAD", "ATTENDANCE_MIN", "EXAM_REMIND_DAYS",
+# Settings travel to the runner as AM_<KEY> environment variables. The secret ones are repository secrets; the
+# plain ones are written into the workflow file itself. (GitHub masks every occurrence of a secret's value in the
+# logs, so a campus id of "1" stored as a secret would turn every "1" in the log into ***.)
+SECRET_KEYS = ("ENROLLMENT", "PASSWORD", "PUSH_SUB", "PUSH_VAPID", "EMAIL_PASS")
+PLAIN_KEYS = ("INSTITUTE_ID", "NOTIFY_DAYS_AHEAD", "ATTENDANCE_MIN", "EXAM_REMIND_DAYS",
               "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
-              "PUSH_ENABLED", "PUSH_SUB", "PUSH_VAPID",
-              "EMAIL_ENABLED", "EMAIL_TO", "EMAIL_USER", "EMAIL_HOST", "EMAIL_PORT", "EMAIL_PASS")
+              "PUSH_ENABLED", "EMAIL_ENABLED", "EMAIL_TO", "EMAIL_USER", "EMAIL_HOST", "EMAIL_PORT")
+CLOUD_KEYS = SECRET_KEYS + PLAIN_KEYS
 STATE_FILES = ("assignments.json", "attendance.json", "exams.json", "announcements.json", "lectures.json",
                "timetable.json", "reminders.json", "meta.json")
 
@@ -46,6 +49,25 @@ class CloudError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------- HTTP
+def job_log(token: str, repo: str, job_id: int) -> str:
+    """A finished job's log text. GitHub answers with a redirect to a signed storage URL that must be fetched
+    without the Authorization header (the storage rejects it)."""
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):
+            return None
+    opener = urllib.request.build_opener(NoRedirect)
+    req = urllib.request.Request(f"{API}/repos/{repo}/actions/jobs/{job_id}/logs",
+                                 headers={"Authorization": f"Bearer {token}", "User-Agent": APP_NAME})
+    try:
+        with opener.open(req, timeout=30) as r:
+            return r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        if e.code in (301, 302, 307) and e.headers.get("Location"):
+            with urllib.request.urlopen(e.headers["Location"], timeout=60) as r:
+                return r.read().decode("utf-8", "replace")
+        raise CloudError(f"GitHub answered {e.code} for the log.") from None
+
+
 def _request(method: str, url: str, token: str | None = None, body: dict | None = None, form: bool = False,
              timeout: int = 30) -> tuple[int, dict | list | str, dict]:
     data = None
@@ -189,22 +211,34 @@ def set_secrets(token: str, repo: str, values: dict) -> int:
     return written
 
 
+def _text(v) -> str:
+    if isinstance(v, bool):
+        return "True" if v else "False"
+    return "" if v is None else str(v)
+
+
 def secret_values(env: dict) -> dict:
-    """The settings the cloud runner needs, as AM_<KEY> secrets. Booleans become True/False text."""
-    out = {}
-    for key in CLOUD_KEYS:
-        v = env.get(key, "")
-        if isinstance(v, bool):
-            v = "True" if v else "False"
-        out[f"AM_{key}"] = "" if v is None else str(v)
-    return out
+    """The secret settings, as AM_<KEY> repository secrets."""
+    return {f"AM_{key}": _text(env.get(key, "")) for key in SECRET_KEYS}
+
+
+def plain_values(env: dict) -> dict:
+    """The non-secret settings, written into the workflow file as AM_<KEY> environment values."""
+    return {f"AM_{key}": _text(env.get(key, "")) for key in PLAIN_KEYS}
 
 
 # ---------------------------------------------------------------------------- the workflow
-def workflow_yaml(version: str = APP_VERSION) -> str:
+def _yaml_str(v: str) -> str:
+    return json.dumps(v)                     # a JSON string is a valid double-quoted YAML scalar
+
+
+def workflow_yaml(version: str = APP_VERSION, env: dict | None = None) -> str:
     """The student's workflow: twice a day (08:00 and 19:00 Pakistan time), or on demand. It checks out this
-    project at the pinned release, runs the check with the secrets in the environment and commits the state."""
+    project at the pinned release, runs the check with the settings in the environment (secrets from the
+    repository, plain settings written here) and commits the state."""
+    env = env if env is not None else {}
     secrets_env = "\n".join(f"          {k}: ${{{{ secrets.{k} }}}}" for k in secret_values({}).keys())
+    plain_env = "\n".join(f"          {k}: {_yaml_str(v)}" for k, v in plain_values(env).items())
     return f"""# {APP_NAME} cloud checks. Written by the app; it is replaced on every app update, so edits here are lost.
 # Runs the same check the PC runs, on GitHub's machines, so alerts reach the phone and the mailbox when the PC is off.
 name: {APP_NAME} check
@@ -259,6 +293,7 @@ jobs:
           AM_ENABLE_WINDOWS_TOAST: "False"
           AM_ENABLE_VOICE: "False"
           AM_HEADLESS: "True"
+{plain_env}
 {secrets_env}
         run: python app/cloud_check.py ${{{{ inputs.mode || 'check' }}}}
       - name: Save state
@@ -297,7 +332,8 @@ def setup(token: str, env: dict | None = None, progress=None) -> dict:
     put_file(token, repo, "README.md", readme_text(login).encode("utf-8"), "README")
     ignore = "state/settings.env\nstate/chrome_profile/\nstate/browsers/\nstate/data/app.log*\nstate/data/sync.lock\n"
     put_file(token, repo, ".gitignore", ignore.encode("ascii"), "ignore local files")
-    put_file(token, repo, WORKFLOW_PATH, workflow_yaml().encode("utf-8"), f"workflow for {APP_NAME} {APP_VERSION}")
+    put_file(token, repo, WORKFLOW_PATH, workflow_yaml(APP_VERSION, env).encode("utf-8"),
+             f"workflow for {APP_NAME} {APP_VERSION}")
     say("Copying what this PC has seen so far…")
     seeded = 0
     for name in STATE_FILES:
@@ -327,13 +363,15 @@ def enabled(env: dict | None = None) -> bool:
 
 
 def fingerprint(env: dict) -> str:
-    return hashlib.sha256(json.dumps(secret_values(env), sort_keys=True).encode("utf-8")).hexdigest()[:24]
+    """What the cloud copy depends on: the secrets, the plain settings and the app version (the workflow pins it)."""
+    blob = json.dumps([secret_values(env), plain_values(env), APP_VERSION], sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:24]
 
 
 def sync_secrets(env: dict | None = None, force: bool = False) -> bool:
-    """Pushes the current settings (login, phone, mail, tracking) to the cloud repository when they differ from
-    what was sent last. Call after they change on the PC and once at start-up. Returns True when something was
-    sent; errors are logged, not raised."""
+    """Brings the cloud copy up to date with this PC: the secrets, the workflow (plain settings and the pinned
+    app version). Skipped when nothing changed since the last sync. Call after settings change and once at
+    start-up. Returns True when something was sent; errors are logged, not raised."""
     env = dict(env or load_env())
     if not enabled(env):
         return False
@@ -342,30 +380,21 @@ def sync_secrets(env: dict | None = None, force: bool = False) -> bool:
         return False
     try:
         set_secrets(env["GITHUB_TOKEN"], env["CLOUD_REPO"], secret_values(env))
+        put_file(env["GITHUB_TOKEN"], env["CLOUD_REPO"], WORKFLOW_PATH, workflow_yaml(APP_VERSION, env).encode("utf-8"),
+                 f"workflow for {APP_NAME} {APP_VERSION}")
     except Exception as e:
-        log.warning("Cloud secrets could not be updated: %s", str(e)[:200])
+        log.warning("Cloud settings could not be updated: %s", str(e)[:200])
         return False
     env["CLOUD_HASH"] = fp
+    env["CLOUD_VERSION"] = APP_VERSION
     save_env(env)
-    log.info("Cloud secrets updated.")
+    log.info("Cloud settings updated (%s).", APP_VERSION)
     return True
 
 
 def refresh_if_outdated(env: dict | None = None) -> bool:
-    """After an app update: pins the cloud workflow to the version now installed."""
-    env = dict(env or load_env())
-    if not enabled(env) or env.get("CLOUD_VERSION") == APP_VERSION:
-        return False
-    try:
-        put_file(env["GITHUB_TOKEN"], env["CLOUD_REPO"], WORKFLOW_PATH, workflow_yaml().encode("utf-8"),
-                 f"workflow for {APP_NAME} {APP_VERSION}")
-        env["CLOUD_VERSION"] = APP_VERSION
-        save_env(env)
-        log.info("Cloud workflow moved to %s.", APP_VERSION)
-        return True
-    except Exception as e:
-        log.warning("Cloud workflow could not be updated: %s", str(e)[:200])
-        return False
+    """After an app update the workflow must pin the version now installed; the fingerprint includes it."""
+    return sync_secrets(env)
 
 
 def run_now(env: dict | None = None, mode: str = "check") -> None:

@@ -14,7 +14,7 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "1.4.6"
+APP_VERSION = "1.5.0"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 SITE_URL = "https://assignment-monitor.vercel.app"
@@ -32,7 +32,7 @@ RUNNER = os.environ.get("ASSIGNMENT_MONITOR_RUNNER", "")
 IN_CLOUD = RUNNER == "cloud"
 # GitHub OAuth app used for the device sign-in of cloud checks (a public identifier, not a secret). Empty hides
 # the feature.
-GITHUB_CLIENT_ID = os.environ.get("AM_GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_ID = os.environ.get("AM_GITHUB_CLIENT_ID") or "Ov23ctd8HzseTPqZhf8Q"
 PROJECT_REPO = "Nobody243/Assignment_Monitor"
 if _home_override:
     BASE_DIR = Path(_home_override)

@@ -2917,7 +2917,6 @@ class App(ctk.CTk):
     def _cloud_housekeeping(self):
         try:
             if cloud.enabled(self.env):
-                cloud.refresh_if_outdated(self.env)
                 cloud.sync_secrets(load_env())
         except Exception as e:
             log.warning("Cloud housekeeping: %s", str(e)[:200])
