@@ -6,7 +6,7 @@ A desktop app that keeps an eye on your LMS and CMS so you don't have to: assign
 
 - Dashboard: next deadline, what's pending, due today, due this week, extended, overdue, submitted
 - Catches **extended deadlines**, which the portal hides by merging the old and new dates into one string
-- **Checks automatically** every day at 7 PM and when you sign in to Windows
+- **Checks automatically** every day at 7 PM (waking a sleeping laptop, on battery too) and when you sign in to Windows
 - **Reminds you aloud every hour** on the day an unsubmitted assignment is due
 - **Attendance** per course with the margin to your minimum, class-by-class, and an alert when an absence is recorded
 - **Exam seating plan** with room and seat, a countdown, a reminder the day before and on the morning of each paper
@@ -64,11 +64,11 @@ The CMS timetable is read with every sync and drawn the app's way: one row per d
 
 | Task | When | What |
 | --- | --- | --- |
-| `AssignmentMonitor_DailyCheck` | Daily 19:00 | Sync (assignments, attendance, exams, announcements, lecture notes and files, timetable) + notifications, including "exam tomorrow", plus the calendar file and invites when enabled |
+| `AssignmentMonitor_DailyCheck` | Daily 19:00 | Sync (assignments, attendance, exams, announcements, lecture notes and files, timetable) + notifications, including "exam tomorrow", plus the calendar file and invites when enabled. Wakes a sleeping PC, runs on battery, runs late if 19:00 was missed, retries three times if the portal was unreachable |
 | `AssignmentMonitor_LogonCheck` | 2 min after sign-in | Catch-up sync if the PC was off at 19:00 |
-| `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today, plus one reminder on the morning of an exam |
+| `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today, plus one reminder on the morning of an exam. Never wakes the PC |
 
-They run even when the app is closed. Turn them off any time from Settings; uninstalling removes them too.
+They run even when the app is closed, on battery as well as mains. Turn them off any time from Settings; uninstalling removes them too. A PC that is shut down cannot check; sleep and hibernate are fine (some laptops only wake from sleep while plugged in, a BIOS setting the app cannot change).
 
 **Updating:** the app checks GitHub for a newer numbered release when it starts and shows "Update available · Install" at the top. One click downloads the installer and reinstalls over the current version; your sign-in and data are kept. You can turn the check off in Settings.
 
@@ -159,7 +159,7 @@ The website lives in `website/`: `npm install`, `npm run dev` for a dev server, 
 ## Troubleshooting
 
 - **"Sign-in failed"** – check enrollment, password and campus in Settings. The portal's own error text is shown.
-- **Nothing happens at 7 PM** – the PC must be on and you signed in. Settings → Automatic checks should say "Enabled".
+- **Nothing happens at 7 PM** – the PC must be on or asleep (not shut down) and you signed in. Settings → Automatic checks should say "Enabled". If the check arrived only after you woke the laptop yourself, the machine did not honour the wake timer; check the power plan's "Allow wake timers" setting.
 - **Details** – Activity tab, or the log file in the data folder.
 - **Email test fails** – use an app password, not your normal one (Gmail: 2-Step Verification → App passwords; Outlook: Security → App passwords). Corporate or university mailboxes sometimes block SMTP; the Advanced button lets you set the server.
 - **Phone pushes stop** – the phone's browser rotated its push address or you cleared the site's data. Press Pair a phone again; it takes ten seconds.

@@ -2654,6 +2654,8 @@ class App(ctk.CTk):
             self.after(50, self.hide_to_tray)
         if self.env.get("CHECK_UPDATES", True):
             self.after(4000, lambda: self.check_for_updates(quiet=True))
+        # tasks registered by an older version lack the battery / wake settings; re-register them once, quietly
+        self.after(8000, lambda: threading.Thread(target=automation.refresh_if_outdated, daemon=True).start())
 
     # ---- updates
     def check_for_updates(self, quiet=False):

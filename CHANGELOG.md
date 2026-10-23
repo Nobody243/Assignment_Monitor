@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.6 - 2026-10-23
+
+- The background checks now suit a laptop. The 7 PM check wakes a sleeping or hibernating PC, runs on battery (before, Windows skipped it whenever the charger was out and killed it if you unplugged mid-check), runs as soon as the PC is back if 7 PM was missed, and retries up to three times, ten minutes apart, if the portal was unreachable. The hourly reminder and the sign-in catch-up also run on battery; the hourly one never wakes the PC. Tasks created by an earlier version are re-registered with these settings the first time the app opens. A PC that is shut down still checks nothing; see the website's FAQ.
+- Reading a page no longer fails with "page is navigating and changing the content" when a course change is still loading on a slow connection; the read waits and retries.
+
 ## 1.4.5 - 2026-10-23
 
 - Phone pushes work. Every push, including the test after pairing, failed with "could not deserialize key data": the signing key the PC generates is stored as PEM text, and the push library only accepts a key given as text when it is a file path or a bare base64 key. The key is now loaded and handed over as an object. Nothing to redo: the pairing and the stored keys were fine.
