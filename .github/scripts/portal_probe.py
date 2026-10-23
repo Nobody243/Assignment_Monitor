@@ -25,6 +25,8 @@ def main() -> int:
     if not enrollment or not password:
         print("FAIL: PORTAL_ENROLLMENT / PORTAL_PASSWORD are not set")
         return 2
+    import playwright
+    print(f"playwright {getattr(playwright, '__version__', '?')}")
     t0 = time.time()
     with sync_playwright() as p:
         kwargs = dict(headless=True, args=["--disable-blink-features=AutomationControlled"])

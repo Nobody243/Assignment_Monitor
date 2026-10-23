@@ -105,6 +105,24 @@ def _settle(page, timeout: int = 15000, pause: float = 1.2):
     time.sleep(pause)
 
 
+def _html(page) -> str:
+    """The page's HTML, waiting out a navigation that is still in flight. A course change is a form postback and
+    page.content() raises "page is navigating and changing the content" if asked a moment too soon; on a slow
+    connection the settle pause after the postback is not always enough."""
+    for attempt in range(6):
+        try:
+            return page.content()
+        except Exception as e:
+            if "navigating" not in str(e) or attempt == 5:
+                raise
+            try:
+                page.wait_for_load_state("load", timeout=15000)
+            except Exception:
+                pass
+            time.sleep(0.5 * (attempt + 1))
+    return page.content()
+
+
 # ---------------------------------------------------------------------------- the portal session
 class PortalSession:
     """One signed-in browser for the whole sync: CMS first, then the LMS through single sign-on.
@@ -219,7 +237,7 @@ def _collect_assignments(s: PortalSession, meta: dict) -> List[dict]:
     for course_val, course_name in courses:
         log.info("Reading assignments: %s", course_name)
         s.select_course(course_val)
-        items.extend(_parse_course_table(page.content(), course_name))
+        items.extend(_parse_course_table(_html(page), course_name))
     log.info("Collected %d assignments across %d courses.", len(items), len(courses))
     return items
 
@@ -229,7 +247,7 @@ def _collect_attendance(s: PortalSession, previous: Optional[Dict[str, dict]] = 
     (the detail pages are one request each, so unchanged courses reuse what was stored)."""
     previous = previous or {}
     page = s.cms(ATTENDANCE_URL)
-    courses = parse_attendance(page.content())
+    courses = parse_attendance(_html(page))
     log.info("Attendance: %d courses.", len(courses))
     for c in courses:
         old = previous.get(c["code"])
@@ -262,12 +280,12 @@ def _collect_exams(s: PortalSession) -> List[dict]:
             if val and name:
                 types.append((val, name))
     if not types:
-        return parse_exam_seats(page.content(), "Exam")
+        return parse_exam_seats(_html(page), "Exam")
     for i, (val, name) in enumerate(types):
         if i:
             page.select_option("#BodyPH_ddlExamTypeFilter", value=val)
             _settle(page, 15000, 1.5)
-        out.extend(parse_exam_seats(page.content(), name))
+        out.extend(parse_exam_seats(_html(page), name))
     log.info("Exams: %d rows across %d exam type(s), %d scheduled.", len(out), len(types), sum(1 for e in out if e["scheduled"]))
     return out
 
@@ -278,13 +296,13 @@ def _collect_lectures(s: PortalSession) -> List[dict]:
     out: List[dict] = []
     for course_val, course_name in s.lms_courses():
         s.select_course(course_val)
-        out.extend(parse_lectures(page.content(), course_name))
+        out.extend(parse_lectures(_html(page), course_name))
     log.info("Lecture notes: %d weeks across all courses.", len(out))
     page = s.lms(MISC_URL)
     n = 0
     for course_val, course_name in s.lms_courses():
         s.select_course(course_val)
-        items = parse_misc(page.content(), course_name)
+        items = parse_misc(_html(page), course_name)
         n += len(items)
         out.extend(items)
     log.info("Miscellaneous files: %d across all courses.", n)
@@ -293,7 +311,7 @@ def _collect_lectures(s: PortalSession) -> List[dict]:
 
 def _collect_timetable(s: PortalSession) -> dict:
     page = s.cms(TIMETABLE_URL)
-    data = parse_timetable(page.content())
+    data = parse_timetable(_html(page))
     log.info("Timetable: %d classes a week (%s).", len(data["sessions"]), data.get("semester") or "semester unknown")
     return data
 
@@ -303,7 +321,7 @@ def _collect_announcements(s: PortalSession) -> List[dict]:
     out: List[dict] = []
     for course_val, course_name in s.lms_courses():
         s.select_course(course_val)
-        out.extend(parse_announcements(page.content(), course_name))
+        out.extend(parse_announcements(_html(page), course_name))
     log.info("Announcements: %d across all courses.", len(out))
     return out
 
@@ -441,7 +459,7 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                         continue
                     session.select_course(val)
                     fresh = {}
-                    live_items = parse_misc(page.content(), course) if kind == "misc" else parse_lectures(page.content(), course)
+                    live_items = parse_misc(_html(page), course) if kind == "misc" else parse_lectures(_html(page), course)
                     for lec in live_items:
                         for f in lec["files"]:
                             fresh[(lec["week"], lec["title"], f["label"])] = f
