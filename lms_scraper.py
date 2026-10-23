@@ -82,23 +82,38 @@ def _launch_browser(p, headless: bool):
     except Exception as chrome_err:
         log.warning("Google Chrome could not be started (%s). Trying bundled Chromium...",
                     str(chrome_err).splitlines()[0][:120])
+
+    def bundled():
+        # the full Chromium in its new headless mode first (it presents itself like Chrome); the headless shell last
+        try:
+            return p.chromium.launch_persistent_context(channel="chromium", **kwargs)
+        except Exception:
+            return p.chromium.launch_persistent_context(**kwargs)
     try:
-        return p.chromium.launch_persistent_context(**kwargs)
+        return bundled()
     except Exception:
         pass
     if _install_chromium():
         try:
-            return p.chromium.launch_persistent_context(**kwargs)
+            return bundled()
         except Exception as e:
             log.error("Chromium failed to start after download: %s", str(e).splitlines()[0][:160])
     raise RuntimeError("No browser available. Please install Google Chrome and try again.")
 
 
 def _login_error_text(page) -> str:
+    """The error the portal shows on the sign-in page, visible elements only: the page also carries hidden
+    messages (a LinkedIn notice, for one) that have nothing to do with the sign-in."""
     texts = []
     for sel in (".text-danger", ".alert", "[id*='lblMessage']", "[id*='Message']", "[id*='lblError']"):
         try:
-            texts += [t.strip() for t in page.locator(sel).all_inner_texts() if t.strip()]
+            loc = page.locator(sel)
+            for i in range(min(loc.count(), 12)):
+                el = loc.nth(i)
+                if el.is_visible():
+                    t = el.inner_text().strip()
+                    if t:
+                        texts.append(t)
         except Exception:
             pass
     return ", ".join(dict.fromkeys(texts))
@@ -156,7 +171,13 @@ class PortalSession:
             if page.locator("#BodyPH_ddlSubUserType").count() > 0:
                 page.select_option("#BodyPH_ddlSubUserType", value="None")
             page.click("#BodyPH_btnLogin")
-            _settle(page, 30000, 1.5)
+            # the portal answers with a redirect; on a slower browser (the downloaded engine, a cold start) the
+            # page can still be login.aspx for a moment after the click, so wait for it to leave before judging
+            try:
+                page.wait_for_url(lambda u: "login.aspx" not in u.lower(), timeout=30000)
+            except Exception:
+                pass
+            _settle(page, 15000, 1.0)
         if "login.aspx" in page.url.lower():
             msg = _login_error_text(page) or "the portal rejected the enrollment number, password, or campus"
             raise LoginError(f"Sign-in failed: {msg}")

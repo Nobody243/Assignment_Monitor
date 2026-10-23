@@ -48,3 +48,31 @@ def test_enrollment_is_masked_in_the_log_line():
     assert mask_enrollment("01-134212-034") == "•" * 10 + "034"
     assert mask_enrollment("ab") == "••"
     assert mask_enrollment("") == ""
+
+
+def test_login_error_text_ignores_hidden_messages():
+    from lms_scraper import _login_error_text
+
+    class El:
+        def __init__(self, text, visible):
+            self.text, self.visible = text, visible
+        def is_visible(self):
+            return self.visible
+        def inner_text(self):
+            return self.text
+
+    class Loc:
+        def __init__(self, els):
+            self.els = els
+        def count(self):
+            return len(self.els)
+        def nth(self, i):
+            return self.els[i]
+
+    class Page:
+        def locator(self, sel):
+            if sel == "[id*='Message']":
+                return Loc([El("This LinkedIn profile is already associated with another student.", False),
+                            El("Invalid enrollment or password.", True), El("Invalid enrollment or password.", True)])
+            return Loc([])
+    assert _login_error_text(Page()) == "Invalid enrollment or password."

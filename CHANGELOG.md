@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.5 - 2026-10-23
+
+- On a PC without Google Chrome, the first check no longer fails with "Sign-in failed: This LinkedIn profile is already associated with another student." The sign-in had in fact succeeded; the downloaded browser engine was a moment slower to leave the login page, and the app judged too early, quoting a hidden notice from that page. It now waits for the portal's redirect, reads only visible messages, and prefers the full Chromium engine over the headless shell. Found by a new clean-machine install test that runs the release on a fresh Windows with Chrome hidden.
+- The sign-in window fits small screens: the card, its text and the theme switch follow the window, and the gaps tighten on short windows (a 1366x768 laptop at 125 % scaling). The main window also leaves less of the screen unused on such laptops.
+- The enrollment number no longer appears in the log (the sign-in line shows its last three characters), since logs get pasted into issues.
+
 ## 1.5.4 - 2026-10-23
 
 - Between semesters: when the portal lists no courses yet, every page says so instead of showing last semester's data, alerts pause after one notice, and everything fills in on the first check after registration. Announcements from an earlier semester are cleared once the new one has data.

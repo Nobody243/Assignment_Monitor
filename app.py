@@ -768,22 +768,63 @@ class SetupView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=5)
         self.grid_columnconfigure(1, weight=6)
         self.grid_rowconfigure(0, weight=1)
+        self._wrap_left, self._wrap_card, self._gaps = [], [], []
         self._build_left()
         self._build_right()
+        self._size = (0, 0)
+        self.bind("<Configure>", lambda e: self._layout())
+        self.after(80, self._layout)
+
+    def _layout(self):
+        """Fits the card to the window: width from the right column, wrapped lines from the card, tighter gaps on
+        short windows (a 1366x768 laptop at 125 % gives the window about 530 px)."""
+        w, h = self.winfo_width(), self.winfo_height()
+        if w < 50 or (w, h) == self._size:
+            return
+        self._size = (w, h)
+        right_w = w * 6 / 11
+        card_w = int(min(470, max(330, right_w - 48)))
+        self.card.place_configure(relwidth=0, width=card_w)
+        inner = card_w - 64
+        for lbl in self._wrap_card:
+            lbl.configure(wraplength=inner)
+        left_inner = int(w * 5 / 11 * 0.76) - 20
+        for lbl in self._wrap_left:
+            lbl.configure(wraplength=max(220, left_inner))
+        compact = h < 600
+        for widget, normal, tight in self._gaps:
+            widget.pack_configure(pady=tight if compact else normal)
+        self.title_lbl.configure(font=F(H3 if compact or card_w < 400 else H2, "semibold", display=True))
+        if right_w - card_w < 2 * 24 + 130:
+            # no room beside the card: bottom left of the left panel, or nowhere when that panel is full too
+            # (the theme can still be changed from the sidebar later)
+            if self._left_inner.winfo_reqheight() + 64 < h:
+                self.theme_sw.place_configure(in_=self._left, relx=0.0, rely=1.0, anchor="sw", x=20, y=-14)
+            else:
+                self.theme_sw.place_forget()
+                return
+        else:
+            self.theme_sw.place_configure(in_=self._right, relx=1.0, rely=0.0, anchor="ne", x=-24, y=18)
+        self.theme_sw.lift()
 
     def _build_left(self):
         left = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=0)
         left.grid(row=0, column=0, sticky="nsew")
+        self._left = left
         ctk.CTkFrame(self, fg_color=C["line"], width=1, corner_radius=0).grid(row=0, column=0, sticky="nse")
         inner = ctk.CTkFrame(left, fg_color="transparent")
         inner.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.76)
+        self._left_inner = inner
 
         if self.app.logo:
             ctk.CTkLabel(inner, text="", image=self.app.logo).pack(anchor="w")
         ctk.CTkLabel(inner, text=APP_NAME, font=F(D1, "semibold", display=True), text_color=C["ink"]).pack(anchor="w", pady=(14, 0))
         ctk.CTkLabel(inner, text=TAGLINE, font=F(LG), text_color=C["accent"]).pack(anchor="w", pady=(0, 10))
-        intro = "Assignments, attendance, exams, announcements\nand lecture notes, read for you.\nSet it up once; it runs on its own."
-        ctk.CTkLabel(inner, text=intro, font=F(LG), text_color=C["muted"], justify="left").pack(anchor="w", pady=(0, 28))
+        intro = "Assignments, attendance, exams, announcements and lecture notes, read for you. Set it up once; it runs on its own."
+        intro_lbl = ctk.CTkLabel(inner, text=intro, font=F(LG), text_color=C["muted"], justify="left", wraplength=340)
+        intro_lbl.pack(anchor="w", pady=(0, 28))
+        self._wrap_left.append(intro_lbl)
+        self._gaps.append((intro_lbl, (0, 28), (0, 16)))
 
         for title, desc in [
             ("Checks the portal for you", "Signs in every evening at 7 PM and whenever your PC starts, then tells you only what changed."),
@@ -799,29 +840,41 @@ class SetupView(ctk.CTkFrame):
             txt = ctk.CTkFrame(row, fg_color="transparent")
             txt.pack(side="left", fill="x", expand=True, padx=(14, 0))
             ctk.CTkLabel(txt, text=title, font=F(LG, "semibold"), text_color=C["ink"]).pack(anchor="w")
-            ctk.CTkLabel(txt, text=desc, font=F(SM), text_color=C["muted"], justify="left", wraplength=340).pack(anchor="w")
+            d = ctk.CTkLabel(txt, text=desc, font=F(SM), text_color=C["muted"], justify="left", wraplength=340)
+            d.pack(anchor="w")
+            self._wrap_left.append(d)
 
     def _build_right(self):
         right = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
         right.grid(row=0, column=1, sticky="nsew")
-        theme_switch(right, self.app).place(relx=1.0, rely=0.0, anchor="ne", x=-24, y=18)
+        self._right = right
+        self.theme_sw = theme_switch(self, self.app)
+        self.theme_sw.place(in_=right, relx=1.0, rely=0.0, anchor="ne", x=-24, y=18)
         box = surface(right)
         box.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.72)
+        self.card = box
         pad = {"padx": 32}
 
-        ctk.CTkLabel(box, text="Sign in to your student portal", font=F(H2, "semibold", display=True),
-                     text_color=C["ink"]).pack(anchor="w", pady=(28, 2), **pad)
-        ctk.CTkLabel(box, text="The same enrollment number and password you use on cms.bahria.edu.pk.",
-                     font=F(SM), text_color=C["muted"]).pack(anchor="w", pady=(0, 18), **pad)
+        self.title_lbl = ctk.CTkLabel(box, text="Sign in to your student portal", font=F(H2, "semibold", display=True),
+                                      text_color=C["ink"], justify="left", wraplength=400)
+        self.title_lbl.pack(anchor="w", pady=(28, 2), **pad)
+        self._gaps.append((self.title_lbl, (28, 2), (16, 2)))
+        sub = ctk.CTkLabel(box, text="The same enrollment number and password you use on cms.bahria.edu.pk.",
+                           font=F(SM), text_color=C["muted"], justify="left", wraplength=400)
+        sub.pack(anchor="w", pady=(0, 18), **pad)
+        self._wrap_card += [self.title_lbl, sub]
+        self._gaps.append((sub, (0, 18), (0, 10)))
 
         env = self.app.env
         self.enroll = self._field(box, "Enrollment number", "01-123456-001", pad)
+        self._gaps.append((self.enroll, (2, 12), (2, 8)))
         if env.get("ENROLLMENT"):
             self.enroll.insert(0, env["ENROLLMENT"])
 
         ctk.CTkLabel(box, text="Portal password", font=F(SM, "medium"), text_color=C["muted"]).pack(anchor="w", **pad)
         pw_row = ctk.CTkFrame(box, fg_color="transparent")
         pw_row.pack(fill="x", pady=(2, 12), **pad)
+        self._gaps.append((pw_row, (2, 12), (2, 8)))
         self.password = ctk.CTkEntry(pw_row, placeholder_text="Password", show="•", height=40, font=F(MD),
                                      fg_color=C["field"], border_color=C["line2"], text_color=C["ink"])
         self.password.pack(side="left", fill="x", expand=True)
@@ -835,11 +888,16 @@ class SetupView(ctk.CTkFrame):
                                         dropdown_font=F(SM))
         self.campus.set(campus_name(env.get("INSTITUTE_ID", "1")))
         self.campus.pack(fill="x", pady=(2, 14), **pad)
+        self._gaps.append((self.campus, (2, 14), (2, 10)))
 
-        self.automation = ctk.CTkCheckBox(box, text="Check automatically (daily at 7 PM, at sign-in, hourly on due days)",
-                                          font=F(SM), text_color=C["ink"])
+        self.automation = ctk.CTkCheckBox(box, text="Check automatically", font=F(SM), text_color=C["ink"])
         self.automation.select()
-        self.automation.pack(anchor="w", pady=(0, 16), **pad)
+        self.automation.pack(anchor="w", **pad)
+        note = ctk.CTkLabel(box, text="Daily at 7 PM, at sign-in, and hourly on days something is due.", font=F(XS),
+                            text_color=C["dim"], justify="left", wraplength=400)
+        note.pack(anchor="w", pady=(0, 14), padx=(32 + 30, 32))
+        self._wrap_card.append(note)
+        self._gaps.append((note, (0, 14), (0, 10)))
 
         self.button = primary_button(box, "Connect and start monitoring", self.connect, height=44)
         self.button.pack(fill="x", **pad)
@@ -848,8 +906,11 @@ class SetupView(ctk.CTkFrame):
 
         legal = ctk.CTkFrame(box, fg_color="transparent")
         legal.pack(fill="x", pady=(10, 0), **pad)
-        ctk.CTkLabel(legal, text="Unofficial app, not affiliated with Bahria University. Use your own account only.",
-                     font=F(XS), text_color=C["dim"], wraplength=440, justify="left").pack(anchor="w")
+        self._gaps.append((legal, (10, 0), (6, 0)))
+        legal_lbl = ctk.CTkLabel(legal, text="Unofficial app, not affiliated with Bahria University. Use your own account only.",
+                                 font=F(XS), text_color=C["dim"], wraplength=440, justify="left")
+        legal_lbl.pack(anchor="w")
+        self._wrap_card.append(legal_lbl)
         link = ctk.CTkLabel(legal, text="Privacy & terms", font=F(XS, "semibold"), text_color=C["accent"], cursor="hand2")
         link.pack(anchor="w")
         link.bind("<Button-1>", lambda e: open_doc("PRIVACY.md", f"{REPO_URL}/blob/main/PRIVACY.md"))
@@ -858,6 +919,7 @@ class SetupView(ctk.CTkFrame):
                                            fg_color=C["surface2"])
         self.status = ctk.CTkLabel(box, text="", font=F(SM), text_color=C["muted"], wraplength=430, justify="left")
         self.status.pack(anchor="w", pady=(10, 0), **pad)
+        self._wrap_card.append(self.status)
         self.console = ctk.CTkTextbox(box, height=90, font=ctk.CTkFont(family=FONTS["mono"], size=XS),
                                       fg_color=C["bg"], text_color=C["muted"], state="disabled")
         ctk.CTkLabel(box, text="", height=12).pack()
@@ -3048,8 +3110,8 @@ class App(ctk.CTk):
                 self.geometry(saved)
                 self.minsize(900, 560)
                 return
-        w, h = min(1280, sw - 60), min(840, sh - 120)
-        self.geometry(f"{w}x{h}+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 2 - 30)}")
+        w, h = min(1280, sw - 60), min(840, sh - 80)
+        self.geometry(f"{w}x{h}+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 2 - 20)}")
         self.minsize(min(900, w), min(560, h))
 
     def _remember_geometry(self):
