@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0 - 2026-10-23
+
+- Cloud checks: alerts with the PC off. Settings → Cloud checks sets up, after a consent screen and a one-time GitHub code, a private repository in your own GitHub account whose workflow runs the same check at 8 AM and 7 PM on GitHub's machines and sends the phone and email alerts. Your login and channel keys go there as GitHub Actions secrets, sealed on the PC with the repository's key; the PC's cache is copied so the cloud knows what is new; settings changed on the PC follow automatically; an app update moves the workflow to the new version; the PC keeps desktop and voice alerts and leaves phone and email to the cloud so nothing arrives twice. Turn off removes the secrets and the workflow. No server of ours is involved. Run now and the last result are shown in Settings.
+- Settings can be given as `AM_<KEY>` environment variables (how the cloud runner receives them).
+
 ## 1.4.6 - 2026-10-23
 
 - The background checks now suit a laptop. The 7 PM check wakes a sleeping or hibernating PC, runs on battery (before, Windows skipped it whenever the charger was out and killed it if you unplugged mid-check), runs as soon as the PC is back if 7 PM was missed, and retries up to three times, ten minutes apart, if the portal was unreachable. The hourly reminder and the sign-in catch-up also run on battery; the hourly one never wakes the PC. Tasks created by an earlier version are re-registered with these settings the first time the app opens. A PC that is shut down still checks nothing; see the website's FAQ.

@@ -29,6 +29,7 @@ if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 from config import (APP_ID, APP_NAME, APP_VERSION, TAGLINE, ASSETS_DIR, BASE_DIR, DATA_DIR, DOCS_DIR, LOG_PATH, lectures_dir,
+                    GITHUB_CLIENT_ID,
                     FROZEN, RELEASES_URL, REPO_URL, CAMPUS_NAMES, CAMPUS_ID_BY_NAME, campus_name,
                     load_env, save_env, has_credentials, load_meta, setup_logging)
 
@@ -169,6 +170,7 @@ from deadlines import classify, is_open_pending, sort_key, deadline_of          
 from campus import upcoming_exams, seat_text, session_date, sessions_on, minutes            # noqa: E402
 from timetable_render import render_timetable, save_timetable                              # noqa: E402
 import channels                                                                             # noqa: E402
+import cloud                                                                                # noqa: E402
 from calendar_export import calendar_path                                                   # noqa: E402
 from jobs import process_sync, collectors_for                                               # noqa: E402
 
@@ -627,7 +629,9 @@ def heading(parent, text, sub=None, size=17):
     box = ctk.CTkFrame(parent, fg_color="transparent")
     ctk.CTkLabel(box, text=text, font=F(size, "semibold", display=True), text_color=C["ink"]).pack(anchor="w")
     if sub:
-        ctk.CTkLabel(box, text=sub, font=F(SM), text_color=C["muted"]).pack(anchor="w", pady=(1, 0))
+        # long subtitles wrap instead of being clipped on both sides (Settings sections at a narrow window)
+        ctk.CTkLabel(box, text=sub, font=F(SM), text_color=C["muted"], justify="left", anchor="w",
+                     wraplength=900).pack(anchor="w", pady=(1, 0))
     return box
 
 
@@ -2112,6 +2116,8 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.auto_btn.pack(side="right")
         self.after(300, lambda: threading.Thread(target=self._refresh_automation, daemon=True).start())
 
+        self._cloud_section(env)
+
         data = self._section("Data", f"Stored only on this PC, in {BASE_DIR}")
         row = ctk.CTkFrame(data, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
@@ -2236,6 +2242,251 @@ class SettingsView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(act, text="Import it once into Google Calendar or Outlook; it is rewritten after every sync.",
                      font=F(XS), text_color=C["dim"]).pack(side="left", padx=12)
 
+    # ---- cloud checks
+    def _cloud_section(self, env):
+        box = self._section("Cloud checks (PC off)",
+                            "GitHub runs the same check twice a day, at 8 AM and 7 PM, from a private repository in "
+                            "your own GitHub account, so phone and email alerts arrive even when this PC is off. Free. "
+                            "While it is on, this PC keeps its desktop and voice alerts and leaves phone and email to "
+                            "the cloud, so nothing arrives twice.")
+        row = ctk.CTkFrame(box, fg_color="transparent")
+        row.pack(fill="x", padx=20, pady=(0, 18))
+        self.cloud_status = ctk.CTkLabel(row, text="Checking…", font=F(MD, "semibold"), text_color=C["muted"],
+                                         anchor="w", justify="left", wraplength=420)
+        self.cloud_status.pack(side="left", fill="x", expand=True)
+        self.cloud_btn = soft_button(row, "…", self._toggle_cloud, width=140)
+        self.cloud_btn.configure(state="disabled")
+        self.cloud_btn.pack(side="right")
+        self.cloud_more = ctk.CTkFrame(row, fg_color="transparent")
+        self.cloud_more.pack(side="right", padx=(0, 8))
+        soft_button(self.cloud_more, "Run now", self._cloud_run_now, width=100).pack(side="left", padx=(0, 8))
+        soft_button(self.cloud_more, "Open on GitHub",
+                    lambda: webbrowser.open(f"https://github.com/{self.app.env.get('CLOUD_REPO', '')}/actions"),
+                    width=130).pack(side="left")
+        self._cloud_sync_job = None
+        self.after(400, lambda: threading.Thread(target=self._refresh_cloud, daemon=True).start())
+
+    def _refresh_cloud(self):
+        env = load_env()
+        if not GITHUB_CLIENT_ID:
+            self.after(0, self._show_cloud, False, "Not available in this build.", None)
+            return
+        if not cloud.enabled(env):
+            self.after(0, self._show_cloud, False, "Off. Alerts come from this PC only.", None)
+            return
+        text = f"On, as {env.get('CLOUD_LOGIN', '')} on GitHub."
+        try:
+            run = cloud.last_run(env)
+            if run:
+                when = run["when"]
+                day = "today" if when.date() == datetime.now().date() else when.strftime("%d %b")
+                if run["status"] != "completed":
+                    text += f"  A check is running now (started {day} {when:%I:%M %p})."
+                else:
+                    words = {"success": "passed", "failure": "failed", "cancelled": "was cancelled"}
+                    word = words.get(run["conclusion"], run["conclusion"] or "")
+                    text += f"  Last check {day} {when:%I:%M %p} {word}."
+            else:
+                text += "  No check has run yet."
+        except Exception as e:
+            text += f"  (GitHub could not be reached: {str(e)[:80]})"
+        self.after(0, self._show_cloud, True, text, env)
+
+    def _show_cloud(self, on, text, env):
+        if not self.winfo_exists():
+            return
+        self.cloud_status.configure(text=text, text_color=C["green"] if on else C["muted"])
+        self.cloud_btn.configure(text="Turn off" if on else "Set up", state="normal" if GITHUB_CLIENT_ID else "disabled",
+                                 fg_color=C["surface2"] if on else C["accent"],
+                                 text_color=C["ink"] if on else C["on_accent"],
+                                 hover_color=C["line2"] if on else C["accent_h"])
+        if on:
+            self.cloud_more.pack(side="right", padx=(0, 8))
+        else:
+            self.cloud_more.pack_forget()
+        self._cloud_on = on
+
+    def _cloud_sync_later(self):
+        """Pushes changed settings to the cloud a few seconds after the last change, off the main thread."""
+        if not cloud.enabled(self.app.env):
+            return
+        if getattr(self, "_cloud_sync_job", None):
+            self.after_cancel(self._cloud_sync_job)
+        self._cloud_sync_job = self.after(3000, lambda: threading.Thread(
+            target=lambda: cloud.sync_secrets(load_env()), daemon=True).start())
+
+    def _cloud_run_now(self):
+        def work():
+            try:
+                cloud.run_now(load_env())
+                self.after(0, lambda: self.app.set_status("Cloud check started. Results in a few minutes on GitHub and on your phone."))
+                self.after(15000, lambda: threading.Thread(target=self._refresh_cloud, daemon=True).start())
+            except Exception as e:
+                err = str(e)[:160]
+                self.after(0, lambda: self.app.set_status(f"Could not start the cloud check: {err}"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _toggle_cloud(self):
+        if getattr(self, "_cloud_on", False):
+            if not messagebox.askyesno(APP_NAME, "Turn off cloud checks?\n\nThe secrets and the workflow are removed from "
+                                                 "your GitHub repository and this PC forgets the GitHub sign-in. The "
+                                                 "empty repository stays; you can delete it on GitHub afterwards.",
+                                       parent=self.app):
+                return
+            self.cloud_btn.configure(state="disabled", text="Working…")
+
+            def work():
+                url = cloud.teardown(load_env())
+                self.app.env = load_env()
+                self.after(0, lambda: self.app.set_status("Cloud checks are off."))
+                self.after(0, lambda: threading.Thread(target=self._refresh_cloud, daemon=True).start())
+                if url and messagebox.askyesno(APP_NAME, "Open the repository's settings on GitHub so you can delete it?",
+                                               parent=self.app):
+                    webbrowser.open(url)
+            threading.Thread(target=work, daemon=True).start()
+            return
+        self._cloud_setup_dialog()
+
+    def _cloud_setup_dialog(self):
+        dlg = ctk.CTkToplevel(self.app)
+        dlg.title("Cloud checks")
+        dlg.geometry("560x540")
+        dlg.resizable(False, False)
+        dlg.transient(self.app)
+        dlg.configure(fg_color=C["bg"])
+        body = ctk.CTkFrame(dlg, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=32, pady=24)
+        state = {"flow": None, "token": None, "cancel": False}
+        dlg.protocol("WM_DELETE_WINDOW", lambda: (state.__setitem__("cancel", True), dlg.destroy()))
+
+        def clear():
+            for w in body.winfo_children():
+                w.destroy()
+
+        def text(parent, t, size=SM, color="ink", weight="normal", pady=(0, 10), wrap=490, justify="left"):
+            lbl = ctk.CTkLabel(parent, text=t, font=F(size, weight), text_color=C[color], justify=justify,
+                               anchor="w" if justify == "left" else "center", wraplength=wrap)
+            lbl.pack(anchor="w" if justify == "left" else "center", pady=pady, fill="x")
+            return lbl
+
+        def stage_consent():
+            clear()
+            text(body, "Before you continue", H3, weight="semibold", pady=(0, 12))
+            text(body, "GitHub will run the check for you. To set that up, this app will do the following in your "
+                       "GitHub account, with your permission:")
+            for line in ("Create a private repository named assignment-monitor-cloud.",
+                         "Store your enrollment number, portal password and the phone and email keys there as GitHub "
+                         "Actions secrets: encrypted by GitHub, readable only by the check while it runs, never shown "
+                         "in logs.",
+                         "Copy what this PC has seen so far (assignments, attendance, exams, announcements, timetable) "
+                         "into it and keep that cache updated there."):
+                ctk.CTkLabel(body, text="•  " + line, font=F(SM), text_color=C["ink"], justify="left", anchor="w",
+                             wraplength=480).pack(fill="x", padx=(12, 0), pady=2)
+            text(body, "GitHub's machines then sign in to the portal twice a day, at 8 AM and 7 PM. Until now your "
+                       "password never left this PC; with cloud checks it also lives in GitHub's encrypted secrets. "
+                       "Turning cloud checks off removes the secrets and the workflow.", pady=(12, 10))
+            text(body, "You need a free GitHub account. GitHub will ask you to grant the \"repo\" and \"workflow\" "
+                       "permissions; they cover every repository in your account, and the app touches only the one "
+                       "above. You can revoke the grant any time at github.com/settings/applications.",
+                 color="muted", pady=(0, 18))
+            btns = ctk.CTkFrame(body, fg_color="transparent")
+            btns.pack(fill="x")
+            primary_button(btns, "Continue with GitHub", stage_code, width=200).pack(side="left")
+            soft_button(btns, "Cancel", dlg.destroy, width=100).pack(side="left", padx=10)
+
+        def stage_code():
+            clear()
+            text(body, "Sign in on GitHub", H3, weight="semibold", pady=(0, 12))
+            status = text(body, "Asking GitHub for a code…", color="muted")
+            code_lbl = ctk.CTkLabel(body, text="", font=F(34, "semibold", display=True), text_color=C["ink"])
+            code_lbl.pack(pady=(8, 4))
+            hint = text(body, "", color="muted", justify="center", pady=(0, 14))
+            btns = ctk.CTkFrame(body, fg_color="transparent")
+            btns.pack()
+
+            def begin():
+                try:
+                    flow = cloud.device_start()
+                except Exception as e:
+                    err = str(e)[:200]
+                    self.after(0, lambda: status.configure(text=err, text_color=C["red"]))
+                    return
+                state["flow"] = flow
+
+                def show():
+                    code_lbl.configure(text=flow["user_code"])
+                    self.app.clipboard_clear()
+                    self.app.clipboard_append(flow["user_code"])
+                    status.configure(text="1.  Press Open GitHub (the code is already copied).\n"
+                                          "2.  Paste the code there and press Continue.\n"
+                                          "3.  Press Authorize. Come back here; this window moves on by itself.",
+                                     text_color=C["ink"])
+                    hint.configure(text=f"Or open {flow['verification_uri']} on any device and type the code. "
+                                        f"It is valid for {int(flow.get('expires_in', 900)) // 60} minutes.")
+                    primary_button(btns, "Open GitHub", lambda: webbrowser.open(flow["verification_uri"]), width=160).pack(side="left")
+                    soft_button(btns, "Cancel", lambda: (state.__setitem__("cancel", True), dlg.destroy()),
+                                width=100).pack(side="left", padx=10)
+                self.after(0, show)
+                poll()
+
+            def poll():
+                if state["cancel"] or not dlg.winfo_exists():
+                    return
+                flow = state["flow"]
+                try:
+                    token = cloud.device_poll(flow)
+                except Exception as e:
+                    err = str(e)[:200]
+                    self.after(0, lambda: status.configure(text=err, text_color=C["red"]))
+                    return
+                if token:
+                    state["token"] = token
+                    self.after(0, stage_setup)
+                    return
+                time.sleep(int(flow.get("interval", 5)))
+                poll()
+            threading.Thread(target=begin, daemon=True).start()
+
+        def stage_setup():
+            clear()
+            text(body, "Setting up", H3, weight="semibold", pady=(0, 12))
+            status = text(body, "Starting…", color="muted")
+            lines = []
+
+            def progress(msg):
+                lines.append(msg)
+                self.after(0, lambda: status.configure(text="\n".join(lines)))
+
+            def work():
+                try:
+                    info = cloud.setup(state["token"], load_env(), progress)
+                except Exception as e:
+                    err = str(e)[:300]
+                    self.after(0, lambda: status.configure(text="\n".join(lines + ["", "Failed: " + err]), text_color=C["red"]))
+                    self.after(0, lambda: soft_button(body, "Close", dlg.destroy, width=100).pack(anchor="w", pady=(16, 0)))
+                    return
+                self.app.env = load_env()
+                self.after(0, lambda: stage_done(info))
+            threading.Thread(target=work, daemon=True).start()
+
+        def stage_done(info):
+            clear()
+            text(body, "Cloud checks are on", H3, weight="semibold", pady=(0, 12))
+            text(body, f"GitHub ({info['login']}) now checks the portal for you at 8 AM and 7 PM, PC on or off. "
+                       "A first check is running right now; within a few minutes it sends a test alert to your "
+                       "phone and mailbox (whichever are set up) and the result shows in Settings.")
+            text(body, "From now on this PC keeps its desktop and voice alerts and leaves phone and email to the "
+                       "cloud. Changes you make here (password, phone, email, what to track) are sent to the cloud "
+                       "automatically.", color="muted", pady=(0, 18))
+            btns = ctk.CTkFrame(body, fg_color="transparent")
+            btns.pack(fill="x")
+            if info.get("run_url"):
+                soft_button(btns, "Watch it on GitHub", lambda: webbrowser.open(info["run_url"]), width=160).pack(side="left")
+            primary_button(btns, "Done", dlg.destroy, width=100).pack(side="left", padx=10)
+            threading.Thread(target=self._refresh_cloud, daemon=True).start()
+
+        stage_consent()
+
     def _email_hint(self):
         addr = self.email_to.get().strip()
         smtp_env = {"EMAIL_HOST": self.app.env.get("EMAIL_HOST", ""), "EMAIL_PORT": self.app.env.get("EMAIL_PORT", 587)}
@@ -2254,6 +2505,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         env["CALENDAR_INVITES"] = bool(self.cal_inv_sw.get())
         save_env(env)
         self.app.env = load_env()
+        self._cloud_sync_later()
         if self.push_sw.get() and not env.get("PUSH_SUB"):
             self.push_sw.deselect()
             self.push_msg.configure(text="Pair a phone first.")
@@ -2388,6 +2640,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                     state["done"] = True
                     channels.save_subscription(sub, self.app.env)
                     self.app.env = load_env()
+                    self.after(0, self._cloud_sync_later)
 
                     def ok():
                         self.push_sw.select()
@@ -2424,6 +2677,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.app.env = load_env()
         self.push_sw.deselect()
         self._push_status()
+        self._cloud_sync_later()
 
     def _open_calendar(self):
         self._save_channels()
@@ -2476,6 +2730,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                     "INSTITUTE_ID": CAMPUS_ID_BY_NAME.get(self.campus.get(), "1")})
         save_env(env)
         self.app.env = load_env()
+        self._cloud_sync_later()
         self.acc_msg.configure(text="Saved. Verifying sign-in…", text_color=C["muted"])
         self.app.start_sync(on_done=lambda ok, msg: self.acc_msg.configure(
             text="Sign-in verified." if ok else msg, text_color=C["green"] if ok else C["red"]))
@@ -2656,6 +2911,16 @@ class App(ctk.CTk):
             self.after(4000, lambda: self.check_for_updates(quiet=True))
         # tasks registered by an older version lack the battery / wake settings; re-register them once, quietly
         self.after(8000, lambda: threading.Thread(target=automation.refresh_if_outdated, daemon=True).start())
+        # cloud checks follow the installed version and the current settings
+        self.after(9000, lambda: threading.Thread(target=self._cloud_housekeeping, daemon=True).start())
+
+    def _cloud_housekeeping(self):
+        try:
+            if cloud.enabled(self.env):
+                cloud.refresh_if_outdated(self.env)
+                cloud.sync_secrets(load_env())
+        except Exception as e:
+            log.warning("Cloud housekeeping: %s", str(e)[:200])
 
     # ---- updates
     def check_for_updates(self, quiet=False):

@@ -20,7 +20,7 @@ import urllib.request
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
-from config import APP_NAME, SITE_URL, load_env, save_env
+from config import APP_NAME, SITE_URL, load_env, save_env, IN_CLOUD
 
 log = logging.getLogger("bahria.channels")
 
@@ -249,8 +249,13 @@ def send_push(title: str, body: str, url: str | None = None, env: dict | None = 
 
 # ---------------------------------------------------------------------------- fan-out
 def send_all(title: str, body: str, url: str | None = None) -> None:
-    """Delivers an alert to every linked channel without blocking the caller; failures are logged, never raised."""
+    """Delivers an alert to every linked channel without blocking the caller; failures are logged, never raised.
+    With cloud checks on, the cloud run is the one that reaches the phone and the mailbox; the PC keeps to its
+    desktop notifications so nothing arrives twice."""
     env = load_env()
+    if env.get("CLOUD_ENABLED") and not IN_CLOUD:
+        log.info("Phone and email left to the cloud check: %s", title)
+        return
     jobs = []
     if email_ready(env):
         jobs.append(("email", lambda: send_email(f"{APP_NAME}: {title}", body, env)))

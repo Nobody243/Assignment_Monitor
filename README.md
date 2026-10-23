@@ -54,6 +54,10 @@ All three live in Settings → Phone, email and calendar and are off until you t
 - **Email.** Enter your address and an *app password* (Gmail: 2-Step Verification → App passwords; Outlook and the university's Microsoft 365: Security → App passwords). The server is picked from the address; **Advanced** sets it by hand. Mail goes from your mailbox to itself; nobody else handles it.
 - **Calendar.** One switch keeps `Documents\Assignment Monitor\Assignment Monitor.ics` up to date with deadlines and exams after every sync (import it once into Google Calendar or Outlook). A second switch emails a calendar invite for each new deadline and exam, which Google Calendar and Outlook add to the phone's calendar on their own.
 
+### Cloud checks (PC off)
+
+Settings → Cloud checks → Set up. After a consent screen, you sign in to GitHub with a one-time code; the app then creates a private repository `assignment-monitor-cloud` in your account, stores your login and channel keys there as encrypted Actions secrets, copies the PC's cache into it and installs a workflow that runs the same check at 8 AM and 7 PM Pakistan time on GitHub's machines (free; a check takes two to three minutes). Alerts reach your phone and mailbox with the PC off; the PC keeps its desktop and voice alerts and leaves phone and email to the cloud. Settings changed on the PC (password, phone, email, tracking) are sent to the cloud automatically, and an app update moves the workflow to the new version. Turn off removes the secrets and the workflow and offers to open the repository so you can delete it. Details in `PRIVACY.md`.
+
 ### Timetable
 
 The CMS timetable is read with every sync and drawn the app's way: one row per day, a colour per course, room and teacher on each block, back-to-back slots merged into one class. **Save as PNG / JPG / PDF** writes the same picture for a lock screen or a print.
@@ -145,6 +149,8 @@ calendar_export.py   the .ics file and emailed calendar invites
 timetable_render.py  the week grid as PNG, JPG or PDF
 updater.py           in-app updates from GitHub releases
 automation.py        scheduled tasks, shortcuts, start with Windows
+cloud.py             cloud checks: GitHub device sign-in, private repo, sealed secrets, workflow
+cloud_check.py       entry point the cloud workflow runs
 tray.py              system tray icon
 secure_store.py      DPAPI encryption for the password and channel secrets
 config.py            paths, settings, logging

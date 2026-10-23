@@ -26,6 +26,14 @@ ASSETS_DIR = RESOURCE_DIR / "assets"
 DOCS_DIR = RESOURCE_DIR / "docs" if FROZEN else SOURCE_DIR   # PRIVACY.md etc. travel with the app
 
 _home_override = os.environ.get("ASSIGNMENT_MONITOR_HOME")   # optional: keep all data in a chosen folder
+# "cloud" when running on GitHub Actions from the student's own repository (see cloud.py): settings come from
+# AM_<KEY> environment variables, nothing secret is written to disk, and there is no desktop to notify.
+RUNNER = os.environ.get("ASSIGNMENT_MONITOR_RUNNER", "")
+IN_CLOUD = RUNNER == "cloud"
+# GitHub OAuth app used for the device sign-in of cloud checks (a public identifier, not a secret). Empty hides
+# the feature.
+GITHUB_CLIENT_ID = os.environ.get("AM_GITHUB_CLIENT_ID", "")
+PROJECT_REPO = "Nobody243/Assignment_Monitor"
 if _home_override:
     BASE_DIR = Path(_home_override)
     ENV_PATH = BASE_DIR / "settings.env"
@@ -133,12 +141,47 @@ DEFAULTS = {
     "CALENDAR_INVITES": False,
     "LECTURES_DIR": "",
     "ANIMATIONS": True,
+    # cloud checks (GitHub Actions in the student's own account); the token is a secret like the password
+    "CLOUD_ENABLED": False,
+    "CLOUD_REPO": "",
+    "CLOUD_LOGIN": "",
+    "CLOUD_VERSION": "",
+    "CLOUD_HASH": "",
+    "GITHUB_TOKEN": "",
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
               "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
-              "ANIMATIONS", "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES")
-_SECRET_KEYS = ("PASSWORD", "EMAIL_PASS", "PUSH_SUB", "PUSH_VAPID")
-_TEXT_KEYS = ("EMAIL_TO", "EMAIL_USER", "EMAIL_HOST")
+              "ANIMATIONS", "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES", "CLOUD_ENABLED")
+_SECRET_KEYS = ("PASSWORD", "EMAIL_PASS", "PUSH_SUB", "PUSH_VAPID", "GITHUB_TOKEN")
+
+
+def _coerce(key: str, val: str):
+    """A setting's text form to its typed form (the rules the settings file uses)."""
+    if key in _BOOL_KEYS:
+        return val.lower() in ("true", "1", "yes")
+    if key in _INT_KEYS:
+        lo, hi = _INT_KEYS[key]
+        try:
+            return min(hi, max(lo, int(val)))
+        except ValueError:
+            return None
+    if key == "THEME":
+        return "light" if val.lower() == "light" else "dark"
+    return val
+
+
+def env_overrides() -> dict:
+    """Settings given as AM_<KEY> environment variables (the cloud runner's way in; handy for tests too)."""
+    out = {}
+    for key in DEFAULTS:
+        raw = os.environ.get(f"AM_{key}")
+        if raw is None:
+            continue
+        val = _coerce(key, raw.strip())
+        if val is not None:
+            out[key] = val
+    return out
+_TEXT_KEYS = ("EMAIL_TO", "EMAIL_USER", "EMAIL_HOST", "CLOUD_REPO", "CLOUD_LOGIN", "CLOUD_VERSION", "CLOUD_HASH")
 _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE": (-5, 5),
              "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14), "EMAIL_PORT": (1, 65535)}
 
@@ -209,11 +252,16 @@ def load_env() -> dict:
                 config[key] = decrypt_secret(raw[key + "_ENC"])
             except Exception as e:
                 logging.getLogger("bahria.config").warning("Stored %s could not be decrypted (%s).", key, e)
+    config.update(env_overrides())
     return config
 
 
 def save_env(config: dict) -> None:
-    """Writes settings with the password encrypted via Windows DPAPI."""
+    """Writes settings with the password encrypted via Windows DPAPI. In the cloud nothing is written: the
+    settings live in the repository's secrets and the state folder is committed, so a plain-text secret must
+    never reach it."""
+    if IN_CLOUD:
+        return
     merged = dict(DEFAULTS)
     merged.update({k: v for k, v in config.items() if k in DEFAULTS})
     password = merged.pop("PASSWORD", "") or ""

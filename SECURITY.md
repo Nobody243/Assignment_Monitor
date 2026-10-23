@@ -8,6 +8,7 @@
 | Enrollment number, campus, preferences | same file | Plain text (not secret). |
 | Assignment list, attendance, exam plan, announcements, lecture and file list, timetable, sync metadata, log | `%LOCALAPPDATA%\Assignment Monitor\data\` | Local files, readable only by your Windows account by default. |
 | Browser profile (portal session cookies) | `%LOCALAPPDATA%\Assignment Monitor\chrome_profile\` | Local, same as above. Deleted on uninstall. |
+| With cloud checks on: the same login and channel keys, and the cache | A private repository in **your** GitHub account | Secrets are sealed with the repository's public key on your PC (libsodium sealed box) and stored as GitHub Actions secrets: encrypted at rest, readable only by the workflow run, masked in logs. The cache is ordinary files in the private repository. The GitHub token stays on your PC, DPAPI-encrypted. |
 
 Downloaded lecture files go to `Documents\Assignment Monitor\Lectures` unless you pick another folder in the Lectures page. The optional calendar file is `Documents\Assignment Monitor\Assignment Monitor.ics`.
 
@@ -18,12 +19,14 @@ Running from source, the same files live in the project folder and are git-ignor
 - The app only connects to `https://cms.bahria.edu.pk` and `https://lms.bahria.edu.pk`, over HTTPS, to do exactly what you would do by hand: sign in, open the attendance and exam seating pages on the CMS, open the timetable, open the LMS, open the assignments, announcements, lecture-notes and Miscellaneous page for each course, and, only when you click Download on the Lectures page, fetch the files you ticked. It only ever reads; it never submits a form on the portal.
 - With the optional channels on, it also connects to your own mail server over TLS (the one you chose or the one matching your address), to your phone's browser push service (the endpoint the phone handed over at pairing), and, during the ten minutes of a pairing only, to the public ntfy relays (`ntfy.sh`, `ntfy.envs.net`, `ntfy.hostux.net`, `ntfy.mzte.de`) to collect that encrypted endpoint.
 - If Google Chrome is not installed, Playwright's Chromium is downloaded once from Microsoft's Playwright CDN.
+- With cloud checks on, the PC also talks to `github.com` (the device sign-in) and `api.github.com` (your private repository: files, secrets, run status). The scheduled check itself runs on GitHub's machines, which connect to the portal, to your mail server and to the phone's push service exactly as the PC would; the workflow file that drives it is readable in your repository.
 - Update check: when the app starts (and when you click "Check for updates") it asks `api.github.com` for the newest release number, and downloads the installer from GitHub only if you click Install. Nothing about you is sent beyond the request itself. Switch it off in Settings → Running in the background.
 - Otherwise the app does not phone home, has no telemetry, and sends nothing anywhere else.
 
 ## Design choices
 
-- No server, no accounts: nothing of yours is stored outside your PC.
+- No server, no accounts of ours: nothing of yours is stored outside your PC unless you turn on cloud checks, and then it is stored in your own GitHub account, after a consent screen that says exactly what goes there.
+- The cloud runner never writes a secret to disk: settings reach it as environment variables, `save_env` is a no-op there, and the committed state folder ignores `settings.env`, the browser profile and the log.
 - Background tasks run as your own Windows user, with your normal privileges; the installer and the app never ask for administrator rights.
 - One sync at a time: a lock file prevents the scheduled task and the window from signing in simultaneously.
 - Dependencies are pinned in `requirements.txt` and audited in CI with `pip-audit`.

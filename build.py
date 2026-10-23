@@ -55,6 +55,7 @@ def main():
         "--hidden-import", "py_vapid",
         "--hidden-import", "http_ece",
         "--collect-submodules", "qrcode",
+        "--collect-all", "nacl",                # libsodium DLL travels with the package
         "--hidden-import", "pystray._win32",
         "--exclude-module", "tkinter.test",
         str(ROOT / "app.py"),
