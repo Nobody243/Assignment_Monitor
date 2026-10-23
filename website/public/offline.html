@@ -14,16 +14,22 @@
     @font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url(/assets/fonts/jetbrains-mono-latin-500-normal.woff2) format("woff2"); }
     :root { color-scheme: dark; --ink-1: #f3f2ed; --ink-2: #cfcdc5; --ink-3: #9b9892; --accent: #fd693d; --line: rgba(243, 242, 237, 0.09); --line-2: rgba(243, 242, 237, 0.146); }
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { min-height: 100%; }
     body { margin: 0; -webkit-user-select: none; user-select: none; color: var(--ink-1); font: 400 16px/1.618 "Inter", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
-      background: radial-gradient(900px 600px at 50% 115%, #0c1332 0%, #07080d 55%, #050506 100%) #07080d; overflow: hidden; }
-    /* the planet's limb, in CSS: a dark disc rising from the bottom with a thin lit edge, as the hero has it */
-    .limb { position: fixed; left: 50%; bottom: -118vmin; width: 160vmin; height: 160vmin; transform: translateX(-50%); border-radius: 50%;
+      background: radial-gradient(900px 600px at 50% 115%, #0c1332 0%, #07080d 55%, #050506 100%) #07080d; overflow-x: hidden; }
+    /* the planet's limb, in CSS: a wide dark disc rising from the bottom with a thin lit edge, as the hero has it.
+       Its top edge sits at 26 % of the window height, and the content is centred in the space above it, so the
+       words never cross the rim at any window size. */
+    .limb { position: fixed; left: 50%; bottom: calc(26vh - 190vw); width: 190vw; height: 190vw; transform: translateX(-50%); border-radius: 50%; pointer-events: none;
       background: radial-gradient(circle at 50% 38%, #0d1120 0%, #080a12 45%, #06070b 100%);
       box-shadow: 0 -2px 0 0 rgba(253, 105, 61, 0.55), 0 -18px 60px -4px rgba(253, 105, 61, 0.28), 0 -60px 160px 10px rgba(77, 192, 236, 0.1), inset 0 24px 80px -20px rgba(253, 105, 61, 0.22); }
-    .limb::after { content: ""; position: absolute; inset: -22vmin; border-radius: 50%; background: radial-gradient(circle at 50% 32%, rgba(77, 192, 236, 0.12), transparent 50%); }
+    .limb::after { content: ""; position: absolute; inset: -14vw; border-radius: 50%; background: radial-gradient(circle at 50% 32%, rgba(77, 192, 236, 0.12), transparent 50%); }
+    @media (max-width: 640px) { .limb { width: 260vw; height: 260vw; bottom: calc(22vh - 260vw); } }
     .stars { position: fixed; inset: 0; background-image: radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,0.5), transparent 60%), radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,0.45), transparent 60%), radial-gradient(1.5px 1.5px at 62% 34%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(1px 1px at 30% 42%, rgba(255,255,255,0.35), transparent 60%), radial-gradient(1px 1px at 90% 40%, rgba(255,255,255,0.4), transparent 60%), radial-gradient(1.5px 1.5px at 44% 8%, rgba(255,255,255,0.5), transparent 60%), radial-gradient(1px 1px at 8% 60%, rgba(255,255,255,0.3), transparent 60%); }
-    main { position: relative; z-index: 1; min-height: 100%; display: grid; place-items: center; padding: 24px 16px calc(24px + 18vmin); text-align: center; }
+    main { position: relative; z-index: 1; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px 30vh; box-sizing: border-box; text-align: center; }
+    @media (max-width: 640px) { main { padding-bottom: 26vh; } }
+    /* short windows (small laptops at 125 %): the rim sits lower and the content keeps clear of it */
+    @media (max-height: 700px) and (min-width: 641px) { main { padding-bottom: 22vh; } .limb { bottom: calc(18vh - 190vw); } .brand { margin-bottom: 22px; } }
     .card { max-width: 560px; }
     .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: clamp(28px, 6vh, 56px); color: inherit; text-decoration: none; }
     .brand img { width: 28px; height: 28px; border-radius: 7px; }
