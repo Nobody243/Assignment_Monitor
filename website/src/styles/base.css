@@ -51,8 +51,8 @@ p { margin: 0; }
 .page-hero .wrap > div { position: relative; }
 .page-hero .wrap > div::before { content: ""; position: absolute; inset: -30% -28% -24%; z-index: -1; pointer-events: none; background: radial-gradient(ellipse closest-side at 42% 52%, rgba(7, 8, 13, 0.72), rgba(7, 8, 13, 0.4) 55%, rgba(7, 8, 13, 0) 100%); }
 .page-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-.two-col > * { padding: clamp(22px, 3vw, 34px); border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+.two-col > * { padding: var(--card-pad); border-radius: var(--card-r); background: var(--glass); border: 1px solid var(--line); min-width: 0; }
 .two-col .mono { display: block; }
 @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
 

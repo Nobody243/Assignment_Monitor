@@ -5,15 +5,17 @@ import { Button } from "../components/Button.jsx";
 import { LINKS, PRIVACY_CARDS } from "../data/content.js";
 
 const DATA = [
-  ["Portal password", "settings.env in the app's local data folder", "Encrypted with Windows DPAPI for your user account. Another user or another PC cannot decrypt it. Never written to the log."],
+  ["Portal password, mail app password, phone push keys", "settings.env in the app's local data folder", "Encrypted with Windows DPAPI for your user account. Another user or another PC cannot decrypt them. Never written to the log."],
   ["Enrollment number, campus, preferences", "same file", "Plain text; not secret."],
-  ["Assignment list, sync metadata, log", "data\\ in the app's local data folder", "Local files, readable only by your Windows account by default."],
+  ["Assignments, attendance, exam plan, announcements, lecture list, timetable, log", "data\\ in the same folder", "Local files, readable only by your Windows account by default."],
   ["Browser profile (portal session cookies)", "chrome_profile\\ in the same folder", "Local. Deleted on uninstall."],
+  ["With cloud checks on: the same login and keys, plus the cache", "a private repository in your own GitHub account", "Sealed on your PC with the repository's key and kept as GitHub Actions secrets; the cache is files in the private repository. Only if you turn it on."],
 ];
 const NETWORK = [
-  ["cms.bahria.edu.pk and lms.bahria.edu.pk", "Over HTTPS, to do exactly what you would do by hand: sign in, open the LMS, open each course's assignments page."],
-  ["Playwright's browser CDN (once, optional)", "Only if Google Chrome is not installed: a browser engine is downloaded once from Microsoft's Playwright CDN."],
-  ["api.github.com (optional, switchable)", "On start and when you click \"Check for updates\" it reads the newest release number. The installer is downloaded from GitHub only if you click Install. Switch it off in Settings → Running in the background."],
+  ["The portal", "cms.bahria.edu.pk and lms.bahria.edu.pk over HTTPS, to do exactly what you would do by hand: sign in and open your own pages. It only ever reads."],
+  ["Your channels", "Only if you turn them on: your own mail server over TLS, and your phone's browser push service. Pairing a phone uses a public ntfy relay for ten minutes, carrying ciphertext only."],
+  ["GitHub", "The optional update check reads the newest release number from api.github.com. With cloud checks on, the app also manages your private repository there."],
+  ["Browser engine", "Only if Google Chrome is not installed: downloaded once from Microsoft's Playwright CDN."],
 ];
 const NOT = [
   "It does not send your credentials or your data to the author or to any third party.",
@@ -43,7 +45,7 @@ export default function Privacy() {
 
       <section>
         <div className="wrap">
-          <SectionHead kicker="What it stores" title="Four things, all in one folder." lede="%LOCALAPPDATA%\Assignment Monitor on your PC. Running from source, the same files live in the project folder and are git-ignored." />
+          <SectionHead kicker="What it stores" title="Everything in one folder on your PC." lede="%LOCALAPPDATA%\Assignment Monitor. Running from source, the same files live in the project folder and are git-ignored. The last row applies only if you turn on cloud checks." />
           <Reveal className="table-card">
             <table className="data-table">
               <thead><tr><th>Data</th><th>Where it lives</th><th>Protection</th></tr></thead>
@@ -57,7 +59,7 @@ export default function Privacy() {
         <div className="wrap two-col">
           <Reveal>
             <p className="mono">Network</p>
-            <h2 className="h-md">Two hosts, plus two optional ones.</h2>
+            <h2 className="h-md">The portal, and what you switch on.</h2>
             <ol className="plain-list">{NETWORK.map(([t, d]) => <li key={t}><b>{t}</b><span>{d}</span></li>)}</ol>
           </Reveal>
           <Reveal delay={0.1}>
