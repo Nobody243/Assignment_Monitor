@@ -1,6 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { readFileSync } from "node:fs";
+import { copyFileSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+// Vercel serves dist/404.html with a real 404 status for any path that is not a file and not a listed route
+// (see vercel.json). It is a copy of index.html, so the React app boots and shows its own "lost in orbit" page,
+// planet and all, while crawlers get the right status instead of a soft 404.
+const notFoundPage = () => {
+  let out = "dist";
+  return {
+    name: "am-404-page", apply: "build",
+    configResolved(c) { out = resolve(c.root, c.build.outDir); },
+    closeBundle() { copyFileSync(resolve(out, "index.html"), resolve(out, "404.html")); },
+  };
+};
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 // The version shown before (or without) the GitHub release lookup is the app's own, read from config.py in the
@@ -16,7 +29,7 @@ try {
 // chunks so the first paint only waits for React and the page shell; the scene streams in behind the intro.
 // Hashed bundles go to /bundle (cached forever); static images stay under /assets (cached for a week).
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), notFoundPage()],
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
   build: {
     target: "es2020",

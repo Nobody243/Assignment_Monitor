@@ -1,6 +1,32 @@
-/* Assignment Monitor phone alerts: shows the pushes the desktop app sends and opens the right place on tap. */
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+/* Assignment Monitor service worker.
+   1. Offline page: pages are always fetched from the network (nothing of the site is cached, so a new deploy is
+      never served stale); only when the network fails does a page navigation get /offline.html instead.
+   2. Phone alerts: shows the pushes the desktop app sends and opens the right place on tap. */
+const CACHE = "am-offline-v1";
+const OFFLINE = "/offline.html";
+const PRECACHE = [OFFLINE, "/offline.js", "/assets/logo.svg",
+  "/assets/fonts/inter-latin-wght-normal.woff2", "/assets/fonts/jetbrains-mono-latin-500-normal.woff2"];
+
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", (e) => {
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+
+self.addEventListener("fetch", (e) => {
+  const req = e.request;
+  if (req.method !== "GET") return;
+  if (req.mode === "navigate") {
+    e.respondWith(fetch(req).catch(() => caches.match(OFFLINE)));
+    return;
+  }
+  // the offline page's own files come from the cache when the network is gone; everything else is untouched
+  const url = new URL(req.url);
+  if (url.origin === self.location.origin && url.search === "" && PRECACHE.includes(url.pathname)) {
+    e.respondWith(fetch(req).catch(() => caches.match(url.pathname)));
+  }
+});
 
 self.addEventListener("push", (e) => {
   let data = {};

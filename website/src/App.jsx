@@ -9,6 +9,8 @@ import Intro from "./components/Intro.jsx";
 import Nav from "./components/Nav.jsx";
 import Footer from "./components/Footer.jsx";
 import Page from "./components/Page.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import NetStatus from "./components/NetStatus.jsx";
 import Home from "./pages/Home.jsx";
 import Download from "./pages/Download.jsx";
 import Privacy from "./pages/Privacy.jsx";
@@ -35,18 +37,22 @@ export default function App() {
           <Intro />
           <Nav />
           <ScrollToTop />
-          <AnimatePresence mode="wait" initial={false}>
-            <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<Page><Home /></Page>} />
-              <Route path="/download" element={<Page><Download /></Page>} />
-              <Route path="/privacy" element={<Page><Privacy /></Page>} />
-              <Route path="/faq" element={<Page><Faq /></Page>} />
-              <Route path="/phone" element={<Page><Phone /></Page>} />
-              <Route path="/cloud" element={<Page><Cloud /></Page>} />
-              <Route path="*" element={<Page><NotFound /></Page>} />
-            </Routes>
-          </AnimatePresence>
+          {/* a page that throws shows the crash page in its place; the nav, the planet and the footer stay */}
+          <ErrorBoundary resetKey={location.pathname}>
+            <AnimatePresence mode="wait" initial={false}>
+              <Routes location={location} key={location.pathname}>
+                <Route path="/" element={<Page><Home /></Page>} />
+                <Route path="/download" element={<Page><Download /></Page>} />
+                <Route path="/privacy" element={<Page><Privacy /></Page>} />
+                <Route path="/faq" element={<Page><Faq /></Page>} />
+                <Route path="/phone" element={<Page><Phone /></Page>} />
+                <Route path="/cloud" element={<Page><Cloud /></Page>} />
+                <Route path="*" element={<Page><NotFound /></Page>} />
+              </Routes>
+            </AnimatePresence>
+          </ErrorBoundary>
           <Footer />
+          <NetStatus />
         </SceneProvider>
       </ReleaseProvider>
     </ScrollProvider>

@@ -2,7 +2,8 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/|bundle/|draco/|favicon.ico|sw.js|manifest.webmanifest|robots.txt|sitemap.xml).*)", "destination": "/index.html" }],
+  "trailingSlash": false,
+  "rewrites": [{ "source": "/:page(download|privacy|faq|phone|cloud)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",
