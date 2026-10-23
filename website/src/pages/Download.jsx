@@ -25,7 +25,7 @@ export default function Download() {
   return (
     <>
       <PageHero kicker="Download" title={<>Get Assignment Monitor <span className="heading-accent">v{rel.version}</span></>}
-        lede={<>Windows 10 or 11, 64-bit. No administrator rights, no account. Released {fmtDate(rel.publishedAt)}.</>} notice={banner}>
+        lede={<>Windows 10 or 11, 64-bit. No administrator rights, no account.<span className="dl-when">{rel.publishedAt ? `Released ${fmtDate(rel.publishedAt)}.` : "Checking the latest release…"}</span></>} notice={banner}>
         <DownloadButton kind="setup" size="lg" direct />
         <DownloadButton kind="zip" size="lg" direct />
       </PageHero>

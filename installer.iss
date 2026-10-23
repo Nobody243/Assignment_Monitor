@@ -132,13 +132,14 @@ end;
 // with the portal login stored there. Interactive uninstalls ask; silent ones leave the cloud alone.
 procedure OfferCloudTeardown;
 var
-  Settings, Body: String;
+  Settings: String;
+  Body: AnsiString;
   ResultCode: Integer;
 begin
   Settings := ExpandConstant('{localappdata}\{#MyAppName}\settings.env');
   if UninstallSilent or (not FileExists(Settings)) then Exit;
   if not LoadStringFromFile(Settings, Body) then Exit;
-  if Pos('CLOUD_ENABLED=True', Body) = 0 then Exit;
+  if Pos('CLOUD_ENABLED=True', String(Body)) = 0 then Exit;
   if MsgBox('Cloud checks are on in your GitHub account.' + #13#10 + #13#10 +
             'Turn them off too? This removes your portal login and the workflow from the private repository ' +
             'assignment-monitor-cloud. Choose No to keep the cloud checks running without the app.',

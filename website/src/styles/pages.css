@@ -1,5 +1,7 @@
 /* ============================================================ download */
 .dl-options { padding-top: 0; }
+/* the release date arrives after the GitHub lookup; its line is reserved so nothing below moves */
+.dl-when { display: block; min-height: 1.6em; }
 .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .option { position: relative; padding: 30px; border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; transition: border-color var(--d-2), transform var(--d-2) var(--ease-out); }
 .option:hover { border-color: var(--line-2); transform: translateY(-3px); }
