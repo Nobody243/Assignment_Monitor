@@ -2400,7 +2400,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                     except Exception as e:
                         log.warning("Test push failed: %s", e)
                 elif dlg.winfo_exists():
-                    dlg.after(2500, poll)
+                    dlg.after(4000, poll)
             threading.Thread(target=work, daemon=True).start()
         dlg.after(1500, poll)
 

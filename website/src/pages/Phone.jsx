@@ -7,7 +7,33 @@ import { Button } from "../components/Button.jsx";
    push with the public key the PC put in the link, encrypts the subscription with the key from the link and posts it
    to the throw-away ntfy topic the PC is watching. The PC then pushes straight to this phone; no server of ours is
    involved and the topic is never used again. Nothing here works without the link from the app. */
-const NTFY = "https://ntfy.sh";
+// Public ntfy relays, in order. ntfy rate-limits by public address and mobile networks put thousands of phones behind
+// one, so the first relay may answer 429 for a phone that has never used it; the PC watches all of them.
+const RELAYS = ["https://ntfy.sh", "https://ntfy.envs.net", "https://ntfy.hostux.net", "https://ntfy.mzte.de"];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* POSTs `body` to the first relay that accepts it. A 429 is retried after the relay's Retry-After (capped at 8 s), a
+   couple of times per relay; other failures move straight on to the next relay. */
+async function postRelay(topic, body, onStatus, attempts = 3) {
+  let lastStatus = 0;
+  for (const relay of RELAYS) {
+    for (let i = 0; i < attempts; i += 1) {
+      let r;
+      try { r = await fetch(`${relay}/${encodeURIComponent(topic)}`, { method: "POST", body, headers: { "Content-Type": "text/plain" } }); }
+      catch { break; }
+      if (r.ok) return relay;
+      lastStatus = r.status;
+      if (r.status !== 429) break;
+      const wait = Math.min(8, Number(r.headers.get("Retry-After")) || 3);
+      onStatus?.(`The relay is busy from this network (many phones share its address). Trying again in ${wait} s…`);
+      await sleep(wait * 1000);
+    }
+    onStatus?.("Trying another relay…");
+  }
+  throw new Error(lastStatus === 429
+    ? "Every relay is refusing this network's address right now (too many phones share it). Switch the phone between Wi-Fi and mobile data, or use a hotspot, and press the button again."
+    : `The relay answered ${lastStatus || "nothing"}. Check the phone's internet connection and try again.`);
+}
 
 function fromB64url(s) {
   const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4));
@@ -36,7 +62,7 @@ export default function Phone() {
   }, [supported]);
   // tell the PC the link was opened, so its dialog can say "now tap Allow"; carries nothing but the word
   useEffect(() => {
-    if (linked) fetch(`${NTFY}/${encodeURIComponent(topic)}`, { method: "POST", body: "opened", headers: { "Content-Type": "text/plain" } }).catch(() => {});
+    if (linked) postRelay(topic, "opened", null, 1).catch(() => {});
   }, [linked, topic]);
 
   const pair = async () => {
@@ -56,8 +82,7 @@ export default function Phone() {
       const plain = new TextEncoder().encode(JSON.stringify(sub.toJSON()));
       const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aes, plain);
       const blob = new Uint8Array(iv.length + ct.byteLength); blob.set(iv, 0); blob.set(new Uint8Array(ct), iv.length);
-      const r = await fetch(`${NTFY}/${encodeURIComponent(topic)}`, { method: "POST", body: toB64url(blob), headers: { "Content-Type": "text/plain" } });
-      if (!r.ok) throw new Error(`The relay answered ${r.status}. Check the phone's internet connection and try again.`);
+      await postRelay(topic, toB64url(blob), setMsg);
       try { localStorage.setItem("am-paired", new Date().toISOString()); } catch { /* private mode */ }
       setState("done"); setMsg("");
     } catch (e) {

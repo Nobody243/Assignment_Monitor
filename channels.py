@@ -25,6 +25,11 @@ from config import APP_NAME, SITE_URL, load_env, save_env
 log = logging.getLogger("bahria.channels")
 
 NTFY = "https://ntfy.sh"
+# Public ntfy relays, tried in this order by the phone page; the PC polls all of them. ntfy rate-limits by public
+# address, and on mobile networks thousands of phones share one, so the first relay often answers 429 for a phone
+# that has never used it. Pairing is the only thing that touches a relay; the pushes themselves go straight from the
+# PC to the phone's browser push service.
+RELAYS = (NTFY, "https://ntfy.envs.net", "https://ntfy.hostux.net", "https://ntfy.mzte.de")
 SMTP_BY_DOMAIN = {
     "gmail.com": ("smtp.gmail.com", 587), "googlemail.com": ("smtp.gmail.com", 587),
     "outlook.com": ("smtp.office365.com", 587), "hotmail.com": ("smtp.office365.com", 587),
@@ -140,24 +145,37 @@ def pairing_start(env: dict | None = None) -> dict:
     return {"topic": topic, "key": b64url(key), "url": url, "code": topic[3:9].upper(), "started": time.time()}
 
 
-def pairing_poll(pairing: dict, timeout: float = 2.0) -> dict | None:
-    """Looks for the phone's encrypted subscription on the pairing topic. Returns the subscription dict or None."""
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    req = urllib.request.Request(f"{NTFY}/{pairing['topic']}/json?poll=1&since=30m", headers={"User-Agent": APP_NAME})
+def _relay_lines(relay: str, topic: str, timeout: float) -> list[str]:
+    req = urllib.request.Request(f"{relay}/{topic}/json?poll=1&since=30m", headers={"User-Agent": APP_NAME})
     try:
-        with urllib.request.urlopen(req, timeout=timeout + 8) as r:
-            lines = r.read().decode("utf-8", "replace").splitlines()
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read().decode("utf-8", "replace").splitlines()
     except (urllib.error.URLError, TimeoutError, OSError) as e:
-        log.debug("pairing poll: %s", e)
-        return None
+        log.debug("pairing poll %s: %s", relay, e)
+        return []
+
+
+def pairing_poll(pairing: dict, timeout: float = 6.0) -> dict | None:
+    """Looks for the phone's encrypted subscription on the pairing topic, on every relay at once (the phone uses the
+    first one that accepts it). Returns the subscription dict or None; marks pairing["opened"] when the phone has
+    opened the page."""
+    import threading
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    results: dict[str, list[str]] = {}
+    workers = [threading.Thread(target=lambda r=r: results.__setitem__(r, _relay_lines(r, pairing["topic"], timeout)), daemon=True)
+               for r in RELAYS]
+    for w in workers:
+        w.start()
+    for w in workers:
+        w.join(timeout + 1)
+    lines = [ln for r in RELAYS for ln in results.get(r, [])]
+    if any('"message":"opened"' in ln for ln in lines):   # the page said hello; the dialog tells the user what to tap
+        pairing["opened"] = True
     key = b64url_decode(pairing["key"])
     for line in reversed(lines):
         try:
             evt = json.loads(line)
-            if evt.get("event") != "message":
-                continue
-            if evt.get("message") == "opened":          # the page said hello; the dialog tells the user what to tap
-                pairing["opened"] = True
+            if evt.get("event") != "message" or evt.get("message") == "opened":
                 continue
             blob = b64url_decode(evt.get("message", ""))
             plain = AESGCM(key).decrypt(blob[:12], blob[12:], None)

@@ -3,6 +3,7 @@
 ## 1.4.4 - 2026-10-23
 
 - The Pair a phone dialog explains itself: three numbered steps (open the Camera app, point it at the code, tap Allow on the page), a status line that changes to "your phone opened the page, now tap Allow" the moment the link is opened, and two ways round a camera that will not scan: Copy link, or Email me the link when email is set up. The link stays valid for ten minutes.
+- Pairing on a mobile network no longer fails with "the relay answered 429": the relay rate-limits by public address and carrier networks put thousands of phones behind one. The phone page now waits the relay's suggested time and retries, then moves on to three other public relays, and the PC watches all of them.
 
 ## 1.4.3 - 2026-10-23
 
