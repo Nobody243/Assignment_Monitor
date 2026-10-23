@@ -124,6 +124,12 @@ def run_check(quiet: bool = False, headless: bool = None) -> int:
         send_toast(f"{APP_NAME}: Sync failed", str(e)[:200])
         return 1
     process_sync(result, env, notify=not quiet)
+    if env.get("CLOUD_ENABLED") and not quiet:
+        try:
+            import cloud
+            cloud.warn_if_failing(env)
+        except Exception as e:
+            log.debug("cloud check status: %s", e)
     return 0
 
 

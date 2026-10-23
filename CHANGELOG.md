@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1 - 2026-10-23
+
+- When the last three cloud checks have failed, the PC shows one desktop notification pointing at Settings > Cloud checks and the Actions page (checked when the app opens and after the PC's own daily check; one notification per streak).
+- The cloud workflow commits a timestamp on every run, because GitHub switches off the schedule of a repository that has had no commits for 60 days, which a quiet semester break would have triggered. Existing cloud setups receive the new workflow automatically.
+- Website: a Cloud checks walkthrough page with screenshots of every step.
+
 ## 1.5.0 - 2026-10-23
 
 - Cloud checks: alerts with the PC off. Settings → Cloud checks sets up, after a consent screen and a one-time GitHub code, a private repository in your own GitHub account whose workflow runs the same check at 8 AM and 7 PM on GitHub's machines and sends the phone and email alerts. Your login and channel keys go there as GitHub Actions secrets, sealed on the PC with the repository's key; the PC's cache is copied so the cloud knows what is new; settings changed on the PC follow automatically; an app update moves the workflow to the new version; the PC keeps desktop and voice alerts and leaves phone and email to the cloud so nothing arrives twice. Turn off removes the secrets and the workflow. No server of ours is involved. Run now and the last result are shown in Settings.

@@ -14,6 +14,7 @@ import Download from "./pages/Download.jsx";
 import Privacy from "./pages/Privacy.jsx";
 import Faq from "./pages/Faq.jsx";
 import Phone from "./pages/Phone.jsx";
+import Cloud from "./pages/Cloud.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 /* Every route change starts at the top (unless the URL carries a hash, which the page scrolls to itself). */
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/privacy" element={<Page><Privacy /></Page>} />
               <Route path="/faq" element={<Page><Faq /></Page>} />
               <Route path="/phone" element={<Page><Phone /></Page>} />
+              <Route path="/cloud" element={<Page><Cloud /></Page>} />
               <Route path="*" element={<Page><NotFound /></Page>} />
             </Routes>
           </AnimatePresence>

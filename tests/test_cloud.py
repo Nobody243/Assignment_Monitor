@@ -34,6 +34,7 @@ def test_workflow_runs_twice_a_day_from_the_pinned_release():
     assert env2["AM_EMAIL_TO"] == 'a"b@x.pk'
     assert "cloud_check.py" in check["run"]
     assert steps[-1]["if"] == "always()" and "git push" in steps[-1]["run"]
+    assert "state/last_run.txt" in steps[-1]["run"]          # a commit every run keeps the schedule alive
 
 
 def test_only_real_secrets_become_repository_secrets():
@@ -151,3 +152,24 @@ def test_save_env_writes_nothing_in_the_cloud(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "ENV_PATH", tmp_path / "settings.env")
     config.save_env({"ENROLLMENT": "01-1-1", "PASSWORD": "p"})
     assert not (tmp_path / "settings.env").exists()
+
+
+def test_warn_if_failing_fires_once_per_streak(monkeypatch):
+    runs = [{"id": 30, "conclusion": "failure", "url": "u", "when": None},
+            {"id": 29, "conclusion": "failure", "url": "u", "when": None},
+            {"id": 28, "conclusion": "failure", "url": "u", "when": None}]
+    monkeypatch.setattr(cloud, "recent_runs", lambda env=None, count=3: runs[:count])
+    sent = {}
+    import tracker
+    monkeypatch.setattr(tracker, "reminder_sent", lambda k: k in sent)
+    monkeypatch.setattr(tracker, "mark_reminder", lambda k: sent.__setitem__(k, True))
+    notes = []
+    env = {"CLOUD_ENABLED": True, "CLOUD_REPO": "me/r", "GITHUB_TOKEN": "t"}
+    assert cloud.warn_if_failing(env, notify=lambda t, b: notes.append(t)) is True
+    assert cloud.warn_if_failing(env, notify=lambda t, b: notes.append(t)) is False     # same streak, no repeat
+    runs[1]["conclusion"] = "success"
+    assert cloud.warn_if_failing(env, notify=lambda t, b: notes.append(t)) is False     # not three in a row
+    runs[1]["conclusion"] = "failure"
+    runs.insert(0, {"id": 31, "conclusion": "failure", "url": "u", "when": None})
+    assert cloud.warn_if_failing(env, notify=lambda t, b: notes.append(t)) is True      # a newer failure: again
+    assert len(notes) == 2 and "failing" in notes[0]

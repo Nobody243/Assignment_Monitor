@@ -32,6 +32,7 @@ export default function Footer() {
               <li><Link to={DOWNLOAD_PATH.setup}>Installer for Windows</Link></li>
               <li><Link to={DOWNLOAD_PATH.zip}>Portable zip</Link></li>
               <li><Link to="/download">Download guide</Link></li>
+              <li><Link to="/cloud">Cloud checks</Link></li>
               <li><Ext href={LINKS.releases}>All releases</Ext></li>
               <li><Ext href={LINKS.readmeSource}>Run from source</Ext></li>
             </ul></div>

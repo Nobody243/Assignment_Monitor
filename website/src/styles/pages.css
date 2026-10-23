@@ -34,3 +34,30 @@
 .phone-how li { margin: 6px 0; }
 
 .phone-code { color: var(--accent); letter-spacing: 0.12em; margin: -6px 0 14px; }
+
+/* ============================================================ cloud checks walkthrough */
+.cloud-how { padding-top: 0; }
+.cloud-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.cloud-card { padding: clamp(22px, 3vw, 30px); border-radius: var(--r-4); background: var(--glass); border: 1px solid var(--line); }
+.cloud-card .mono { display: block; margin-bottom: 10px; }
+.cloud-card h3 { margin-bottom: 10px; }
+.cloud-card p:last-child { color: var(--ink-3); font-size: var(--t-sm); }
+.cloud-seg { display: flex; justify-content: center; margin: -6px 0 34px; }
+.cloud-list { display: grid; gap: clamp(34px, 5vw, 64px); }
+.cloud-step { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(22px, 4vw, 48px); align-items: center; }
+.cloud-step.is-flip .cloud-step-text { order: 2; }
+.cloud-step.is-dialog { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.cloud-step.is-dialog .cloud-win { max-width: 480px; justify-self: center; width: 100%; }
+.cloud-step-text .mono { display: block; margin-bottom: 10px; }
+.cloud-step-text h3 { margin-bottom: 10px; }
+.cloud-step-text p:last-child { color: var(--ink-3); font-size: var(--t-sm); max-width: 44ch; }
+.cloud-win .shot-body { line-height: 0; }
+.cloud-win .shot-body img { display: block; width: 100%; height: auto; }
+.cloud-notes .plain-list { margin-top: 10px; }
+.cloud-foot { padding-top: 0; }
+@media (max-width: 900px) {
+  .cloud-cards { grid-template-columns: 1fr; }
+  .cloud-step, .cloud-step.is-dialog { grid-template-columns: 1fr; }
+  .cloud-step.is-flip .cloud-step-text { order: 0; }
+  .cloud-step-text p:last-child { max-width: none; }
+}

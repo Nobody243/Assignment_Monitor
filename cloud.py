@@ -297,10 +297,13 @@ jobs:
 {secrets_env}
         run: python app/cloud_check.py ${{{{ inputs.mode || 'check' }}}}
       - name: Save state
+        # every run commits (at least the timestamp): GitHub switches off the schedule of a repository that has
+        # had no commits for 60 days, which a quiet semester break would otherwise trigger
         if: always()
         run: |
           git config user.name "{APP_NAME}"
           git config user.email "noreply@users.noreply.github.com"
+          date -u +%Y-%m-%dT%H:%MZ > state/last_run.txt
           git add state
           git diff --cached --quiet || (git commit -q -m "state $(date -u +%Y-%m-%dT%H:%MZ)" && git push -q)
 """
@@ -418,6 +421,56 @@ def last_run(env: dict | None = None) -> dict | None:
     when = datetime.strptime(r["run_started_at"] or r["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     return {"when": when.astimezone(), "status": r["status"], "conclusion": r["conclusion"], "url": r["html_url"],
             "event": r["event"]}
+
+
+def recent_runs(env: dict | None = None, count: int = 3) -> list[dict]:
+    """The latest finished runs, newest first: {"id", "conclusion", "url", "when"}."""
+    env = env or load_env()
+    if not enabled(env):
+        return []
+    data = api(env["GITHUB_TOKEN"], "GET", f"/repos/{env['CLOUD_REPO']}/actions/runs?status=completed&per_page={count}")
+    out = []
+    for r in data.get("workflow_runs") or []:
+        when = datetime.strptime(r["run_started_at"] or r["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        out.append({"id": r["id"], "conclusion": r["conclusion"], "url": r["html_url"], "when": when.astimezone()})
+    return out
+
+
+def failing_streak(env: dict | None = None, needed: int = 3) -> dict | None:
+    """The newest run when the last `needed` finished runs all failed, else None. One or two failures are left
+    alone: GitHub runners and the portal both have off moments."""
+    runs = recent_runs(env, needed)
+    if len(runs) < needed or any(r["conclusion"] != "failure" for r in runs):
+        return None
+    return runs[0]
+
+
+def warn_if_failing(env: dict | None = None, notify=None) -> bool:
+    """Shows one desktop notification per failing streak (keyed by the newest failed run, so a streak is reported
+    once and a later one again). `notify(title, body)` defaults to the Windows toast. Returns True if warned."""
+    env = env or load_env()
+    if not enabled(env):
+        return False
+    try:
+        newest = failing_streak(env)
+    except Exception as e:
+        log.debug("cloud run check: %s", e)
+        return False
+    if not newest:
+        return False
+    from tracker import mark_reminder, reminder_sent
+    key = f"cloud-failing:{newest['id']}"
+    if reminder_sent(key):
+        return False
+    if notify is None:
+        from notifier import send_toast
+        notify = send_toast
+    notify(f"{APP_NAME}: cloud checks are failing",
+           "The last three checks on GitHub failed, so your phone and mailbox are not getting alerts. "
+           "Open Settings > Cloud checks, or the Actions page on GitHub, to see why.")
+    mark_reminder(key)
+    log.warning("Cloud checks failing: %s", newest["url"])
+    return True
 
 
 def teardown(env: dict | None = None, progress=None) -> str:

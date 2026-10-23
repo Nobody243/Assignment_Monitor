@@ -2347,7 +2347,7 @@ class SettingsView(ctk.CTkScrollableFrame):
             return
         self._cloud_setup_dialog()
 
-    def _cloud_setup_dialog(self):
+    def _cloud_setup_dialog(self, demo_done=None):
         dlg = ctk.CTkToplevel(self.app)
         dlg.title("Cloud checks")
         dlg.geometry("560x540")
@@ -2485,7 +2485,10 @@ class SettingsView(ctk.CTkScrollableFrame):
             primary_button(btns, "Done", dlg.destroy, width=100).pack(side="left", padx=10)
             threading.Thread(target=self._refresh_cloud, daemon=True).start()
 
-        stage_consent()
+        if demo_done:
+            stage_done(demo_done)
+        else:
+            stage_consent()
 
     def _email_hint(self):
         addr = self.email_to.get().strip()
@@ -2918,6 +2921,7 @@ class App(ctk.CTk):
         try:
             if cloud.enabled(self.env):
                 cloud.sync_secrets(load_env())
+                cloud.warn_if_failing(load_env())
         except Exception as e:
             log.warning("Cloud housekeeping: %s", str(e)[:200])
 
