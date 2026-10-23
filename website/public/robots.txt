@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /phone?
 
 Sitemap: https://assignment-monitor.vercel.app/sitemap.xml
