@@ -71,3 +71,5 @@ p { margin: 0; }
 }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* on phones the eyebrow may wrap; the two dashes would sit detached at the edges, so they go */
+@media (max-width: 640px) { .eyebrow::before, .eyebrow::after { display: none; } }
