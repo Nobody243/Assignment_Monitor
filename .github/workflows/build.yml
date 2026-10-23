@@ -4,9 +4,9 @@ on:
   push:
     branches: ["main"]
     tags: ["v*"]
-    paths-ignore: ["website/**", "*.md", ".github/workflows/website.yml", ".github/scripts/**"]
+    paths-ignore: ["website/**", "*.md", ".github/workflows/website.yml", ".github/workflows/portal-probe.yml", ".github/scripts/**"]
   pull_request:
-    paths-ignore: ["website/**", "*.md", ".github/workflows/website.yml", ".github/scripts/**"]
+    paths-ignore: ["website/**", "*.md", ".github/workflows/website.yml", ".github/workflows/portal-probe.yml", ".github/scripts/**"]
   workflow_dispatch:
 
 permissions:
