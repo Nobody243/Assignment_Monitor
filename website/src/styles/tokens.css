@@ -45,7 +45,7 @@
   /* two lines on every laptop: capped by width (so "Never miss an LMS" stays on one line inside the 880px column)
      and by height (so the whole hero, pills included, sits inside a 720px-tall window) */
   --h-hero: min(clamp(var(--t-3xl), 6.2vw, 92px), 12vh);
-  --h-page: clamp(var(--t-2xl), 5vw, var(--t-5xl));
+  --h-page: min(clamp(var(--t-2xl), 5vw, var(--t-5xl)), 9vh);
   --h-section: clamp(var(--t-xl), 3.4vw, var(--t-3xl));
   --h-sub: var(--t-xl);
   --h-card: var(--t-lg);

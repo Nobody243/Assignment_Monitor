@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useScene } from "../../lib/scene.jsx";
 import { gsap, ScrollTrigger, reduceMotion } from "../../lib/scroll.jsx";
-import { DownloadActions, PlatformNote } from "../DownloadActions.jsx";
+import { DownloadActions, DownloadAlt, PlatformNote } from "../DownloadActions.jsx";
 import { EASE } from "../../lib/motion.js";
 
 const WORDS = ["Never", "miss", "an", "LMS", "deadline"];
@@ -27,10 +27,11 @@ export default function Hero() {
             {WORDS.map((w) => <span className="w" key={w} aria-hidden="true"><motion.span variants={word}>{w}</motion.span></span>)}
             <span className="w" aria-hidden="true"><motion.span className="heading-accent hero-accent" variants={word}>again.</motion.span></span>
           </h1>
-          <motion.p className="lede" variants={rise}>It signs in to the Bahria portal for you and watches every deadline, your attendance margin, exam seat, announcements, lecture notes and timetable. Then it tells you: out loud, on your phone, or by email.</motion.p>
+          <motion.p className="lede" variants={rise}>It watches the Bahria portal so you don't have to, and tells you the moment something changes: out loud at your desk, on your phone, or by email.</motion.p>
           <motion.div className="hero-cta" variants={rise}>
-            <DownloadActions size="lg" />
+            <DownloadActions size="lg" secondary="none" />
           </motion.div>
+          <DownloadAlt as={motion.p} variants={rise} />
           <PlatformNote as={motion.p} variants={rise} />
           <motion.ul className="hero-meta" variants={rise}>
             <li>No account</li><li>No server</li><li>Password never leaves your PC</li><li>MIT</li>

@@ -12,6 +12,9 @@
 .hero h1 .w > span { display: inline-block; }
 .hero .lede { margin: 0 auto; max-width: 56ch; color: var(--ink-2); text-wrap: balance; }
 .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: clamp(18px, 3.2vh, 32px); }
+.hero-alt { margin-top: 12px; font-size: var(--t-sm); color: var(--ink-3); }
+.hero-alt a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-2); transition: color var(--d-1), text-decoration-color var(--d-1); }
+.hero-alt a:hover { color: var(--ink-1); text-decoration-color: var(--accent); }
 .hero-meta { list-style: none; margin: clamp(14px, 2.2vh, 22px) 0 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .hero-meta li { font-family: var(--mono); font-size: var(--t-2xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); padding: 6px 12px; border-radius: var(--r-pill); background: rgba(7, 8, 13, 0.55); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .hero-meta .hero-cities { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); }

@@ -45,12 +45,13 @@ p { margin: 0; }
 
 /* ============================================================ page shell */
 .page { position: relative; min-height: 60vh; }
-.page-hero { padding: calc(var(--nav-h) + clamp(56px, 9vw, 110px)) 0 clamp(36px, 5vw, 64px); }
-.page-hero h1 { max-width: 16ch; margin: 18px 0 20px; }
+/* page heroes breathe with the window height, as the home hero does, so a short laptop sees the buttons */
+.page-hero { padding: calc(var(--nav-h) + clamp(28px, 7vh, 110px)) 0 clamp(24px, 5vh, 64px); }
+.page-hero h1 { max-width: 16ch; margin: clamp(12px, 2vh, 18px) 0 clamp(14px, 2.4vh, 20px); }
 .page-hero .lede { max-width: 62ch; }
 .page-hero .wrap > div { position: relative; }
 .page-hero .wrap > div::before { content: ""; position: absolute; inset: -30% -28% -24%; z-index: -1; pointer-events: none; background: radial-gradient(ellipse closest-side at 42% 52%, rgba(7, 8, 13, 0.72), rgba(7, 8, 13, 0.4) 55%, rgba(7, 8, 13, 0) 100%); }
-.page-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.page-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: clamp(18px, 3vh, 28px); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
 .two-col > * { padding: var(--card-pad); border-radius: var(--card-r); background: var(--glass); border: 1px solid var(--line); min-width: 0; }
 .two-col .mono { display: block; }
@@ -58,6 +59,7 @@ p { margin: 0; }
 
 /* ============================================================ platform-aware download actions */
 .platform-note { margin-top: 16px; font-size: var(--t-sm); color: var(--ink-2); max-width: 44ch; }
+.hero .hero-alt { text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9); }
 .hero .platform-note { margin-left: auto; margin-right: auto; }
 .platform-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 24px; padding: 14px 16px 14px 18px; border-radius: var(--r-3); border: 1px solid var(--accent-a5); background: linear-gradient(90deg, var(--accent-a2), transparent 70%), var(--glass-2); }
 .platform-banner p { font-size: var(--t-sm); color: var(--ink-1); max-width: 52ch; }
