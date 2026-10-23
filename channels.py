@@ -215,9 +215,19 @@ def push_device(env: dict | None = None) -> str:
     return host
 
 
-def send_push(title: str, body: str, url: str | None = None, env: dict | None = None) -> None:
+def signer(private_pem: str):
+    """The VAPID signer for a stored private key. pywebpush takes a string only as a file path or a bare base64 key
+    and chokes on PEM text ("could not deserialize key data"), so the key is loaded here and handed over as an
+    object."""
+    from cryptography.hazmat.primitives import serialization
+    key = serialization.load_pem_private_key(private_pem.encode("ascii"), password=None)
+    return _vapid()(private_key=key)
+
+
+def send_push(title: str, body: str, url: str | None = None, env: dict | None = None, **kwargs) -> None:
     """One notification to the paired phone, encrypted end to end by the push protocol. Raises on failure; a phone
-    that has withdrawn its subscription (404/410) is unpaired automatically."""
+    that has withdrawn its subscription (404/410) is unpaired automatically. Extra keyword arguments go to
+    pywebpush (tests pass a fake requests session)."""
     from pywebpush import WebPushException, webpush
     env = env or load_env()
     sub = json.loads(env.get("PUSH_SUB") or "{}")
@@ -226,8 +236,8 @@ def send_push(title: str, body: str, url: str | None = None, env: dict | None = 
     private, _ = vapid_keys(env, save=False)
     payload = json.dumps({"title": title, "body": body, "url": url or SITE_URL, "tag": f"am-{abs(hash(title)) % 10000}"})
     try:
-        webpush(subscription_info=sub, data=payload, vapid_private_key=private, ttl=86400,
-                vapid_claims={"sub": SITE_URL, "aud": "/".join(sub["endpoint"].split("/")[:3])})
+        webpush(subscription_info=sub, data=payload, vapid_private_key=signer(private), ttl=86400,
+                vapid_claims={"sub": SITE_URL, "aud": "/".join(sub["endpoint"].split("/")[:3])}, **kwargs)
     except WebPushException as e:
         status = getattr(getattr(e, "response", None), "status_code", None)
         if status in (404, 410):

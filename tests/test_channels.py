@@ -84,3 +84,39 @@ def test_sync_calendar_sends_each_event_once(tmp_path, monkeypatch):
                          sent_before=lambda k: k in marks, mark_sent=marks.add)
     assert res2["invited"] == 0 and len(sent) == 1
     assert sync_calendar([], [], {"CALENDAR_ENABLED": False})["events"] == 0
+
+
+def test_send_push_signs_with_the_stored_pem_key(tmp_path, monkeypatch):
+    """The private key is kept as PEM; pywebpush must receive it as a signer object, not as text. The request is
+    captured instead of sent."""
+    import json
+    import channels
+
+    private, public = channels.vapid_keys({}, save=False)
+    assert private.startswith("-----BEGIN")
+    # the content encryption needs a real P-256 point for the phone's key
+    import os
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    point = ec.generate_private_key(ec.SECP256R1()).public_key().public_bytes(
+        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    sub = {"endpoint": "https://fcm.googleapis.com/fcm/send/abc",
+           "keys": {"p256dh": channels.b64url(point), "auth": channels.b64url(os.urandom(16))}}
+    seen = {}
+
+    class FakeResponse:
+        status_code = 201
+        text = ""
+        headers = {}
+
+    class FakeSession:
+        def post(self, url, data=None, headers=None, timeout=None, **kw):
+            seen["url"], seen["headers"], seen["body"] = url, headers, data
+            return FakeResponse()
+
+    env = {"PUSH_SUB": json.dumps(sub), "PUSH_VAPID": json.dumps({"private": private, "public": public})}
+    channels.send_push("Hello", "World", env=env, requests_session=FakeSession())
+    assert seen["url"] == sub["endpoint"]
+    assert seen["headers"]["Authorization"].startswith("vapid t=")
+    assert seen["headers"]["Content-Encoding"] == "aes128gcm"
+    assert len(seen["body"]) > 32

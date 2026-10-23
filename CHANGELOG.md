@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.5 - 2026-10-23
+
+- Phone pushes work. Every push, including the test after pairing, failed with "could not deserialize key data": the signing key the PC generates is stored as PEM text, and the push library only accepts a key given as text when it is a file path or a bare base64 key. The key is now loaded and handed over as an object. Nothing to redo: the pairing and the stored keys were fine.
+
 ## 1.4.4 - 2026-10-23
 
 - The Pair a phone dialog explains itself: three numbered steps (open the Camera app, point it at the code, tap Allow on the page), a status line that changes to "your phone opened the page, now tap Allow" the moment the link is opened, and two ways round a camera that will not scan: Copy link, or Email me the link when email is set up. The link stays valid for ten minutes.
