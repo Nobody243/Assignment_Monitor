@@ -129,3 +129,4 @@ jobs:
           "data folder kept (a silent uninstall keeps it by design): $(Test-Path "$env:LOCALAPPDATA\Assignment Monitor")"
           if (-not $gone) { throw "the program folder is still there" }
           if ($left) { throw "scheduled tasks left behind" }
+          exit 0   # the last native command above was a schtasks query of a task that (rightly) no longer exists
