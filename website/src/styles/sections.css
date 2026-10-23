@@ -18,10 +18,14 @@
 .hero-meta { list-style: none; margin: clamp(14px, 2.2vh, 22px) 0 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .hero-meta li { font-family: var(--mono); font-size: var(--t-2xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); padding: 6px 12px; border-radius: var(--r-pill); background: rgba(7, 8, 13, 0.55); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .hero-meta .hero-cities { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); }
+.hero-proof { margin: clamp(12px, 2vh, 18px) 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 0; font-size: var(--t-xs); color: var(--ink-3); text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9); }
+.hero-proof > * + *::before { content: "\00b7"; margin: 0 10px; color: var(--ink-4); }
+.hero-proof a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-2); transition: color var(--d-1), text-decoration-color var(--d-1); }
+.hero-proof a:hover { color: var(--ink-1); text-decoration-color: var(--accent); }
 .hero-meta .hero-cities span { display: inline-flex; align-items: center; gap: 7px; }
 .hero-meta .hero-cities span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-a4); }
 @media (max-width: 1024px) { .hero-copy::before { display: none; } }
-@media (max-width: 640px) { .hero { padding: calc(var(--nav-h) + 40px) 0 26vh; } .hero h1 { max-width: 12ch; } .hero-cta .btn, .cta .btn { width: 100%; white-space: normal; } .hero-cta .btn small, .page-hero-actions .btn small { display: none; } .page-hero-actions .btn { width: 100%; } .hero-meta .hero-cities { display: none; } }
+@media (max-width: 640px) { .hero { padding: calc(var(--nav-h) + 40px) 0 26vh; } .hero h1 { max-width: 12ch; } .hero-cta .btn, .cta .btn { width: 100%; white-space: normal; } .hero-cta .btn small, .page-hero-actions .btn small { display: none; } .page-hero-actions .btn { width: 100%; } .hero-meta .hero-cities { display: none; } .hero-proof { flex-direction: column; align-items: center; gap: 6px; } .hero-proof > * + *::before { content: none; } }
 
 /* ============================================================ ticker */
 .ticker { position: relative; z-index: 2; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; padding: 14px 0; background: rgba(10, 11, 16, 0.45); }
@@ -229,3 +233,7 @@
 .section-head, .story-head { position: relative; }
 .section-head::before, .story-head::before { content: ""; position: absolute; inset: -34% -30% -30%; z-index: -1; pointer-events: none;
   background: radial-gradient(ellipse closest-side at 40% 52%, rgba(7, 8, 13, 0.7), rgba(7, 8, 13, 0.4) 55%, rgba(7, 8, 13, 0) 100%); }
+/* the proof line sits over the planet, so it gets the same glass backing as the pills */
+.hero-proof { width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto; padding: 7px 16px; border-radius: var(--r-pill); background: rgba(7, 8, 13, 0.55); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+@media (max-width: 640px) { .hero-proof { border-radius: var(--r-3); padding: 10px 16px; } }
+.eyebrow { text-wrap: balance; }

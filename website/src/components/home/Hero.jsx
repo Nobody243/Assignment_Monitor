@@ -4,6 +4,8 @@ import { useScene } from "../../lib/scene.jsx";
 import { gsap, ScrollTrigger, reduceMotion } from "../../lib/scroll.jsx";
 import { DownloadActions, DownloadAlt, PlatformNote } from "../DownloadActions.jsx";
 import { EASE } from "../../lib/motion.js";
+import { useRelease, fmtDate } from "../../lib/release.jsx";
+import { LINKS } from "../../data/content.js";
 
 const WORDS = ["Never", "miss", "an", "LMS", "deadline"];
 const word = { hidden: { y: "110%", opacity: 0 }, show: { y: "0%", opacity: 1, transition: { duration: 1.3, ease: [0.19, 1, 0.22, 1] } } };
@@ -11,6 +13,7 @@ const rise = { hidden: { y: 22, opacity: 0 }, show: { y: 0, opacity: 1, transiti
 
 export default function Hero() {
   const { introDone } = useScene();
+  const rel = useRelease();
   const copy = useRef(null);
   useEffect(() => {
     if (reduceMotion()) return undefined;
@@ -37,6 +40,12 @@ export default function Hero() {
             <li>No account</li><li>No server</li><li>Password never leaves your PC</li><li>MIT</li>
             <li className="hero-cities" aria-label="Works at the Islamabad, Lahore and Karachi campuses"><span>Islamabad</span><span>Lahore</span><span>Karachi</span></li>
           </motion.ul>
+          {/* proof, not claims: a dated release, a public build, a named kind of author; each one checkable */}
+          <motion.p className="hero-proof" variants={rise}>
+            <span>v{rel.version}{rel.publishedAt ? ` released ${fmtDate(rel.publishedAt)}` : ""}</span>
+            <span>built by GitHub Actions from the public source</span>
+            <a href={LINKS.repo} target="_blank" rel="noopener">made by a Bahria student, read the code</a>
+          </motion.p>
         </motion.div>
       </motion.div>
     </section>
