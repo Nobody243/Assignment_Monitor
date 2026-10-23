@@ -2,10 +2,9 @@ name: Portal probe (feasibility)
 
 # One-off: does the university portal accept a sign-in from a GitHub runner? Needs the repository secrets
 # PORTAL_ENROLLMENT and PORTAL_PASSWORD. Prints pass/fail and counts only.
+# Manual only: path filters are ignored for tag pushes, so a push trigger would run it on every release.
 on:
   workflow_dispatch:
-  push:
-    paths: [".github/workflows/portal-probe.yml", ".github/scripts/portal_probe.py"]
 
 permissions:
   contents: read
