@@ -53,6 +53,8 @@
 .menu-foot .menu-note { margin-top: 4px; text-align: center; }
 @media (max-width: 1040px) { .nav-links { display: none; } .nav-cta, .nav-links + .nav-cta { margin-left: auto; } .burger { display: inline-flex; } .nav .btn small { display: none; } .nav .brand span { font-size: var(--t-sm); white-space: nowrap; } .nav .brand span small { display: none; } }
 @media (max-width: 520px) { .nav .brand span { display: none; } .nav .icon-btn { display: none; } .nav .btn { padding: 14px 14px; } }
+/* phones: the download button leaves the bar (the menu has it), so the menu button alone sits at the top right */
+@media (max-width: 640px) { .nav .dl-menu, .nav .nav-send { display: none; } }
 
 /* ============================================================ window chrome */
 .win { border-radius: 14px; overflow: hidden; border: 1px solid var(--line-2); background: #121315; box-shadow: var(--shadow-win); }
