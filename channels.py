@@ -156,6 +156,9 @@ def pairing_poll(pairing: dict, timeout: float = 2.0) -> dict | None:
             evt = json.loads(line)
             if evt.get("event") != "message":
                 continue
+            if evt.get("message") == "opened":          # the page said hello; the dialog tells the user what to tap
+                pairing["opened"] = True
+                continue
             blob = b64url_decode(evt.get("message", ""))
             plain = AESGCM(key).decrypt(blob[:12], blob[12:], None)
             sub = json.loads(plain.decode("utf-8"))

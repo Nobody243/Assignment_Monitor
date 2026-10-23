@@ -2312,32 +2312,64 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.app.env = load_env()
         dlg = ctk.CTkToplevel(self.app)
         dlg.title("Pair a phone")
-        dlg.geometry("460x600")
+        dlg.geometry("500x680")
         dlg.resizable(False, False)
         dlg.transient(self.app)
         dlg.configure(fg_color=C["bg"])
-        ctk.CTkLabel(dlg, text="Scan with your phone's camera", font=F(H3, "semibold", display=True),
-                     text_color=C["ink"]).pack(pady=(24, 4))
-        ctk.CTkLabel(dlg, text="A page on assignment-monitor.vercel.app opens. Tap Allow notifications.\n"
-                               "On iPhone, first add the page to the Home Screen, then open it from there.",
-                     font=F(SM), text_color=C["muted"], justify="center").pack()
+        ctk.CTkLabel(dlg, text="Pair your phone in three taps", font=F(H3, "semibold", display=True),
+                     text_color=C["ink"]).pack(pady=(22, 10))
+        steps = ctk.CTkFrame(dlg, fg_color="transparent")
+        steps.pack(padx=36, fill="x")
+        for n, line in enumerate(("Open the Camera app on your phone (the ordinary camera, not Settings).",
+                                  "Point it at this code and tap the link that pops up.",
+                                  "On the page that opens, tap \"Allow notifications and pair\"."), start=1):
+            row = ctk.CTkFrame(steps, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=f"{n}", font=F(SM, "semibold"), text_color=C["on_accent"], fg_color=C["accent"],
+                         corner_radius=11, width=22, height=22).pack(side="left", padx=(0, 10))
+            ctk.CTkLabel(row, text=line, font=F(SM), text_color=C["ink"], anchor="w", justify="left",
+                         wraplength=380).pack(side="left", fill="x")
         import qrcode
         qr = qrcode.QRCode(border=1, box_size=8)
         qr.add_data(pairing["url"])
         qr.make(fit=True)
         pil = qr.make_image(fill_color="#14161b", back_color="#ffffff").convert("RGB")
-        img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(300, 300))
+        img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(260, 260))
         holder = ctk.CTkFrame(dlg, fg_color="#ffffff", corner_radius=14)
-        holder.pack(pady=18)
-        ctk.CTkLabel(holder, text="", image=img).pack(padx=14, pady=14)
-        ctk.CTkLabel(dlg, text=f"Code  {pairing['code']}", font=F(LG, "semibold"), text_color=C["ink"]).pack()
-        status = ctk.CTkLabel(dlg, text="Waiting for the phone…", font=F(SM), text_color=C["muted"])
-        status.pack(pady=(6, 0))
+        holder.pack(pady=(14, 8))
+        ctk.CTkLabel(holder, text="", image=img).pack(padx=12, pady=12)
+        status = ctk.CTkLabel(dlg, text="Waiting for the phone to open the link…", font=F(MD, "semibold"), text_color=C["muted"])
+        status.pack(pady=(4, 0))
+        ctk.CTkLabel(dlg, text=f"Code {pairing['code']}  ·  the page shows the same code", font=F(XS),
+                     text_color=C["dim"]).pack(pady=(2, 0))
+        hint = ("Camera not offering a link?  Press Copy link and send it to the phone any way you like (a WhatsApp message "
+                "to yourself works), then open it there.\niPhone: in Safari tap Share, Add to Home Screen, open it from there, then pair.")
+        ctk.CTkLabel(dlg, text=hint, font=F(XS), text_color=C["muted"], justify="center", wraplength=430).pack(pady=(12, 0))
+        btns = ctk.CTkFrame(dlg, fg_color="transparent")
+        btns.pack(pady=(12, 0))
+
         def copy_link():
             self.app.clipboard_clear()
             self.app.clipboard_append(pairing["url"])
-            status.configure(text="Link copied. Open it on the phone.")
-        soft_button(dlg, "Copy link instead", copy_link, width=150).pack(pady=(10, 0))
+            status.configure(text="Link copied. Paste it to your phone and open it there.", text_color=C["ink"])
+
+        def email_link():
+            status.configure(text="Emailing the link…", text_color=C["ink"])
+
+            def work():
+                try:
+                    channels.send_email(f"{APP_NAME}: pair your phone",
+                                        "Open this link on your phone and tap Allow notifications and pair:\n\n" + pairing["url"]
+                                        + "\n\nThe link works for ten minutes and only once.", env=self.app.env)
+                    self.after(0, lambda: status.configure(text="Sent. Open the email on your phone and tap the link.",
+                                                           text_color=C["ink"]))
+                except Exception as e:
+                    err = str(e)[:90]
+                    self.after(0, lambda: status.configure(text=f"Email failed: {err}", text_color=C["red"]))
+            threading.Thread(target=work, daemon=True).start()
+        soft_button(btns, "Copy link", copy_link, width=130).pack(side="left", padx=6)
+        if channels.email_ready(self.app.env):
+            soft_button(btns, "Email me the link", email_link, width=150).pack(side="left", padx=6)
         state = {"done": False}
 
         def poll():
@@ -2349,6 +2381,9 @@ class SettingsView(ctk.CTkScrollableFrame):
 
             def work():
                 sub = channels.pairing_poll(pairing)
+                if pairing.get("opened") and not sub and not state["done"] and dlg.winfo_exists():
+                    self.after(0, lambda: status.configure(text="Your phone opened the page. Tap \"Allow notifications and pair\" there.",
+                                                           text_color=C["accent"]))
                 if sub and not state["done"]:
                     state["done"] = True
                     channels.save_subscription(sub, self.app.env)

@@ -34,6 +34,10 @@ export default function Phone() {
     if (!supported) setState("unsupported");
     else if (isIOS() && !standalone()) setState("ios");
   }, [supported]);
+  // tell the PC the link was opened, so its dialog can say "now tap Allow"; carries nothing but the word
+  useEffect(() => {
+    if (linked) fetch(`${NTFY}/${encodeURIComponent(topic)}`, { method: "POST", body: "opened", headers: { "Content-Type": "text/plain" } }).catch(() => {});
+  }, [linked, topic]);
 
   const pair = async () => {
     setState("working"); setMsg("Asking for permission…");
@@ -91,7 +95,8 @@ export default function Phone() {
             {linked && (state === "idle" || state === "working" || state === "error") && (
               <>
                 <h2 className="h-md">Pair this phone</h2>
-                <p className="lede">Your PC is waiting. Press the button, allow notifications, and a test alert arrives within a few seconds.</p>
+                <p className="mono phone-code">Code {topic.slice(3, 9).toUpperCase()}</p>
+                <p className="lede">Your PC is waiting and shows the same code. Press the button, allow notifications, and a test alert arrives within a few seconds.</p>
                 <div className="hero-cta">
                   <Button variant="primary" onClick={pair} disabled={state === "working"}>{state === "working" ? "Pairing…" : "Allow notifications and pair"}</Button>
                 </div>

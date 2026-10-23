@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.4 - 2026-10-23
+
+- The Pair a phone dialog explains itself: three numbered steps (open the Camera app, point it at the code, tap Allow on the page), a status line that changes to "your phone opened the page, now tap Allow" the moment the link is opened, and two ways round a camera that will not scan: Copy link, or Email me the link when email is set up. The link stays valid for ten minutes.
+
 ## 1.4.3 - 2026-10-23
 
 - Pages cross-fade into each other. Tk cannot fade hundreds of widgets, so the app photographs the page it is leaving and the one it is opening and blends the two pictures over the page area; one image moving is smooth where moving every widget never was. Off with the Animations switch.
