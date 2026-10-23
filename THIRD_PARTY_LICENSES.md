@@ -16,6 +16,7 @@ Assignment Monitor is MIT licensed. The installed app bundles these open-source 
 | [cryptography](https://cryptography.io/) | the push keys and the pairing encryption | Apache License 2.0 / BSD |
 | [requests](https://requests.readthedocs.io/) | HTTP client used by pywebpush | Apache License 2.0 |
 | [qrcode](https://github.com/lincolnloop/python-qrcode) | draws the pairing QR code | BSD 3-Clause |
+| [PyNaCl](https://github.com/pyca/pynacl) (bundles libsodium) | seals the cloud-check secrets for GitHub (libsodium sealed box) | Apache License 2.0 (PyNaCl) / ISC (libsodium) |
 | [Inter](https://rsms.me/inter/) | user-interface typeface, bundled unmodified in `assets/fonts` | SIL Open Font License 1.1 (`assets/fonts/LICENSE-Inter.txt`) |
 | [PyInstaller](https://pyinstaller.org/) | builds the executable (build-time only) | GPL with bootloader exception; the built app is not affected |
 | [Inno Setup](https://jrsoftware.org/isinfo.php) | builds the installer (build-time only) | Inno Setup License |

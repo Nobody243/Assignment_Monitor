@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2 - 2026-10-23
+
+- Pillow updated to 13.0.0, which closes eight published vulnerabilities in the image library (CVE-2026-96636 to 96644 and GHSA-78g4-xqwv-q3g8); the dependency audit is clean again.
+- Third-party licence notes list PyNaCl and libsodium, used since 1.5.0 to seal the cloud-check secrets.
+- Website: robots.txt and sitemap.xml, canonical and per-page social tags, structured data for the app, a current social card, a 180 px touch icon, and the GitHub repository's description and topics.
+
 ## 1.5.1 - 2026-10-23
 
 - When the last three cloud checks have failed, the PC shows one desktop notification pointing at Settings > Cloud checks and the Actions page (checked when the app opens and after the PC's own daily check; one notification per streak).

@@ -48,6 +48,7 @@ export default function Cloud() {
 
       <section className="cloud-how">
         <div className="wrap">
+          <h2 className="sr-only">How it works</h2>
           <Stagger className="cloud-cards" step={0.1}>
             <Item as="article" className="cloud-card"><p className="mono">Where it runs</p><h3>GitHub Actions, in your account</h3><p>The app creates a private repository named assignment-monitor-cloud and installs one workflow. GitHub's free plan gives 2,000 minutes a month; a check uses two or three. Nothing of ours is involved.</p></Item>
             <Item as="article" className="cloud-card"><p className="mono">What goes there</p><h3>Your login and channel keys, sealed</h3><p>Enrollment, portal password, phone subscription and mail password become GitHub Actions secrets: encrypted with the repository's key before they leave the PC, readable only by the check while it runs, masked in logs. Plus the cache of what was last seen.</p></Item>
