@@ -1236,7 +1236,18 @@ class DashboardView(ctk.CTkScrollableFrame):
         right = ctk.CTkFrame(box, fg_color="transparent")
         right.grid(row=0, column=1, sticky="e", padx=20)
         days = info["days"]
-        big = "Today" if days == 0 else "Tomorrow" if days == 1 else f"{days} days" if days is not None else "—"
+        if days is None:
+            big = "—"
+        elif days == 0:
+            big = "Today"
+        elif days == 1:
+            big = "Tomorrow"
+        elif days == -1:
+            big = "Yesterday"
+        elif days < 0:
+            big = f"{-days} days ago"
+        else:
+            big = f"{days} days"
         ctk.CTkLabel(right, text=big, font=F(D1, "semibold", display=True), text_color=color).pack(anchor="e")
         ctk.CTkLabel(right, text=info["label"], font=F(SM), text_color=C["muted"]).pack(anchor="e")
         bind_click(box, lambda: self.app.navigate("assignments", filter_name="Pending"))
@@ -2240,20 +2251,27 @@ class SettingsView(ctk.CTkScrollableFrame):
 
         self._cloud_section(env)
 
-        data = self._section("Data", f"Stored only on this PC, in {BASE_DIR}")
+        data = self._section("Your data", f"Everything the app keeps is on this PC, in {BASE_DIR}. The activity log is what it "
+                                          "did and when, including the background checks.")
         row = ctk.CTkFrame(data, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
+        soft_button(row, "Activity log", lambda: self.app.navigate("activity"), width=110).pack(side="left", padx=(0, 8))
         soft_button(row, "Open data folder", lambda: os.startfile(DATA_DIR)).pack(side="left", padx=(0, 8))
-        soft_button(row, "Open log file", lambda: os.startfile(LOG_PATH) if LOG_PATH.exists() else None).pack(side="left", padx=(0, 8))
-        soft_button(row, "Clear local data", self._clear_data).pack(side="left")
+        soft_button(row, "Reset local data", self._clear_data).pack(side="right")
 
         about = self._section("About", f"{APP_NAME} {APP_VERSION} {TAGLINE}  ·  "
                               f"{'installed build' if FROZEN else 'running from source'}  ·  made by Nobody243  ·  MIT license")
         ctk.CTkLabel(about, text="Unofficial app. Not affiliated with, endorsed by, or supported by Bahria University.",
                      font=F(SM), text_color=C["dim"]).pack(anchor="w", padx=20, pady=(0, 10))
+        urow = ctk.CTkFrame(about, fg_color="transparent")
+        urow.pack(fill="x", padx=20, pady=(0, 10))
+        soft_button(urow, "Check for updates", lambda: self.app.check_for_updates(quiet=False), width=140).pack(side="left")
+        self.update_msg = ctk.CTkLabel(urow, text="", font=F(SM), text_color=C["muted"], cursor="hand2")
+        self.update_msg.pack(side="left", padx=12)
+        self.update_msg.bind("<Button-1>", lambda e: self.app.install_update())
         row = ctk.CTkFrame(about, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
-        docs = [("Check for updates", lambda: self.app.check_for_updates(quiet=False)),
+        docs = [("What's new", lambda: open_doc("CHANGELOG.md", f"{REPO_URL}/blob/main/CHANGELOG.md")),
                 ("Privacy & terms", lambda: open_doc("PRIVACY.md", f"{REPO_URL}/blob/main/PRIVACY.md")),
                 ("Security", lambda: open_doc("SECURITY.md", f"{REPO_URL}/blob/main/SECURITY.md")),
                 ("Licenses", lambda: open_doc("THIRD_PARTY_LICENSES.md", f"{REPO_URL}/blob/main/THIRD_PARTY_LICENSES.md")),
@@ -2970,8 +2988,11 @@ class ActivityView(ctk.CTkFrame):
 # ---------------------------------------------------------------------------- main window
 class App(ctk.CTk):
     NAV = [("dashboard", "Dashboard"), ("assignments", "Assignments"), ("attendance", "Attendance"), ("exams", "Exams"),
-           ("timetable", "Timetable"), ("announcements", "Announcements"), ("lectures", "Lectures"), ("settings", "Settings"),
-           ("activity", "Activity")]
+           ("timetable", "Timetable"), ("announcements", "Announcements"), ("lectures", "Lectures"), ("settings", "Settings")]
+    # pages reachable without a sidebar button (the activity log opens from Settings and from the Dashboard's
+    # failed-checks line); the sidebar keeps Settings lit while one of them is shown
+    TITLES = dict(NAV + [("activity", "Activity log")])
+    UNDER_SETTINGS = {"activity"}
     CONTENT_MAX = 1120
 
     def __init__(self, start_view="dashboard", force_setup=False, start_hidden=False):
@@ -3068,6 +3089,14 @@ class App(ctk.CTk):
 
     def _update_checked(self, info, quiet):
         self.update_info = info
+        sv = self.views.get("settings") if self.views else None
+        if sv is not None and "update_msg" in sv.__dict__:
+            if info and info.get("newer"):
+                sv.update_msg.configure(text=f"Version {info['version']} is available  ·  Install", text_color=C["accent"])
+            elif info is None:
+                sv.update_msg.configure(text="Could not reach GitHub. Try again in a while.", text_color=C["amber"])
+            else:
+                sv.update_msg.configure(text=f"Up to date ({APP_VERSION}).", text_color=C["green"])
         if info and info.get("newer"):
             text = f"Update {info['version']} available  ·  Install"
             if "update_lbl" in self.__dict__:
@@ -3254,6 +3283,8 @@ class App(ctk.CTk):
         self.page_title.pack(anchor="w")
         self.last_sync_lbl = ctk.CTkLabel(tt, text="", font=F(SM), text_color=C["muted"])
         self.last_sync_lbl.pack(anchor="w")
+        self._fail_streak = 0
+        self.last_sync_lbl.bind("<Button-1>", lambda e: self.navigate("activity") if self._fail_streak else None)
         self.sync_btn = primary_button(top, "Sync now", self.start_sync, width=120)
         self.sync_btn.pack(side="right")
         self.update_lbl = ctk.CTkLabel(top, text="", font=F(SM, "semibold"), text_color=C["accent"], cursor="hand2")
@@ -3275,7 +3306,7 @@ class App(ctk.CTk):
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
         self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")
         self.status_lbl.pack(side="left", padx=32, pady=4)
-        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–9 pages  ·  v{APP_VERSION}", font=F(XS),
+        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–8 pages  ·  v{APP_VERSION}", font=F(XS),
                      text_color=C["dim"]).pack(side="right", padx=32)
 
         self.views = {
@@ -3319,7 +3350,7 @@ class App(ctk.CTk):
 
     def _navigate(self, key, **kwargs):
         for k, (b, bar) in self.nav_buttons.items():
-            active = k == key
+            active = k == key or (key in self.UNDER_SETTINGS and k == "settings")
             b.configure(fg_color=C["surface2"] if active else "transparent",
                         text_color=C["ink"] if active else C["muted"],
                         font=F(LG, "semibold" if active else "normal"))
@@ -3337,7 +3368,7 @@ class App(ctk.CTk):
         if leaving is not None:
             leaving.pack_forget()
         self.current = key
-        self.page_title.configure(text=dict(self.NAV)[key])
+        self.page_title.configure(text=self.TITLES[key])
         # a page is rebuilt only when the data or the settings behind it changed since it was last drawn (the
         # dashboard also every minute for its countdowns and "now" markers, the activity log every time), and it is
         # rebuilt before it is packed, so it appears in one piece instead of assembling itself on screen
@@ -3426,9 +3457,10 @@ class App(ctk.CTk):
                     pass
             text = f"Last sync {ls}" if ls else "Not synced yet"
             streak = int(self.meta.get("fail_streak") or 0)
+            self._fail_streak = streak
             if streak:
-                text += f"  ·  {streak} check{'s' if streak != 1 else ''} failed since (Activity has the reason)"
-            self.last_sync_lbl.configure(text=text, text_color=C["amber"] if streak else C["muted"])
+                text += f"  ·  {streak} check{'s' if streak != 1 else ''} failed since. Click for the activity log."
+            self.last_sync_lbl.configure(text=text, text_color=C["amber"] if streak else C["muted"], cursor="hand2" if streak else "")
         self.update_tray_tooltip()
         if self.current and self.current in self.views and hasattr(self.views[self.current], "refresh"):
             self.views[self.current].refresh()

@@ -119,6 +119,9 @@
 
 ## Unreleased
 
+- The Dashboard's Next deadline card says "Yesterday" or "3 days ago" for an overdue item instead of "-1 days".
+- The sidebar is the eight pages a student uses; the activity log moved under Settings → Your data (and opens from the Dashboard's "checks failed" line). Same log, one click further from the places where nobody needs it.
+- Settings → Your data: Activity log, Open data folder, and Reset local data (last, confirmed). Settings → About: the update check shows its result beside the button, and What's new opens the release notes.
 - Typography: the app now ships the Inter typeface (regular, medium, semibold and a display cut for headings) with Segoe UI as the fallback, on a golden-ratio type scale. Nothing is set in bold any more; headings are semibold.
 - Colour: the accent and every status colour (due today, soon, this week, submitted, extended) sit one golden angle apart on the colour wheel, in both themes, and all pass AA contrast.
 - Website: same Inter typography and golden-ratio heading scale, no italics; the Download button in the nav opens a chooser (installer, portable zip, guide); phones, Macs and Linux get "Send to your PC" instead of a 60 MB installer they cannot run; the changelog page is gone (release notes live on GitHub).

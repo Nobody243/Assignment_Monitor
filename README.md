@@ -42,7 +42,7 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | **Timetable** | The week as a grid, one row per day, colour per course, with room and teacher. Save as PNG, JPG or PDF. |
 | **Lectures** | Every course's lecture notes by week, and under a toggle the Miscellaneous files, with a checkbox per file. Download the selection into a folder you choose, organised as course / week - title (or course / Miscellaneous - type); existing files are skipped. |
 | **Settings** | Account and campus, theme, tray and start-with-Windows options, notifications (voice, volume, speed, days ahead), phone, email and calendar, campus tracking (attendance minimum, exam reminder lead, what to read), automatic checks, data folder, privacy and licenses. |
-| **Activity** | Log of every sync and reminder, including the scheduled background runs. |
+| **Activity log** (Settings → Your data) | Log of every sync and reminder, including the scheduled background runs. |
 
 Shortcuts: **F5** sync · **Ctrl+1…9** switch pages · **Ctrl+F** search · **Esc** clear search · **PageUp / PageDown** scroll a screen · **Ctrl+Home / Ctrl+End** top and bottom of a page.
 
@@ -166,11 +166,11 @@ The website lives in `website/`: `npm install`, `npm run dev` for a dev server, 
 
 - **"Sign-in failed"** – check enrollment, password and campus in Settings. The portal's own error text is shown.
 - **Nothing happens at 7 PM** – the PC must be on or asleep (not shut down) and you signed in. Settings → Automatic checks should say "Enabled". If the check arrived only after you woke the laptop yourself, the machine did not honour the wake timer; check the power plan's "Allow wake timers" setting.
-- **Details** – Activity tab, or the log file in the data folder.
+- **Details** – Settings → Your data → Activity log (the raw log file opens from there).
 - **Email test fails** – use an app password, not your normal one (Gmail: 2-Step Verification → App passwords; Outlook: Security → App passwords). Corporate or university mailboxes sometimes block SMTP; the Advanced button lets you set the server.
 - **Phone pushes stop** – the phone's browser rotated its push address or you cleared the site's data. Press Pair a phone again; it takes ten seconds.
 - **Between semesters** – while the portal lists no courses (registration not done yet) every page says so and alerts pause. Nothing is deleted; the pages fill in on the first check after your courses appear, and announcements from the previous semester are cleared then.
-- **Checks keep failing** – one failed check (portal down, no internet) is silent. After three in a row the app says so once, and the Dashboard's "Last sync" line turns amber with the count; Activity has the reason. A rejected sign-in is reported straight away, once.
+- **Checks keep failing** – one failed check (portal down, no internet) is silent. After three in a row the app says so once, and the Dashboard's "Last sync" line turns amber with the count; the activity log has the reason. A rejected sign-in is reported straight away, once.
 - **"Something went wrong"** – an error inside the window. Copy details or Report on GitHub opens a pre-filled issue with the app version, your Windows version and the error lines, nothing else. Open log shows the full log.
 - **Alerts stopped and nothing is wrong on your side** – the portal's pages may have changed. Please [open an issue](https://github.com/Nobody243/Assignment_Monitor/issues); a fix helps every student using it.
 

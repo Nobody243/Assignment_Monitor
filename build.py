@@ -45,6 +45,7 @@ def main():
         "--icon", str(ROOT / "assets" / "icon.ico"),
         "--add-data", f"{ROOT / 'assets'}{sep}assets",
         "--add-data", f"{ROOT / 'PRIVACY.md'}{sep}docs",
+        "--add-data", f"{ROOT / 'CHANGELOG.md'}{sep}docs",
         "--add-data", f"{ROOT / 'SECURITY.md'}{sep}docs",
         "--add-data", f"{ROOT / 'THIRD_PARTY_LICENSES.md'}{sep}docs",
         "--add-data", f"{ROOT / 'LICENSE'}{sep}docs",

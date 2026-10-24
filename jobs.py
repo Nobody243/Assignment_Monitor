@@ -152,7 +152,7 @@ def run_check(quiet: bool = False, headless: bool = None) -> int:
         if streak % 3 == 0:
             send_toast(f"{APP_NAME}: Checks are failing",
                        f"{streak} checks in a row could not read the portal. Last error: {str(e)[:120]}\n"
-                       "Open the app → Activity for details.")
+                       "The activity log in the app (Settings → Your data) has the reason.")
         return 1
     process_sync(result, env, notify=not quiet)
     if env.get("CLOUD_ENABLED") and not quiet:
