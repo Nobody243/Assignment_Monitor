@@ -1,3 +1,4 @@
+import base64
 import logging
 import os
 import re
@@ -5,7 +6,7 @@ import subprocess
 import time
 from datetime import datetime
 from typing import Callable, Dict, List, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 
 from lxml import html
 from playwright.sync_api import sync_playwright
@@ -459,6 +460,106 @@ def live_file(lec: dict, f: dict, live_items: List[dict]) -> dict:
     return f
 
 
+def _fetch_file(page, href: str, folder, name: str, result: dict) -> None:
+    """Downloads one portal file into folder/name (the portal's own file name lends an extension when the listing
+    gave none) and records the outcome in result."""
+    url = urljoin(LMS_BASE_URL + "/Student/", href)
+    target = folder / name
+    try:
+        resp = page.request.get(url, timeout=120000)
+        ctype = (resp.headers.get("content-type") or "").lower()
+        body = resp.body()
+        if not resp.ok or ("text/html" in ctype and len(body) < 200000):
+            raise RuntimeError(f"portal answered {resp.status} ({ctype.split(';')[0] or 'unknown type'})")
+        cd = resp.headers.get("content-disposition") or ""
+        m = re.search(r"filename\*?=(?:UTF-8\'\')?\"?([^\";]+)", cd, re.I)
+        if m and "." in m.group(1):
+            served = safe_name(m.group(1).strip(), 120)
+            if "." not in name:
+                target = folder / (name + os.path.splitext(served)[1] if name else served)
+        folder.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(body)
+        result["saved"].append(str(target))
+        log.info("Downloaded %s (%d KB)", target.name, len(body) // 1024)
+    except Exception as e:
+        log.warning("Download failed for %s: %s", name, str(e)[:160])
+        result["failed"].append((name, str(e)[:120]))
+
+
+def assignment_folder(dest_dir, a: dict):
+    """dest / <course> / Assignments / <NN - title>"""
+    from pathlib import Path
+    no = str(a.get("assign_no") or "").strip()
+    sub = (f"{no.zfill(2)} - " if no.isdigit() else "") + safe_name(a.get("title", "assignment"), 60)
+    return Path(dest_dir) / safe_name(a.get("course", "Course")) / "Assignments" / sub
+
+
+def download_assignment_files(selection: List[tuple], dest_dir, progress: Optional[Callable[[str, int, int], None]] = None,
+                              should_stop: Optional[Callable[[], bool]] = None) -> dict:
+    """Downloads assignment files. `selection` is a list of (assignment record, kind) with kind one of
+    ASSIGNMENT_FILE_KINDS. The links expire daily, so each course's table is re-read in a fresh signed-in session
+    and the row is matched by id. Returns {"saved": [paths], "skipped": n, "failed": [(name, reason)]}."""
+    env = load_env()
+    enrollment, password = env.get("ENROLLMENT", "").strip(), env.get("PASSWORD", "").strip()
+    institute_id = str(env.get("INSTITUTE_ID", "1")).strip()
+    if not enrollment or not password:
+        raise LoginError("Enrollment number and password are not configured yet.")
+    say = progress or (lambda msg, done, total: None)
+    stop = should_stop or (lambda: False)
+    by_course = {}
+    for a, kind in selection:
+        by_course.setdefault(a["course"], []).append((a, kind))
+    total = len(selection)
+    result = {"saved": [], "skipped": 0, "failed": []}
+    if not total:
+        return result
+    _acquire_lock()
+    try:
+        with sync_playwright() as p:
+            context = _launch_browser(p, True)
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                page.set_default_timeout(45000)
+                session = PortalSession(page, enrollment, password, institute_id)
+                session.sign_in()
+                session.lms(ASSIGNMENTS_URL)
+                courses = dict((name, val) for val, name in session.lms_courses())
+                done = 0
+                for course, items in by_course.items():
+                    if stop():
+                        break
+                    val = courses.get(course)
+                    if not val:
+                        for a, kind in items:
+                            result["failed"].append((f"{a['title'][:40]} ({FILE_KIND_LABELS[kind]})", "course is no longer on the LMS"))
+                        done += len(items)
+                        continue
+                    session.select_course(val)
+                    fresh = {x["id"]: x for x in _parse_course_table(_html(page), course)}
+                    for a, kind in items:
+                        if stop():
+                            break
+                        done += 1
+                        live = (fresh.get(a["id"]) or a).get("files", {}).get(kind) or (a.get("files") or {}).get(kind)
+                        label = FILE_KIND_LABELS.get(kind, kind)
+                        if not live:
+                            result["failed"].append((f"{a['title'][:40]} ({label})", "no such file on the portal any more"))
+                            continue
+                        name = live.get("filename") or f"{safe_name(a['title'], 60)} - {label}"
+                        folder = assignment_folder(dest_dir, a)
+                        say(f"{course[:30]} · {a['title'][:30]} · {label}", done, total)
+                        target = folder / name
+                        if target.exists() and target.stat().st_size > 0:
+                            result["skipped"] += 1
+                            continue
+                        _fetch_file(page, live["href"], folder, name, result)
+            finally:
+                context.close()
+    finally:
+        _release_lock()
+    return result
+
+
 def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callable[[str, int, int], None]] = None,
                       should_stop: Optional[Callable[[], bool]] = None) -> dict:
     """
@@ -525,30 +626,7 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                             result["skipped"] += 1
                             continue
                         live = live_file(lec, f, live_items)
-                        url = urljoin(LMS_BASE_URL + "/Student/", live["href"])
-                        try:
-                            resp = page.request.get(url, timeout=120000)
-                            ctype = (resp.headers.get("content-type") or "").lower()
-                            body = resp.body()
-                            if not resp.ok or ("text/html" in ctype and len(body) < 200000):
-                                raise RuntimeError(f"portal answered {resp.status} ({ctype.split(';')[0] or 'unknown type'})")
-                            cd = resp.headers.get("content-disposition") or ""
-                            m = re.search(r"filename\*?=(?:UTF-8\'\')?\"?([^\";]+)", cd, re.I)
-                            if m and "." in m.group(1):
-                                served = safe_name(m.group(1).strip(), 120)
-                                # the listing's name is the file's identity (two files in one week differ by it);
-                                # the portal's name is used whole only when the listing gave none, else for its extension
-                                if not f.get("filename"):
-                                    target = folder / served
-                                elif "." not in name:
-                                    target = folder / (name + os.path.splitext(served)[1])
-                            folder.mkdir(parents=True, exist_ok=True)
-                            target.write_bytes(body)
-                            result["saved"].append(str(target))
-                            log.info("Downloaded %s (%d KB)", target.name, len(body) // 1024)
-                        except Exception as e:
-                            log.warning("Download failed for %s: %s", name, str(e)[:160])
-                            result["failed"].append((name, str(e)[:120]))
+                        _fetch_file(page, live["href"], folder, name if f.get("filename") else "", result)
             finally:
                 context.close()
     finally:
@@ -561,11 +639,50 @@ def run_lms_check(headless: bool = True, interactive: bool = False) -> List[dict
     return run_sync(headless=headless, interactive=interactive, collect=("assignments",))["assignments"]
 
 
+ASSIGNMENT_FILE_KINDS = ("brief", "submission", "returned", "solution")
+FILE_KIND_LABELS = {"brief": "Brief", "submission": "My submission", "returned": "Returned", "solution": "Solution"}
+
+
+def decode_download_key(href: str) -> dict:
+    """The LMS download link carries a base64 key of the form 'id,date,kind,0,filename,page'. Returns
+    {"date", "kind", "filename"} or {} when the link is not of that shape."""
+    try:
+        key = unquote(href.split("k=", 1)[1])
+        parts = base64.b64decode(key + "=" * (-len(key) % 4)).decode("utf-8", "replace").split(",")
+        if len(parts) >= 5:
+            return {"date": parts[1], "kind": parts[2], "filename": parts[4]}
+    except Exception:
+        pass
+    return {}
+
+
+def _assignment_files(tds) -> dict:
+    """The files linked from an assignment row: the teacher's brief (and a solution file once posted) in the
+    third column, the student's own submission in the fourth, the returned submission in the sixth. Links expire
+    daily, so they are re-read at download time; the file name comes from the link's key."""
+    out = {}
+    def add(kind, a):
+        href = a.get("href") or ""
+        if "Download" not in href:
+            return
+        out[kind] = {"href": href, "label": re.sub(r"\s+", " ", a.text_content()).strip(),
+                     "filename": decode_download_key(href).get("filename", "")}
+    for a in tds[2].xpath(".//a[@href]"):
+        label = a.text_content().lower()
+        add("solution" if "solution" in label else "brief", a)
+    for a in tds[3].xpath(".//a[@href]"):
+        add("submission", a)
+    for a in tds[5].xpath(".//a[@href]"):
+        add("returned", a)
+    return out
+
+
 def _parse_course_table(page_html: str, course_name: str) -> List[dict]:
     tree = html.fromstring(page_html)
     items = []
     for row in tree.xpath("//table//tr"):
-        cells = [re.sub(r"\s+", " ", c.text_content()).strip() for c in row.xpath("./td")]
+        tds = row.xpath("./td")
+        cells = [re.sub(r"\s+", " ", c.text_content()).strip() for c in tds]
         if len(cells) < 8:
             continue
         assign_no, title, _, added_sub, marks, _, action, raw_deadline = cells[:8]
@@ -590,5 +707,6 @@ def _parse_course_table(page_html: str, course_name: str) -> List[dict]:
             "marks": marks,
             "status": status,
             "is_submitted": is_submitted,
+            "files": _assignment_files(tds),
         })
     return items

@@ -35,7 +35,7 @@ Prefer no installer? `AssignmentMonitor-portable.zip` from the same release runs
 | Screen | What it does |
 | --- | --- |
 | **Dashboard** | Next deadline, counters, today's classes with the one happening now highlighted, attendance margins, next exam, latest announcements. Click a counter or card to open the page behind it. |
-| **Assignments** | Full list with filters, course picker and search. Shows extension history and marks. |
+| **Assignments** | Full list with filters, course picker and search. Shows extension history and marks. Each row offers the files the portal has for it: the teacher's brief, your own submission, your returned work and a posted solution, downloaded into the Lectures folder under course / Assignments. Download briefs fetches them for the whole list. |
 | **Attendance** | Every registered course in one list, weakest first, with filters for courses under the minimum, at risk and on track. Click a course for its classes, or switch the page to every class or only the missed ones. |
 | **Exams** | The seating plan: date, session, time, room, row and seat for each paper, with a countdown; papers not yet scheduled are listed too. |
 | **Announcements** | Every course's LMS announcements, newest first, filterable by course. |
@@ -68,7 +68,7 @@ The CMS timetable is read with every sync and drawn the app's way: one row per d
 
 | Task | When | What |
 | --- | --- | --- |
-| `AssignmentMonitor_DailyCheck` | Daily 19:00 | Sync (assignments, attendance, exams, announcements, lecture notes and files, timetable) + notifications, including "exam tomorrow", plus the calendar file and invites when enabled. Wakes a sleeping PC, runs on battery, runs late if 19:00 was missed, retries three times if the portal was unreachable |
+| `AssignmentMonitor_DailyCheck` | Daily 19:00 | Sync (assignments, attendance, exams, announcements, lecture notes and files, timetable) + notifications, including "exam tomorrow", a solution posted or work returned, plus the calendar file and invites when enabled. Wakes a sleeping PC, runs on battery, runs late if 19:00 was missed, retries three times if the portal was unreachable |
 | `AssignmentMonitor_LogonCheck` | 2 min after sign-in | Catch-up sync if the PC was off at 19:00 |
 | `AssignmentMonitor_HourlyReminder` | Every hour | Voice + toast while something unsubmitted is due today, plus one reminder on the morning of an exam. Never wakes the PC |
 
@@ -80,7 +80,7 @@ They run even when the app is closed, on battery as well as mains. Turn them off
 
 - Your password is encrypted with Windows Data Protection (DPAPI) for your user account and stored in `%LOCALAPPDATA%\Assignment Monitor\settings.env`. It is only ever sent to `cms.bahria.edu.pk` when signing in. The email app password and the phone's push keys are stored the same way.
 - Assignments, attendance, the exam plan, announcements, the lecture and file lists, the timetable, logs and the browser profile stay in that same local folder. There is no server, no account, no telemetry.
-- The app only reads your own pages (LMS assignments, announcements, lecture notes and Miscellaneous files; CMS attendance, exam seating and timetable); it never submits or changes anything on the portal. Each of these can be switched off in Settings. Files are downloaded only when you click Download, to a folder you choose.
+- The app only reads your own pages (LMS assignments and their files, announcements, lecture notes and Miscellaneous files; CMS attendance, exam seating and timetable); it never submits or changes anything on the portal. Each of these can be switched off in Settings. Files are downloaded only when you click Download, to a folder you choose.
 - Phone and email alerts, when enabled, go from your PC to your own mail server and to your phone's browser push service. The website only passes the phone's push address to your PC once, encrypted, during pairing; it keeps no accounts and no data.
 
 Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md) · [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)

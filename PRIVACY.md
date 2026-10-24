@@ -4,7 +4,7 @@
 
 ## What it does
 
-With your permission, the app signs in to the Bahria University CMS/LMS portal using the enrollment number and password you provide, and reads your own pages, the same way you would in a browser: the LMS assignments, announcements, lecture-notes and Miscellaneous-files lists for each course, and the CMS attendance, attendance detail, exam seating plan and timetable. Each of these can be switched off in Settings. Lecture files themselves are downloaded only when you select them and click Download, into a folder on your PC that you choose. It does this on your PC, on a schedule you control, and stores the results on your PC only.
+With your permission, the app signs in to the Bahria University CMS/LMS portal using the enrollment number and password you provide, and reads your own pages, the same way you would in a browser: the LMS assignments, announcements, lecture-notes and Miscellaneous-files lists for each course, and the CMS attendance, attendance detail, exam seating plan and timetable. Each of these can be switched off in Settings. Files (lecture notes, an assignment's brief, your own submission, returned work, a posted solution) are downloaded only when you click Download for them, into a folder on your PC that you choose. It does this on your PC, on a schedule you control, and stores the results on your PC only.
 
 ## What it does not do
 
