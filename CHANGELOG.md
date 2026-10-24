@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.6 - 2026-10-24
+
+- Lectures: pressing Download selected no longer fails with "window isn't packed" (the progress bar was placed relative to the wrong frame). Reported through the new crash dialog within a day of it shipping.
+- A GUI smoke test now opens the real window on throwaway data, draws every page and runs the download path, so this class of error is caught before a release.
+- Clickable Dashboard cards no longer raise an error when Tk delivers the click binding without an event (seen once during a full live test; it showed as a crash dialog, nothing else).
+- Verified end to end on a real account: sync, every page and filter, timetable export in three formats, a real lecture download, voice preview, test alert, sign-in verification, test email, test push, calendar file, preferences, automation off and on, start-with-Windows, update check, theme switch, tray, keyboard shortcuts.
+
 ## 1.5.5 - 2026-10-23
 
 - On a PC without Google Chrome, the first check no longer fails with "Sign-in failed: This LinkedIn profile is already associated with another student." The sign-in had in fact succeeded; the downloaded browser engine was a moment slower to leave the login page, and the app judged too early, quoting a hidden notice from that page. It now waits for the portal's redirect, reads only visible messages, and prefers the full Chromium engine over the headless shell. Found by a new clean-machine install test that runs the release on a fresh Windows with Chrome hidden.

@@ -662,8 +662,15 @@ def primary_button(parent, text, cmd, height=38, width=None):
 
 
 def bind_click(widget, cb, lift=True):
-    """Makes a whole card clickable (and, for frames, gives it hover feedback)."""
-    widget.bind("<Button-1>", lambda e: cb())
+    """Makes a whole card clickable (and, for frames, gives it hover feedback). Tk occasionally delivers the
+    binding without an event (seen on the Dashboard while another page was being rebuilt); that is not a click
+    and is ignored, not acted on and not reported."""
+    def on_click(*event):
+        if not event:
+            log.debug("click binding fired without an event on %s", widget)
+            return None
+        return cb()
+    widget.bind("<Button-1>", on_click)
     try:
         widget.configure(cursor="hand2")
     except Exception:
