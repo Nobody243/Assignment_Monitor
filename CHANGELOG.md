@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.5.6 - 2026-10-24
+## 1.5.7 - 2026-10-24
+
+(1.5.6 was tagged but never published: its release build hung in the new GUI test, fixed here. Same changes.)
 
 - Lectures: pressing Download selected no longer fails with "window isn't packed" (the progress bar was placed relative to the wrong frame). Reported through the new crash dialog within a day of it shipping.
 - A GUI smoke test now opens the real window on throwaway data, draws every page and runs the download path, so this class of error is caught before a release.
