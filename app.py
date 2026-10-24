@@ -3284,7 +3284,54 @@ class App(ctk.CTk):
         except Exception:
             return None
 
+    # ---- resizing: a backdrop while the window changes size, then one clean reveal
+    def _on_resize(self, e):
+        """Tk paints every widget in its own time and has no double buffering, so after a maximize, a restore or a
+        drag the old and the new layout show on top of each other for a tenth of a second. While the size is
+        changing the window sits behind a plain backdrop; once it has been still for a moment the backdrop fades
+        out over the finished page (the same window-alpha fade the page transitions use)."""
+        if e.widget is not self or e.width < 50 or e.height < 50:
+            return
+        size = (e.width, e.height)
+        if size == getattr(self, "_last_size", None):
+            return
+        first = not hasattr(self, "_last_size")
+        self._last_size = size
+        if first or "body" not in self.__dict__:
+            return
+        if getattr(self, "_backdrop", None) is None:
+            bd = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
+            bd.place(relx=0, rely=0, relwidth=1, relheight=1)
+            bd.lift()
+            self._backdrop = bd
+        if getattr(self, "_resize_job", None):
+            self.after_cancel(self._resize_job)
+        self._resize_job = self.after(140, self._resize_settled)
+
+    def _resize_settled(self):
+        self._resize_job = None
+        bd, self._backdrop = getattr(self, "_backdrop", None), None
+        if bd is None:
+            return
+        cover = None
+        if ANIMATE["on"]:
+            try:
+                from PIL import Image
+                dark = ctk.get_appearance_mode().lower() == "dark"
+                colour = C["bg"][1] if dark else C["bg"][0]
+                cover = cover_over(self, self, Image.new("RGB", (self.winfo_width(), self.winfo_height()), colour))
+            except Exception:
+                cover = None
+        try:
+            bd.destroy()
+        except Exception:
+            pass
+        self.update_idletasks()                      # the page paints under the cover, unseen
+        if cover is not None:
+            fade_cover(cover, 0.18)
+
     def _bind_shortcuts(self):
+        self.bind("<Configure>", self._on_resize, add="+")
         self.bind_all("<MouseWheel>", note_scroll, add="+")
         self.bind("<F5>", lambda e: self.start_sync())
         keys = (("<Prior>", ("page", -1)), ("<Next>", ("page", 1)), ("<Control-Home>", ("edge", 0)), ("<Control-End>", ("edge", 1)))
