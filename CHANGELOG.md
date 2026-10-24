@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- No more ghosting when the window is maximized, restored or resized: while the size changes the window sits behind a plain backdrop, and once it is still the finished page fades in. Tk paints each widget in its own time, so the old and the new layout used to show on top of each other for a tenth of a second.
 - Assignments: each row offers the files the portal has for it, the teacher's brief, your own submission, your returned work and a posted solution, downloaded with one click into the Lectures folder under course / Assignments. Download briefs fetches the brief for every assignment in the current list. Links are re-read at download time (they expire daily), existing files are skipped.
 - A solution file posted, or work returned with comments, is announced after a check like other changes (notification only).
 - Lectures: while a download runs, Stop takes the place of Select all and Clear, so it is never cut off; the folder path shows its last two parts when long.
