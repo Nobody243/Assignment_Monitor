@@ -1420,7 +1420,9 @@ class AssignmentsView(ctk.CTkFrame):
         if marks and marks.lower() != "not marked yet":
             meta += f"   ·   {marks}"
         ctk.CTkLabel(row, text=meta, font=F(SM), text_color=C["muted"], anchor="w").grid(row=1, column=1, sticky="w", pady=(2, 0))
-        files = a.get("files") or {}
+        # a button per file the portal actually links for this row (brief, your submission, returned work, solution);
+        # nothing is shown for a kind the row does not have
+        files = {k: v for k, v in (a.get("files") or {}).items() if isinstance(v, dict) and v.get("href")}
         if files:
             fb = ctk.CTkFrame(row, fg_color="transparent")
             fb.grid(row=0, column=2, sticky="e", padx=(12, 0))
