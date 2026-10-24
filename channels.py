@@ -270,4 +270,8 @@ def send_all(title: str, body: str, url: str | None = None) -> None:
                 fn()
             except Exception as e:
                 log.warning("%s delivery failed: %s", name, str(e)[:200])
+    if IN_CLOUD:
+        # the cloud runner exits the moment the check returns, which would kill a background thread mid-send
+        run()
+        return
     threading.Thread(target=run, name="channels", daemon=True).start()
