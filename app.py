@@ -1605,9 +1605,10 @@ class TimetableView(ctk.CTkFrame):
         bar.pack(fill="x", pady=(2, 8))
         self.summary = ctk.CTkLabel(bar, text="", font=F(SM), text_color=C["muted"], anchor="w")
         self.summary.pack(side="left")
-        soft_button(bar, "Save as PDF", lambda: self._save("pdf"), width=110).pack(side="right")
-        soft_button(bar, "Save as JPG", lambda: self._save("jpg"), width=110).pack(side="right", padx=(0, 8))
-        soft_button(bar, "Save as PNG", lambda: self._save("png"), width=110).pack(side="right", padx=(0, 8))
+        self.save_bar = ctk.CTkFrame(bar, fg_color="transparent")        # shown only when there is a timetable to save
+        soft_button(self.save_bar, "Save as PDF", lambda: self._save("pdf"), width=110).pack(side="right")
+        soft_button(self.save_bar, "Save as JPG", lambda: self._save("jpg"), width=110).pack(side="right", padx=(0, 8))
+        soft_button(self.save_bar, "Save as PNG", lambda: self._save("png"), width=110).pack(side="right", padx=(0, 8))
         self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll.pack(fill="both", expand=True)
         self.pic = ctk.CTkLabel(self.scroll, text="")
@@ -1624,6 +1625,7 @@ class TimetableView(ctk.CTkFrame):
         sessions = data.get("sessions", [])
         self.pic.pack_forget()
         self.empty.pack_forget()
+        self.save_bar.pack_forget()
         self._light = self._dark = None
         if not env.get("TRACK_TIMETABLE", True):
             self.summary.configure(text="The timetable is not being read (Settings → Campus tracking).")
@@ -1647,6 +1649,7 @@ class TimetableView(ctk.CTkFrame):
         self._light = render_timetable(data, "light", scale=2, student=self._student())
         self._dark = render_timetable(data, "dark", scale=2, student=self._student())
         self._last_w = 0
+        self.save_bar.pack(side="right")
         self.pic.pack(anchor="w")
         self._fit()
 

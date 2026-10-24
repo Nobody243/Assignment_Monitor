@@ -117,8 +117,9 @@
 - One signed-in session now reads everything; a page that cannot be read is skipped and logged instead of failing the sync.
 - `--status` prints attendance and upcoming exams as well as assignments.
 
-## Unreleased
+## 1.5.9 - 2026-10-24
 
+- The Timetable page shows its Save-as buttons only when there is a timetable to save.
 - The Dashboard's Next deadline card says "Yesterday" or "3 days ago" for an overdue item instead of "-1 days".
 - The sidebar is the eight pages a student uses; the activity log moved under Settings → Your data (and opens from the Dashboard's "checks failed" line). Same log, one click further from the places where nobody needs it.
 - Settings → Your data: Activity log, Open data folder, and Reset local data (last, confirmed). Settings → About: the update check shows its result beside the button, and What's new opens the release notes.
