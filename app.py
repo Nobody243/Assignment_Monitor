@@ -2041,7 +2041,8 @@ class LecturesView(ctk.CTkFrame):
         self._update_button()
         self.stop_btn.pack(side="left", padx=(8, 0))
         self.progress.set(0)
-        self.progress.pack(fill="x", pady=(0, 6), before=self.list)
+        # a CTkScrollableFrame packs its outer frame, not itself, so that is the sibling to pack before
+        self.progress.pack(fill="x", pady=(0, 6), before=self.list._parent_frame)
         self.app.set_status(f"Downloading {total} file{'s' if total != 1 else ''} to {dest}…")
 
         def prog(msg, done, tot):
