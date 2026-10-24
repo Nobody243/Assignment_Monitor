@@ -233,7 +233,7 @@ def _yaml_str(v: str) -> str:
 
 
 def workflow_yaml(version: str = APP_VERSION, env: dict | None = None) -> str:
-    """The student's workflow: twice a day (07:43 and 18:37 Pakistan time; odd minutes because GitHub delays top-of-the-hour schedules by hours), or on demand. It checks out this
+    """The student's workflow: twice a day (07:43 and 18:37 Pakistan time, off the hour on purpose), or on demand. It checks out this
     project at the pinned release, runs the check with the settings in the environment (secrets from the
     repository, plain settings written here) and commits the state."""
     env = env if env is not None else {}
