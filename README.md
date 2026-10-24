@@ -174,6 +174,10 @@ The website lives in `website/`: `npm install`, `npm run dev` for a dev server, 
 - **"Something went wrong"** – an error inside the window. Copy details or Report on GitHub opens a pre-filled issue with the app version, your Windows version and the error lines, nothing else. Open log shows the full log.
 - **Alerts stopped and nothing is wrong on your side** – the portal's pages may have changed. Please [open an issue](https://github.com/Nobody243/Assignment_Monitor/issues); a fix helps every student using it.
 
+## Quality
+
+How the app is built and checked, mapped to the ISO/IEC 25010 product-quality characteristics, with the evidence and the honest gaps: [QUALITY.md](QUALITY.md). No ISO 9001, CMMI or Six Sigma certification is claimed.
+
 ## License
 
 MIT © Nobody243
