@@ -233,7 +233,7 @@ def _yaml_str(v: str) -> str:
 
 
 def workflow_yaml(version: str = APP_VERSION, env: dict | None = None) -> str:
-    """The student's workflow: twice a day (08:00 and 19:00 Pakistan time), or on demand. It checks out this
+    """The student's workflow: twice a day (07:43 and 18:37 Pakistan time; odd minutes because GitHub delays top-of-the-hour schedules by hours), or on demand. It checks out this
     project at the pinned release, runs the check with the settings in the environment (secrets from the
     repository, plain settings written here) and commits the state."""
     env = env if env is not None else {}
@@ -245,8 +245,8 @@ name: {APP_NAME} check
 
 on:
   schedule:
-    - cron: "0 3 * * *"     # 08:00 Pakistan time
-    - cron: "0 14 * * *"    # 19:00 Pakistan time
+    - cron: "43 2 * * *"    # 07:43 Pakistan time (an odd minute: GitHub starts top-of-the-hour jobs hours late)
+    - cron: "37 13 * * *"   # 18:37 Pakistan time
   workflow_dispatch:
     inputs:
       mode:
