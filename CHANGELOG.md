@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.12 - 2026-10-24
 
 - Cloud checks now reach the phone and the mailbox. The run handed the sends to a background thread and exited as soon as the check was done, so they were cut off before they went out; the test alert at set-up was sent directly, which is why it arrived. Deliveries in the cloud now happen before the run finishes.
 - "All caught up" after a check stays a desktop notification; it is no longer pushed to the phone or emailed twice a day.

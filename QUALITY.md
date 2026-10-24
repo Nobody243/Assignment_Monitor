@@ -12,7 +12,7 @@ this document uses.
 
 - Every change is committed to the public repository with a message that says what changed and why.
 - Every commit runs the linter (ruff) and the unit test suite in GitHub Actions on Windows; a failing test blocks
-  the build. The suite has 129 tests at 1.5.11: parsers against saved portal HTML, deadline logic, the tracker's
+  the build. The suite has 127 tests at 1.5.12: parsers against saved portal HTML, deadline logic, the tracker's
   change detection, channels, calendar export, the updater, the cloud workflow, automation task XML, crash
   handling, failure counting, and a GUI smoke test that opens the real window and runs its pages.
 - Releases are built by GitHub Actions from a tagged commit, never from a developer's machine, so the installer
@@ -84,7 +84,7 @@ this document uses.
 ### Maintainability
 - One repository, plain Python and a small React site, no server to operate. Modules are separated by concern
   (scraper, tracker, notifier, channels, cloud, automation, updater, UI).
-- 129 automated tests, lint on every commit, a changelog entry for every release, and a documented release
+- 127 automated tests, lint on every commit, a changelog entry for every release, and a documented release
   process. Lessons from live failures are turned into tests (the lecture download, the sign-in race, the
   GUI smoke test).
 - Issues are the public channel; the crash dialog and the 404 page pre-fill them with the facts needed.
@@ -101,4 +101,4 @@ this document uses.
 - The portal has no API; the app depends on its HTML, which can change without notice.
 - The installer is unsigned until SignPath approves the application.
 
-Last reviewed with release 1.5.11, 24 October 2026.
+Last reviewed with release 1.5.12, 24 October 2026.
