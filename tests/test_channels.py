@@ -120,3 +120,28 @@ def test_send_push_signs_with_the_stored_pem_key(tmp_path, monkeypatch):
     assert seen["headers"]["Authorization"].startswith("vapid t=")
     assert seen["headers"]["Content-Encoding"] == "aes128gcm"
     assert len(seen["body"]) > 32
+
+
+def test_send_all_delivers_before_returning_in_the_cloud(monkeypatch):
+    # the cloud runner exits as soon as the check returns: a background thread would be killed with the sends unsent
+    sent = []
+    monkeypatch.setattr(channels, "IN_CLOUD", True)
+    monkeypatch.setattr(channels, "load_env", lambda: {"EMAIL_ENABLED": "1", "EMAIL_TO": "a@b.c", "EMAIL_PASS": "x",
+                                                       "PUSH_ENABLED": "1", "PUSH_SUB": "{}"})
+    monkeypatch.setattr(channels, "send_email", lambda *a, **k: sent.append("email"))
+    monkeypatch.setattr(channels, "send_push", lambda *a, **k: sent.append("phone"))
+    channels.send_all("Deadline extended", "body")
+    assert sorted(sent) == ["email", "phone"]
+
+
+def test_all_caught_up_stays_on_the_desktop(monkeypatch):
+    import notifier
+    calls = []
+    monkeypatch.setattr(channels, "send_all", lambda *a, **k: calls.append(a[0]))
+    monkeypatch.setattr(notifier, "send_toast", lambda *a, **k: None)
+    monkeypatch.setattr(notifier, "speak_voice", lambda *a, **k: None)
+    monkeypatch.setattr(notifier, "load_env", lambda: {})
+    notifier.alert_assignments([], [])
+    assert calls == []
+    notifier.alert_assignments([], [{"title": "Lab 3", "due_date": "30 Oct"}])
+    assert calls == ["Deadline extended"]

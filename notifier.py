@@ -58,13 +58,16 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'' if n == 1 else 's'}"
 
 
-def _notify(title: str, body: str, voice: str = "") -> None:
+def _notify(title: str, body: str, voice: str = "", channels: bool = True) -> None:
+    """Desktop notification, optional voice line and, unless `channels` is False, the phone and the mailbox."""
     env = load_env()
     log.info("Alert: %s - %s", title, body.replace("\n", " | "))
     if env.get("ENABLE_WINDOWS_TOAST", True):
         send_toast(f"{APP_NAME}: {title}", body)
     if voice:
         speak_voice(voice)
+    if not channels:
+        return
     try:
         from channels import send_all
         send_all(title, body)
@@ -76,6 +79,7 @@ def alert_assignments(pending: list, extended: list) -> None:
     """Builds and sends a toast plus a voice alert summarising the state after a sync."""
     env = load_env()
     days_ahead = int(env.get("NOTIFY_DAYS_AHEAD", 3))
+    fan_out = True
 
     due_today = [p for p in pending if classify(p)["key"] == "today"]
     due_soon = [p for p in pending if (classify(p)["days"] or 99) <= days_ahead and classify(p)["key"] != "today"]
@@ -100,7 +104,8 @@ def alert_assignments(pending: list, extended: list) -> None:
         voice = ""
         title = "All caught up"
         body = "No pending assignments on Bahria LMS."
-    _notify(title, body, voice)
+        fan_out = False      # a desktop note after each check; not worth a phone buzz or an email twice a day
+    _notify(title, body, voice, channels=fan_out)
 
 
 def alert_attendance(changes: dict, minimum: int) -> None:

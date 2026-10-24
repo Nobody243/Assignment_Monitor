@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Cloud checks now reach the phone and the mailbox. The run handed the sends to a background thread and exited as soon as the check was done, so they were cut off before they went out; the test alert at set-up was sent directly, which is why it arrived. Deliveries in the cloud now happen before the run finishes.
+- "All caught up" after a check stays a desktop notification; it is no longer pushed to the phone or emailed twice a day.
 - Cloud checks are scheduled at 07:43 and 18:37 Pakistan time instead of 08:00 and 19:00. GitHub starts jobs set to the top of the hour hours late (the user's runs landed at 12:50 and 22:15); odd minutes are picked up within minutes. Takes effect the next time Set up is pressed under Cloud checks.
 - The website moved to https://assignment-monitor.saaddev.top. New phone pairings and the links the app opens use the new address; the old vercel.app address redirects to it, except the phone page, which keeps serving phones that were paired before the move.
 
