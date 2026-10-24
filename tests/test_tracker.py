@@ -93,3 +93,13 @@ def test_announcements_stored_before_the_semester_field_are_kept(tmp_path, monke
     tracker._save_json(tracker.ANNOUNCEMENTS_PATH, [{"id": "legacy", "course": "C", "text": "t", "first_seen": "2026-09-01T00:00:00"}])
     tracker.compare_announcements([{"id": "n1", "course": "C", "text": "u"}], "Fall 2026")
     assert {a["id"] for a in tracker.load_announcements()} == {"legacy", "n1"}
+
+
+def test_a_posted_solution_or_returned_work_is_flagged_once(db):
+    tracker.compare_assignments([item(files={"brief": {"href": "a", "filename": "b.docx"}})])
+    pending, extended, new = tracker.compare_assignments([item(files={"brief": {"href": "a", "filename": "b.docx"},
+                                                                       "returned": {"href": "r", "filename": "r.pdf"}})])
+    stored = list(tracker.load_stored_assignments().values())[0]
+    assert stored["newly_posted"] == ["returned"]
+    tracker.compare_assignments([item(files={"brief": {"href": "a"}, "returned": {"href": "r"}})])
+    assert "newly_posted" not in list(tracker.load_stored_assignments().values())[0]

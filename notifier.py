@@ -123,6 +123,17 @@ def alert_attendance(changes: dict, minimum: int) -> None:
     _notify(title, "\n".join(lines))
 
 
+def alert_assignment_files(posted: list) -> None:
+    """A teacher posted a solution file or returned marked work (notification only). `posted` is [(assignment, kinds)]."""
+    if not posted:
+        return
+    words = {"solution": "solution posted", "returned": "returned with comments"}
+    lines = [f"- {a['title'][:40]}: {' and '.join(words.get(k, k) for k in kinds)}" for a, kinds in posted[:3]]
+    n = len(posted)
+    _notify("Returned work" if all(k == ["returned"] for _a, k in posted) else f"{_plural(n, 'assignment')} updated by the teacher",
+            "\n".join(lines))
+
+
 def alert_announcements(new_items: list) -> None:
     if not new_items:
         return

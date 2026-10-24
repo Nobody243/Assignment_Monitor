@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Assignments: each row offers the files the portal has for it, the teacher's brief, your own submission, your returned work and a posted solution, downloaded with one click into the Lectures folder under course / Assignments. Download briefs fetches the brief for every assignment in the current list. Links are re-read at download time (they expire daily), existing files are skipped.
+- A solution file posted, or work returned with comments, is announced after a check like other changes (notification only).
+- Lectures: while a download runs, Stop takes the place of Select all and Clear, so it is never cut off; the folder path shows its last two parts when long.
+
 ## 1.5.10 - 2026-10-24
 
 - Lectures: a week with several files now downloads all of them. Files were matched to the portal's fresh links by week, title and label, and every file in a week carries the same label ("Download Lecture"), so all of them resolved to the last one: the same file was fetched twice and the copy skipped as already present. Matching is now by file name first. Select the weeks again and press Download selected; files already on disk are skipped and the missing ones arrive.

@@ -68,3 +68,12 @@ def test_a_normal_sync_still_alerts(quiet_env, monkeypatch):
     monkeypatch.setattr(jobs, "alert_assignments", lambda p, e: alerted.append((p, e)))
     jobs.process_sync({"assignments": [], "courses": ["Course A"], "semester": "Fall 2026", "errors": {}}, {}, notify=True)
     assert len(alerted) == 1 and quiet_env == []
+
+
+def test_returned_work_is_announced(quiet_env, monkeypatch):
+    announced = []
+    monkeypatch.setattr(jobs, "alert_assignments", lambda p, e: None)
+    monkeypatch.setattr(jobs, "alert_assignment_files", lambda posted: announced.append(posted))
+    a = {"id": "C#1#T", "course": "C", "title": "T", "due_date": "", "files": {"returned": {"href": "r"}}, "newly_posted": ["returned"]}
+    s = jobs.process_sync({"assignments": [a], "courses": ["C"], "semester": "Fall 2026", "errors": {}}, {}, notify=True)
+    assert s["posted"] == 1 and announced and announced[0][0][1] == ["returned"]

@@ -85,6 +85,11 @@ def compare_assignments(current_list: List[dict]) -> Tuple[List[dict], List[dict
                 item["previous_due_date"] = old_due or item.get("original_due_date", "")
             elif old_item.get("previous_due_date"):
                 item["previous_due_date"] = old_item["previous_due_date"]
+            # files the teacher added since the last check: a solution, or the student's work returned with comments
+            had = old_item.get("files") or {}
+            posted = [k for k in ("solution", "returned") if k in (item.get("files") or {}) and k not in had]
+            if posted:
+                item["newly_posted"] = posted
 
         if deadline_changed and not item.get("is_submitted"):
             extended.append(item)

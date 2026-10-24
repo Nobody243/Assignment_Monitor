@@ -177,7 +177,7 @@ import updater                                                                  
 from tray import TrayIcon                                                                   # noqa: E402
 from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
                      load_exams, load_announcements, load_lectures, load_timetable)
-from lms_scraper import run_sync, download_lectures, LoginError, _release_lock              # noqa: E402
+from lms_scraper import run_sync, download_lectures, download_assignment_files, FILE_KIND_LABELS, LoginError, _release_lock              # noqa: E402
 from notifier import send_toast, speak_voice, list_voices                                   # noqa: E402
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
 from campus import upcoming_exams, seat_text, session_date, sessions_on, minutes            # noqa: E402
@@ -727,6 +727,15 @@ def att_color(c):
 
 def countdown(days):
     return "Today" if days == 0 else "Tomorrow" if days == 1 else f"{days} days"
+
+
+def short_path(path, limit=44) -> str:
+    """A folder path for a label: whole when short, else '…\\last two parts'."""
+    text = str(path)
+    if len(text) <= limit:
+        return text
+    parts = text.replace("/", "\\").split("\\")
+    return "…\\" + "\\".join(parts[-2:]) if len(parts) > 2 else text
 
 
 def open_doc(name, fallback_url=None):
@@ -1302,18 +1311,24 @@ class AssignmentsView(ctk.CTkFrame):
                                           text_color=C["ink"], fg_color=C["line"], command=self._set_filter)
         self.seg.set("All")
         self.seg.pack(side="left")
-        self.search = ctk.CTkEntry(bar, placeholder_text="Search  (Ctrl+F)", height=34, width=220, font=F(SM),
+        self.search = ctk.CTkEntry(bar, placeholder_text="Search  (Ctrl+F)", height=34, width=180, font=F(SM),
                                    fg_color=C["surface"], border_color=C["line2"], text_color=C["ink"])
         self.search.pack(side="right")
         self.search.bind("<KeyRelease>", lambda e: self._set_query(self.search.get()))
         self.search.bind("<Escape>", lambda e: (self.search.delete(0, "end"), self._set_query("")))
-        self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=250, font=F(SM),
+        self.course_menu = ctk.CTkOptionMenu(bar, values=["All courses"], height=34, width=210, font=F(SM),
                                              fg_color=C["surface"], text_color=C["ink"], button_color=C["surface2"],
                                              button_hover_color=C["line2"], dropdown_font=F(SM), command=self._set_course)
         self.course_menu.pack(side="right", padx=(0, 10))
+        self.dl_busy = False
+        self._rows = []
 
-        self.summary = ctk.CTkLabel(self, text="", font=F(SM), text_color=C["muted"], anchor="w")
-        self.summary.pack(fill="x", pady=(0, 6))
+        sumrow = ctk.CTkFrame(self, fg_color="transparent")
+        sumrow.pack(fill="x", pady=(0, 6))
+        self.summary = ctk.CTkLabel(sumrow, text="", font=F(SM), text_color=C["muted"], anchor="w")
+        self.summary.pack(side="left")
+        self.briefs_btn = soft_button(sumrow, "Download briefs", self._download_briefs, width=130)
+        self.briefs_btn.pack(side="right")
         self.list = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.list.pack(fill="both", expand=True)
 
@@ -1377,6 +1392,7 @@ class AssignmentsView(ctk.CTkFrame):
             empty_semester_box(self.list, self.app)
             return
         self.summary.configure(text=f"{len(rows)} of {len(data)} assignments")
+        self._rows = [a for a, _info in rows]
         if not rows:
             ctk.CTkLabel(self.list, text="Nothing matches this filter.", font=F(LG), text_color=C["dim"]).pack(pady=50)
             return
@@ -1404,8 +1420,74 @@ class AssignmentsView(ctk.CTkFrame):
         if marks and marks.lower() != "not marked yet":
             meta += f"   ·   {marks}"
         ctk.CTkLabel(row, text=meta, font=F(SM), text_color=C["muted"], anchor="w").grid(row=1, column=1, sticky="w", pady=(2, 0))
-        pill(row, info["label"], info["key"]).grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
+        files = a.get("files") or {}
+        if files:
+            fb = ctk.CTkFrame(row, fg_color="transparent")
+            fb.grid(row=0, column=2, sticky="e", padx=(12, 0))
+            for kind in ("brief", "submission", "returned", "solution"):
+                if kind in files:
+                    soft_button(fb, FILE_KIND_LABELS[kind], lambda a=a, k=kind: self._download([(a, k)]),
+                                width=max(64, 8 * len(FILE_KIND_LABELS[kind]) + 20)).pack(side="left", padx=(6, 0))
+        pill(row, info["label"], info["key"]).grid(row=1 if files else 0, column=2, rowspan=1 if files else 2, sticky="e", padx=(12, 0),
+                                                   pady=(4, 0) if files else 0)
         hover_lift(row, fg=C["surface2"], border=C["surface2"])
+
+    # -- files: the brief, your submission, returned work, a posted solution
+    def _download_briefs(self):
+        pairs = [(a, "brief") for a in self._rows if "brief" in (a.get("files") or {})]
+        if not pairs:
+            self.app.set_status("No assignment in this list has a brief to download.")
+            return
+        self._download(pairs)
+
+    def _download(self, pairs):
+        if self.dl_busy or not pairs:
+            return
+        self.dl_busy = True
+        self.briefs_btn.configure(state="disabled", text="Downloading…")
+        dest = lectures_dir(self.app.env)
+        self.app.set_status(f"Downloading {len(pairs)} file{'s' if len(pairs) != 1 else ''} to {dest}…")
+
+        def prog(msg, done, tot):
+            try:
+                self.after(0, lambda: self.app.set_status(f"{done}/{tot}  ·  {msg}"))
+            except RuntimeError:
+                pass
+
+        def work():
+            try:
+                res = download_assignment_files(pairs, dest, progress=prog)
+            except LoginError as e:
+                res = {"saved": [], "skipped": 0, "failed": [("sign-in", str(e))]}
+            except Exception as e:
+                log.error("Assignment file download failed: %s", e)
+                res = {"saved": [], "skipped": 0, "failed": [("download", str(e)[:200])]}
+            try:
+                self.after(0, self._download_done, res, dest, pairs)
+            except RuntimeError:
+                pass
+        threading.Thread(target=work, daemon=True).start()
+
+    def _download_done(self, res, dest, pairs):
+        self.dl_busy = False
+        self.briefs_btn.configure(state="normal", text="Download briefs")
+        saved, skipped, failed = len(res["saved"]), res["skipped"], res["failed"]
+        bits = [f"{saved} file{'s' if saved != 1 else ''} saved"]
+        if skipped:
+            bits.append(f"{skipped} already there")
+        if failed:
+            bits.append(f"{len(failed)} failed")
+        self.app.set_status("Assignment files: " + ", ".join(bits))
+        if failed:
+            messagebox.showwarning(APP_NAME, "Some files could not be downloaded:\n\n" +
+                                   "\n".join(f"- {n}: {why}" for n, why in failed[:8]))
+        elif saved or skipped:
+            try:
+                from lms_scraper import assignment_folder
+                folder = assignment_folder(dest, pairs[0][0]) if len({a["id"] for a, _k in pairs}) == 1 else dest
+                os.startfile(folder if folder.exists() else dest)
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------- attendance
@@ -1882,13 +1964,17 @@ class LecturesView(ctk.CTkFrame):
         act.pack(fill="x", pady=(0, 8))
         self.dl_btn = primary_button(act, "Download selected", self._download, height=34, width=190)
         self.dl_btn.pack(side="left")
-        soft_button(act, "Select all", lambda: self._select(True), width=90).pack(side="left", padx=(8, 0))
-        soft_button(act, "Clear", lambda: self._select(False), width=70).pack(side="left", padx=(8, 0))
-        self.stop_btn = soft_button(act, "Stop", self._stop, width=70)
+        self.sel_btn = soft_button(act, "Select all", lambda: self._select(True), width=90)
+        self.sel_btn.pack(side="left", padx=(8, 0))
+        self.clear_btn = soft_button(act, "Clear", lambda: self._select(False), width=70)
+        self.clear_btn.pack(side="left", padx=(8, 0))
+        self.stop_btn = soft_button(act, "Stop", self._stop, width=70)     # shown in their place while downloading
         soft_button(act, "Open folder", self._open_folder, width=100).pack(side="right")
         soft_button(act, "Change folder", self._change_folder, width=110).pack(side="right", padx=(0, 8))
         self.folder_lbl = ctk.CTkLabel(act, text="", font=F(XS), text_color=C["dim"], anchor="e")
         self.folder_lbl.pack(side="right", padx=(0, 12))
+        self._act = act
+        act.bind("<Configure>", lambda e: self._fit_folder_label())
 
         self.progress = ctk.CTkProgressBar(self, height=3, corner_radius=0, progress_color=C["accent"], fg_color=C["bg"])
         self.progress.set(0)
@@ -1932,6 +2018,16 @@ class LecturesView(ctk.CTkFrame):
     def _folder(self):
         return lectures_dir(self.app.env)
 
+    def _fit_folder_label(self):
+        """The folder path sits between the two button groups only when the bar has room for it (about 160 px);
+        narrower windows drop it (Change folder shows the path, and the status line names it after a download)."""
+        room = self._act.winfo_width() - 700
+        shown = bool(self.folder_lbl.winfo_manager())
+        if room < 160 and shown:
+            self.folder_lbl.pack_forget()
+        elif room >= 160 and not shown:
+            self.folder_lbl.pack(side="right", padx=(0, 12))
+
     def _open_folder(self):
         d = self._folder()
         d.mkdir(parents=True, exist_ok=True)
@@ -1956,7 +2052,7 @@ class LecturesView(ctk.CTkFrame):
         if self.course not in courses:
             self.course = "All courses"
             self.course_menu.set(self.course)
-        self.folder_lbl.configure(text=str(self._folder()))
+        self.folder_lbl.configure(text=short_path(self._folder()))
         for w in self.list.winfo_children():
             w.destroy()
         if not env.get("TRACK_LECTURES", True):
@@ -2060,6 +2156,8 @@ class LecturesView(ctk.CTkFrame):
         self.busy = True
         self.stop_flag = False
         self._update_button()
+        self.sel_btn.pack_forget()
+        self.clear_btn.pack_forget()
         self.stop_btn.pack(side="left", padx=(8, 0))
         self.progress.set(0)
         # a CTkScrollableFrame packs its outer frame, not itself, so that is the sibling to pack before
@@ -2093,6 +2191,8 @@ class LecturesView(ctk.CTkFrame):
     def _done(self, res, dest):
         self.busy = False
         self.stop_btn.pack_forget()
+        self.sel_btn.pack(side="left", padx=(8, 0), after=self.dl_btn)
+        self.clear_btn.pack(side="left", padx=(8, 0), after=self.sel_btn)
         self.progress.pack_forget()
         saved, skipped, failed = len(res["saved"]), res["skipped"], res["failed"]
         bits = [f"{saved} file{'s' if saved != 1 else ''} saved"]
@@ -2100,7 +2200,7 @@ class LecturesView(ctk.CTkFrame):
             bits.append(f"{skipped} already there")
         if failed:
             bits.append(f"{len(failed)} failed")
-        self.app.set_status("Lecture download: " + ", ".join(bits) + f"  ·  {dest}")
+        self.app.set_status("Lecture download: " + ", ".join(bits))
         if saved and not failed:
             self.selected = set()
         elif failed:

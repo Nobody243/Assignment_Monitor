@@ -6,7 +6,7 @@ from campus import seat_text
 from config import APP_NAME, DB_PATH, has_credentials, load_env, load_meta, save_meta
 from deadlines import classify, is_open_pending, sort_key
 from lms_scraper import LoginError, run_sync
-from notifier import (alert_assignments, alert_announcements, alert_attendance, alert_exam_today,
+from notifier import (alert_assignments, alert_assignment_files, alert_announcements, alert_attendance, alert_exam_today,
                       alert_exams_scheduled, alert_exams_soon, alert_lectures, send_toast, speak_voice)
 from tracker import (compare_announcements, compare_assignments, compare_attendance, compare_lectures, exams_within,
                      load_attendance, load_exams, load_stored_assignments, mark_reminder, reminder_sent, save_exams,
@@ -56,6 +56,12 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
             mark_reminder("empty-semester")
     elif notify:
         alert_assignments(pending, extended)
+    posted = [(a, a["newly_posted"]) for a in result.get("assignments", []) if a.get("newly_posted")]
+    summary["posted"] = len(posted)
+    for a, kinds in posted:
+        log.info("  teacher   %-40s %s", a["title"][:40], ", ".join(kinds))
+    if notify and not no_courses:
+        alert_assignment_files(posted)
 
     minimum = int(env.get("ATTENDANCE_MIN", 75))
     if "attendance" in result:
