@@ -1,6 +1,6 @@
 # Assignment Monitor
 
-**for Bahria University LMS** · unofficial, open source, Windows · [website](https://assignment-monitor.vercel.app)
+**for Bahria University LMS** · unofficial, open source, Windows · [website](https://assignment-monitor.saaddev.top)
 
 A desktop app that keeps an eye on your LMS and CMS so you don't have to: assignments, attendance, exams, announcements, lecture notes and your timetable. Install it, sign in once, and it quietly does the rest, on your PC, on your phone and in your inbox if you want.
 

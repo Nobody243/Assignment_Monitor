@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 const BASE = "Assignment Monitor";
-const SITE = "https://assignment-monitor.vercel.app";
+const SITE = "https://assignment-monitor.saaddev.top";
 
 function setMeta(selector, attr, value) {
   let el = document.head.querySelector(selector);

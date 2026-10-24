@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://assignment-monitor.vercel.app/sitemap.xml
+Sitemap: https://assignment-monitor.saaddev.top/sitemap.xml

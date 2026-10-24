@@ -28,7 +28,7 @@ def test_pairing_payload_roundtrip(monkeypatch):
     env = {"PUSH_VAPID": ""}
     monkeypatch.setattr(channels, "save_env", lambda e: env.update(e))
     pairing = pairing_start(env)
-    assert pairing["url"].startswith("https://assignment-monitor.vercel.app/phone#t=am-")
+    assert pairing["url"].startswith("https://assignment-monitor.saaddev.top/phone#t=am-")
     assert "&k=" in pairing["url"] and "&p=" in pairing["url"] and len(pairing["code"]) == 6
     private, public = vapid_keys(env, save=False)
     assert "PRIVATE KEY" in private and len(b64url_decode(public)) == 65
