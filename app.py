@@ -3068,8 +3068,8 @@ class App(ctk.CTk):
                 self.tray.set_tooltip(f"{APP_NAME} · update {info['version']} available")
         elif not quiet:
             if info is None:
-                self.set_status("Could not reach GitHub to check for updates.")
-                webbrowser.open(RELEASES_URL)
+                # stay in the app: a browser page is not an update, and offline it would not load either
+                self.set_status("Could not reach GitHub to check for updates. Try again in a while.")
             else:
                 self.set_status(f"You have the latest version ({APP_VERSION}).")
 

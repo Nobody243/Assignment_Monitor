@@ -35,15 +35,35 @@ def test_parse_release_picks_setup_asset():
     assert info["page"].endswith("v9.9.9")
 
 
+def _offline(*a, **k):
+    raise OSError("offline")
+
+
 def test_check_latest_swallows_network_errors():
-    def boom(url, timeout):
-        raise OSError("offline")
-    assert updater.check_latest(fetch=boom) is None
+    assert updater.check_latest(fetch=_offline, latest_tag=_offline) is None
 
 
-def test_check_latest_uses_fetch():
-    info = updater.check_latest(fetch=lambda url, timeout: {"tag_name": "v0.0.1", "assets": []})
+def test_check_latest_prefers_the_redirect_and_needs_no_api():
+    info = updater.check_latest(fetch=_offline, latest_tag=lambda timeout: "v9.9.9")
+    assert info["version"] == "9.9.9" and info["newer"] is True
+    assert info["setup_url"] == f"{updater.REPO_URL}/releases/download/v9.9.9/AssignmentMonitor-Setup.exe"
+    assert info["page"].endswith("/releases/tag/v9.9.9")
+    assert updater._safe_url(info["setup_url"])
+
+
+def test_check_latest_falls_back_to_the_api_when_the_redirect_fails():
+    info = updater.check_latest(fetch=lambda url, timeout: {"tag_name": "v0.0.1", "assets": []}, latest_tag=_offline)
     assert info["version"] == "0.0.1" and info["newer"] is False and info["setup_url"] is None
+
+
+def test_check_latest_uses_the_api_when_there_is_no_release_to_redirect_to():
+    info = updater.check_latest(fetch=lambda url, timeout: {"tag_name": "v0.0.2", "assets": []}, latest_tag=lambda timeout: "")
+    assert info["version"] == "0.0.2"
+
+
+def test_release_from_tag_handles_an_empty_tag():
+    info = updater.release_from_tag("")
+    assert info["newer"] is False and info["setup_url"] is None and info["page"] == updater.LATEST_URL
 
 
 @pytest.mark.parametrize("url, ok", [

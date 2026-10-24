@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.8 - 2026-10-24
+
+- Check for updates no longer depends on the GitHub API, which allows only 60 unauthenticated requests an hour per address and is easily used up by other tools on the same network; when that happened the check "failed" and opened the releases page in a browser instead of updating. The check now reads the release tag from GitHub's own redirect (no limit, no token), derives the installer's address from it, and falls back to the API only if that fails. If GitHub really cannot be reached, the app says so and stays put; nothing opens in a browser.
+
 ## 1.5.7 - 2026-10-24
 
 (1.5.6 was tagged but never published: its release build hung in the new GUI test, fixed here. Same changes.)
