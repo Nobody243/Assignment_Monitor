@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.11 - 2026-10-24
 
 - No more ghosting when the window is maximized, restored or resized: while the size changes the window sits behind a plain backdrop, and once it is still the finished page fades in. Tk paints each widget in its own time, so the old and the new layout used to show on top of each other for a tenth of a second.
 - Assignments: each row offers the files the portal has for it, the teacher's brief, your own submission, your returned work and a posted solution, downloaded with one click into the Lectures folder under course / Assignments. Download briefs fetches the brief for every assignment in the current list. Links are re-read at download time (they expire daily), existing files are skipped.
