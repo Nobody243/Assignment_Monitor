@@ -66,7 +66,7 @@ def gui(tmp_path_factory):
     win.geometry("1100x700+10+10")
     yield win, m
     try:
-        win.destroy()
+        win.quit_app()                                        # stops the tray thread too; destroy() alone leaves it running
     except tk.TclError:
         pass
     mp.undo()
