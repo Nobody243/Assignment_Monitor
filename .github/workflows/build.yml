@@ -115,6 +115,38 @@ jobs:
 
             Code signing policy: free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). See [CODE_SIGNING_POLICY.md](https://github.com/${{ github.repository }}/blob/main/CODE_SIGNING_POLICY.md).
 
+      - name: Tell the website about the release (version tags)
+        # website/public/latest.json is what the site shows (version, date, sizes, links) without asking GitHub's
+        # API from every visitor's browser. Committing it to main makes Vercel rebuild the site; build.yml itself
+        # ignores website-only commits, so this cannot loop.
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime, json, os
+          tag = os.environ["GITHUB_REF_NAME"]
+          base = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases"
+          info = {
+              "version": tag.lstrip("v"), "tag": tag,
+              "published_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "page_url": f"{base}/tag/{tag}",
+              "setup_url": f"{base}/download/{tag}/AssignmentMonitor-Setup.exe",
+              "setup_size": os.path.getsize("dist/AssignmentMonitor-Setup.exe"),
+              "zip_url": f"{base}/download/{tag}/AssignmentMonitor-portable.zip",
+              "zip_size": os.path.getsize("dist/AssignmentMonitor-portable.zip"),
+          }
+          with open("latest.json", "w", encoding="utf-8") as f:
+              f.write(json.dumps(info, indent=2) + "\n")
+          PY
+          git config user.name "Nobody243"
+          git config user.email "Nobody243@users.noreply.github.com"
+          git fetch --depth=1 origin main
+          git checkout -B main origin/main
+          mv -f latest.json website/public/latest.json
+          git add website/public/latest.json
+          git commit -m "Website: the latest release is ${GITHUB_REF_NAME} (written by the release build)" || exit 0
+          git push origin main
+
       - name: Refresh rolling "latest" pre-release (every commit on main)
         if: github.ref == 'refs/heads/main'
         shell: bash

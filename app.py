@@ -3046,6 +3046,15 @@ class App(ctk.CTk):
                 cloud.warn_if_failing(load_env())
         except Exception as e:
             log.warning("Cloud housekeeping: %s", str(e)[:200])
+            if "no longer accepts" in str(e):
+                # the saved GitHub sign-in is dead: the scheduled runs continue on the repository's secrets, but
+                # nothing from this PC reaches the cloud any more; say so once, not at every start
+                from tracker import mark_reminder, reminder_sent
+                if not reminder_sent("cloud-reauth"):
+                    send_toast(f"{APP_NAME}: Cloud checks need a new sign-in",
+                               "GitHub no longer accepts the saved sign-in. Open Settings → Cloud checks → Set up "
+                               "to connect again. Scheduled cloud checks keep running meanwhile.")
+                    mark_reminder("cloud-reauth")
 
     # ---- updates
     def check_for_updates(self, quiet=False):
