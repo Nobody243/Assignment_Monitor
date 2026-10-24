@@ -49,3 +49,26 @@ def test_compare_lectures(tmp_path, monkeypatch):
     new = tracker.compare_lectures(more)
     assert {x["course"] for x in new} == {"Other"}
     assert tracker.compare_lectures(more) == []
+
+
+def test_live_file_matches_each_file_of_a_week_by_name_not_by_label():
+    from lms_scraper import live_file
+    stored = {"week": "2", "title": "Threat Models"}
+    a = {"label": "Download Lecture", "filename": "Lecture-2a.pptx", "href": "Download.php?k=old-a"}
+    b = {"label": "Download Lecture", "filename": "Lecture-2b.pptx", "href": "Download.php?k=old-b"}
+    live = [{"week": "2", "title": "Threat Models", "files": [
+        {"label": "Download Lecture", "filename": "Lecture-2a.pptx", "href": "Download.php?k=new-a"},
+        {"label": "Download Lecture", "filename": "Lecture-2b.pptx", "href": "Download.php?k=new-b"}]}]
+    assert live_file(stored, a, live)["href"] == "Download.php?k=new-a"
+    assert live_file(stored, b, live)["href"] == "Download.php?k=new-b"
+
+
+def test_live_file_falls_back_to_link_then_unique_label_then_itself():
+    from lms_scraper import live_file
+    stored = {"week": 3, "title": "T"}
+    live = [{"week": "3", "title": "T", "files": [{"label": "Slides", "href": "x"}, {"label": "Lab", "href": "y"}]}]
+    assert live_file(stored, {"label": "Lab", "href": "stale"}, live)["href"] == "y"          # unique label
+    assert live_file(stored, {"label": "?", "href": "x"}, live)["href"] == "x"                 # same link
+    me = {"label": "Download Lecture", "href": "mine"}
+    assert live_file(stored, me, [{"week": "3", "title": "T", "files": [
+        {"label": "Download Lecture", "href": "p"}, {"label": "Download Lecture", "href": "q"}]}]) is me   # ambiguous

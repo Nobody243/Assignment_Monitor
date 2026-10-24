@@ -437,6 +437,28 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
         _release_lock()
 
 
+def live_file(lec: dict, f: dict, live_items: List[dict]) -> dict:
+    """The current listing's entry for a stored file, so the fresh (unexpired) link is used: matched by file name,
+    then by link, then by label when it is the only file with that label in the week. Every file in a week usually
+    carries the same label ("Download Lecture"), so a label alone is not an identity; matching on it lost every file
+    but one when a week had several. Falls back to the stored entry."""
+    week_files = [lf for x in live_items if str(x.get("week")) == str(lec.get("week")) and x.get("title") == lec.get("title")
+                  for lf in x.get("files", [])]
+    name = f.get("filename")
+    if name:
+        for lf in week_files:
+            if lf.get("filename") == name:
+                return lf
+    if f.get("href"):
+        for lf in week_files:
+            if lf.get("href") == f["href"]:
+                return lf
+    same = [lf for lf in week_files if lf.get("label") == f.get("label")]
+    if len(same) == 1:
+        return same[0]
+    return f
+
+
 def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callable[[str, int, int], None]] = None,
                       should_stop: Optional[Callable[[], bool]] = None) -> dict:
     """
@@ -488,11 +510,7 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                         done += len(items)
                         continue
                     session.select_course(val)
-                    fresh = {}
                     live_items = parse_misc(_html(page), course) if kind == "misc" else parse_lectures(_html(page), course)
-                    for lec in live_items:
-                        for f in lec["files"]:
-                            fresh[(lec["week"], lec["title"], f["label"])] = f
                     for lec, f in items:
                         if stop():
                             break
@@ -506,7 +524,7 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                         if target.exists() and target.stat().st_size > 0:
                             result["skipped"] += 1
                             continue
-                        live = fresh.get((lec["week"], lec["title"], f["label"])) or f
+                        live = live_file(lec, f, live_items)
                         url = urljoin(LMS_BASE_URL + "/Student/", live["href"])
                         try:
                             resp = page.request.get(url, timeout=120000)
@@ -517,7 +535,13 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                             cd = resp.headers.get("content-disposition") or ""
                             m = re.search(r"filename\*?=(?:UTF-8\'\')?\"?([^\";]+)", cd, re.I)
                             if m and "." in m.group(1):
-                                target = folder / safe_name(m.group(1).strip(), 120)
+                                served = safe_name(m.group(1).strip(), 120)
+                                # the listing's name is the file's identity (two files in one week differ by it);
+                                # the portal's name is used whole only when the listing gave none, else for its extension
+                                if not f.get("filename"):
+                                    target = folder / served
+                                elif "." not in name:
+                                    target = folder / (name + os.path.splitext(served)[1])
                             folder.mkdir(parents=True, exist_ok=True)
                             target.write_bytes(body)
                             result["saved"].append(str(target))
