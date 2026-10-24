@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Cloud checks are scheduled at 07:43 and 18:37 Pakistan time instead of 08:00 and 19:00. GitHub starts jobs set to the top of the hour hours late (the user's runs landed at 12:50 and 22:15); odd minutes are picked up within minutes. Takes effect the next time Set up is pressed under Cloud checks.
 - The website moved to https://assignment-monitor.saaddev.top. New phone pairings and the links the app opens use the new address; the old vercel.app address redirects to it, except the phone page, which keeps serving phones that were paired before the move.
 
 ## 1.5.11 - 2026-10-24

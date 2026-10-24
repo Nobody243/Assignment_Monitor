@@ -30,7 +30,7 @@ const STEPS = [
   { n: "03", id: "cloud-code", kind: "dialog", title: "Sign in with a one-time code",
     text: "The code is copied for you. Press Open GitHub, paste it, press Authorize. The window notices by itself and carries on; no password is typed into the app." },
   { n: "04", id: "cloud-done", kind: "dialog", title: "Done. A first check is already running",
-    text: "Within a few minutes a test alert arrives on your phone and in your mailbox, and the result shows in Settings. From here on it runs at 8 AM and 7 PM Pakistan time." },
+    text: "Within a few minutes a test alert arrives on your phone and in your mailbox, and the result shows in Settings. From here on it runs at 07:43 and 18:37 Pakistan time." },
   { n: "05", id: "cloud-on", kind: "app", title: "Afterwards",
     text: "Settings shows the last run and its result, with Run now and Open on GitHub beside it. Changing your password, phone, email or what to track on the PC updates the cloud automatically, and so does an app update. Turn off removes the secrets and the workflow." },
 ];
@@ -85,7 +85,7 @@ export default function Cloud() {
             <p className="mono">Good to know</p>
             <h2 className="h-md">What it does and does not promise.</h2>
             <ol className="plain-list">
-              <li><b>Times are nominal</b><span>GitHub starts scheduled runs when it has room; at busy hours a check can land up to an hour late. The PC's own 7 PM check is unaffected.</span></li>
+              <li><b>Times are nominal</b><span>GitHub starts scheduled runs when it has room; at busy hours a check can land late, which is why the times sit off the hour. The PC's own 7 PM check is unaffected.</span></li>
               <li><b>Two runs a day, not hourly</b><span>The hourly due-today voice reminder stays on the PC. The cloud sends the after-check summaries, the attendance, exam and announcement alerts, and calendar invites if enabled.</span></li>
               <li><b>Nothing arrives twice</b><span>While cloud checks are on, the PC leaves phone and email to the cloud and keeps its desktop and voice alerts.</span></li>
               <li><b>Failures are reported</b><span>If three cloud checks in a row fail, the PC shows one notification pointing at the Actions page; the run log on GitHub says why.</span></li>

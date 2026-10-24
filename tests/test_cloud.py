@@ -13,7 +13,7 @@ import config
 def test_workflow_runs_twice_a_day_from_the_pinned_release():
     d = yaml.safe_load(cloud.workflow_yaml("1.5.0"))
     d["on"] = d.pop(True)                      # YAML 1.1 reads the bare key "on" as a boolean
-    assert [t["cron"] for t in d["on"]["schedule"]] == ["0 3 * * *", "0 14 * * *"]     # 08:00 and 19:00 PKT
+    assert [t["cron"] for t in d["on"]["schedule"]] == ["43 2 * * *", "37 13 * * *"]     # 07:43 and 18:37 PKT, off the hour
     assert d["on"]["workflow_dispatch"]["inputs"]["mode"]["options"] == ["check", "verify"]
     assert d["permissions"] == {"contents": "write"}
     steps = d["jobs"]["check"]["steps"]
