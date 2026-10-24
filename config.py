@@ -17,7 +17,7 @@ APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar g
 APP_VERSION = "1.5.11"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
-SITE_URL = "https://assignment-monitor.vercel.app"
+SITE_URL = "https://assignment-monitor.saaddev.top"
 
 FROZEN = bool(getattr(sys, "frozen", False))
 SOURCE_DIR = Path(__file__).resolve().parent

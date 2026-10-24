@@ -1,7 +1,7 @@
 /* Platform facts, read once and synchronously so the first paint already shows the right buttons.
    The app runs on Windows 10 and 11 only. Anything else (phones, Macs, Linux, unknown) gets the "send this to
    your PC" path; detection failures keep the normal download buttons, which is the safe default. */
-const SITE_URL = "https://assignment-monitor.vercel.app";
+const SITE_URL = "https://assignment-monitor.saaddev.top";
 
 function detectWindows() {
   if (typeof navigator === "undefined") return true;

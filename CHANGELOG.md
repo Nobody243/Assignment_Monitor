@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The website moved to https://assignment-monitor.saaddev.top. New phone pairings and the links the app opens use the new address; the old vercel.app address redirects to it, except the phone page, which keeps serving phones that were paired before the move.
+
 ## 1.5.11 - 2026-10-24
 
 - No more ghosting when the window is maximized, restored or resized: while the size changes the window sits behind a plain backdrop, and once it is still the finished page fades in. Tk paints each widget in its own time, so the old and the new layout used to show on top of each other for a tenth of a second.
