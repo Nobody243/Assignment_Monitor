@@ -93,9 +93,16 @@ def _latest_tag(timeout: int) -> str:
     return ""
 
 
+def _https(url: str) -> str:
+    """Refuses anything but an https URL before it is opened (file:, ftp: and custom schemes are never wanted)."""
+    if not str(url).lower().startswith("https://"):
+        raise ValueError(f"refusing a non-https URL: {str(url)[:60]}")
+    return url
+
+
 def _fetch_json(url: str, timeout: int) -> dict:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:   # noqa: S310 - https URL built from REPO_URL
+    req = urllib.request.Request(_https(url), headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310 - https only
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -132,8 +139,8 @@ def download_installer(setup_url: str, progress=None, timeout: int = 30) -> Path
     if not _safe_url(setup_url):
         raise ValueError("Refusing to download from an unexpected host")
     target = Path(tempfile.gettempdir()) / SETUP_NAME
-    req = urllib.request.Request(setup_url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as r, open(target, "wb") as f:
+    req = urllib.request.Request(_https(setup_url), headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=timeout) as r, open(target, "wb") as f:  # nosec B310 - https only
         total = int(r.headers.get("Content-Length") or 0)
         done = 0
         while True:

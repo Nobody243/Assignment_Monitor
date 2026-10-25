@@ -76,3 +76,26 @@ def test_app_command_points_at_this_app():
 def test_campus_lookup():
     assert config.campus_name("1") == "Islamabad E-8 Campus"
     assert config.campus_name("999").startswith("Campus #")
+
+
+def test_saves_merge_only_what_each_process_changed(env_file):
+    """Two loaded copies: each saves its own change; neither wipes the other's. A stale window that saves its
+    geometry hours later must not put an old token back over a newer one."""
+    first = config.load_env()
+    first["ENROLLMENT"] = "01-000000-001"
+    first["GITHUB_TOKEN"] = "new-token"
+    config.save_env(first)
+    stale = config.load_env()
+    stale.dirty.clear()
+    fresh = config.load_env()
+    fresh["GITHUB_TOKEN"] = "newer-token"
+    config.save_env(fresh)
+    stale["WINDOW_GEOMETRY"] = "900x700+1+1"      # the only thing this copy changed
+    config.save_env(stale)
+    final = config.load_env()
+    assert final["WINDOW_GEOMETRY"] == "900x700+1+1"
+    assert final["GITHUB_TOKEN"] == "newer-token"      # not the stale copy's "new-token"
+    assert final["ENROLLMENT"] == "01-000000-001"
+    # a plain dict still writes everything (first-run setup builds one)
+    config.save_env({"ENROLLMENT": "01-000000-002", "PASSWORD": "pw"})
+    assert config.load_env()["ENROLLMENT"] == "01-000000-002"

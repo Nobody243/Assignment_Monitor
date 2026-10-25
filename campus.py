@@ -197,7 +197,7 @@ def parse_announcements(page_html: str, course: str) -> List[dict]:
         title, text, posted = cells[1], cells[2], cells[3]
         if not text and not title:
             continue
-        key = hashlib.sha1(f"{course}|{title}|{text}|{posted}".encode("utf-8")).hexdigest()[:12]
+        key = hashlib.sha1(f"{course}|{title}|{text}|{posted}".encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
         out.append({"id": key, "course": course, "title": title, "text": text, "posted": posted,
                     "posted_at": _posted_iso(posted)})
     return out
@@ -264,7 +264,7 @@ def parse_lectures(page_html: str, course: str) -> List[dict]:
         videos = [a.get("href") for td in tds[3:5] for a in td.xpath(".//a[@href]") if a.get("href")]
         if not files and not videos:
             continue
-        key = hashlib.sha1(f"{course}|{week}|{title}|{len(files)}".encode("utf-8")).hexdigest()[:12]
+        key = hashlib.sha1(f"{course}|{week}|{title}|{len(files)}".encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
         out.append({"id": key, "course": course, "week": week, "title": title, "files": files, "videos": videos,
                     "remarks": cells[5] if len(cells) > 5 else ""})
     return out
@@ -370,7 +370,8 @@ def parse_misc(page_html: str, course: str) -> List[dict]:
             files.append({"label": name or _clean(a.text_content()), "href": href, "filename": name})
         if not files:
             continue
-        ident = hashlib.sha1(f"{course}|misc|{kind}|{files[0]['filename'] or files[0]['href']}".encode("utf-8")).hexdigest()[:16]
+        seed = f"{course}|misc|{kind}|{files[0]['filename'] or files[0]['href']}"
+        ident = hashlib.sha1(seed.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
         out.append({"id": ident, "kind": "misc", "course": course, "week": 0, "title": kind, "files": files,
                     "videos": [], "remarks": remarks})
     return out

@@ -198,6 +198,31 @@ def app_command(*args: str) -> list:
     return [str(exe), str(SOURCE_DIR / "app.py"), *args]
 
 
+class Settings(dict):
+    """The loaded settings. Remembers which keys this process changed, so a save writes only those on top of
+    whatever is on disk now: a long-lived window (or a test, or a second instance) that saves its window size
+    hours later must not put its stale copy of the GitHub token or the phone pairing back over a newer one."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.dirty = set()
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.dirty.add(key)
+
+    def update(self, *a, **k):
+        for d in a:
+            for key, value in (d.items() if hasattr(d, "items") else d):
+                self[key] = value
+        for key, value in k.items():
+            self[key] = value
+
+    def pop(self, key, *default):
+        self.dirty.add(key)
+        return super().pop(key, *default)
+
+
 def _read_raw_env() -> dict:
     raw = {}
     if not ENV_PATH.exists():
@@ -256,7 +281,9 @@ def load_env() -> dict:
             except Exception as e:
                 logging.getLogger("bahria.config").warning("Stored %s could not be decrypted (%s).", key, e)
     config.update(env_overrides())
-    return config
+    out = Settings(config)
+    out.dirty.clear()
+    return out
 
 
 def save_env(config: dict) -> None:
@@ -265,6 +292,14 @@ def save_env(config: dict) -> None:
     never reach it."""
     if IN_CLOUD:
         return
+    if isinstance(config, Settings) and ENV_PATH.exists():
+        # only this process's changes go on top of what is on disk now (see Settings)
+        current = dict(load_env())
+        current.update({k: config[k] for k in config.dirty if k in config})
+        for k in config.dirty:
+            if k not in config:
+                current.pop(k, None)
+        config = current
     merged = dict(DEFAULTS)
     merged.update({k: v for k, v in config.items() if k in DEFAULTS})
     password = merged.pop("PASSWORD", "") or ""

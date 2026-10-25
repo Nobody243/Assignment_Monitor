@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Settings are saved as changes on top of what is on disk, not as a whole snapshot: a window left open for hours (or a second copy of the app) saving its size no longer puts its stale copy of the GitHub sign-in or the phone pairing back over a newer one.
+- Security lint: every URL the app opens is checked to be https first; content hashes declare they are not security hashes; Bandit runs in CI beside ruff.
+- Website: valid HTML on every page (the no-script style moved to the head), larger tap targets on the feature dots.
 - Running the app from the source tree next to an installation no longer takes over the installed app's background tasks and shortcuts (they now stay with the installed program), and the test suite runs in a throw-away data folder with alerts, channels, update checks and task registration switched off. A source-tree run had re-pointed the tasks and the Desktop shortcut at the source, which opened a copy of the app with none of the student's setup.
 - Settings: the cloud-checks texts say the real schedule (07:43 and 18:37) instead of 8 AM and 7 PM; the data folder is shown as %LOCALAPPDATA%\Assignment Monitor when it lives there.
 - Start-up race fixed: the Settings page's cloud-status worker could call into the window before the main loop was running, and the error ("main thread is not in main loop") landed in the status bar. The worker now waits for the loop.

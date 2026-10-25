@@ -31,7 +31,7 @@ def _esc(text: str) -> str:
 
 
 def _uid(kind: str, *parts: str) -> str:
-    h = hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:20]
+    h = hashlib.sha1("|".join(parts).encode("utf-8"), usedforsecurity=False).hexdigest()[:20]
     return f"am-{kind}-{h}@assignment-monitor"
 
 
