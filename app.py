@@ -2854,13 +2854,24 @@ class SettingsView(ctk.CTkScrollableFrame):
         self._cloud_sync_job = None
         self.after(400, lambda: threading.Thread(target=self._refresh_cloud, daemon=True).start())
 
+    def _post(self, *args):
+        """Schedules a call on the Tk thread from a worker. Right after start-up the main loop may not be running
+        yet, which Tk reports as RuntimeError("main thread is not in main loop"): wait a little and try again
+        instead of letting the worker die with an error in the status bar."""
+        for _ in range(30):
+            try:
+                self.after(0, *args)
+                return
+            except RuntimeError:
+                time.sleep(0.1)
+
     def _refresh_cloud(self):
         env = load_env()
         if not GITHUB_CLIENT_ID:
-            self.after(0, self._show_cloud, False, "Not available in this build.", None)
+            self._post(self._show_cloud, False, "Not available in this build.", None)
             return
         if not cloud.enabled(env):
-            self.after(0, self._show_cloud, False, "Off. Alerts come from this PC only.", None)
+            self._post(self._show_cloud, False, "Off. Alerts come from this PC only.", None)
             return
         text = f"On, as {env.get('CLOUD_LOGIN', '')} on GitHub."
         try:
@@ -2878,7 +2889,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                 text += "  No check has run yet."
         except Exception as e:
             text += f"  (GitHub could not be reached: {str(e)[:80]})"
-        self.after(0, self._show_cloud, True, text, env)
+        self._post(self._show_cloud, True, text, env)
 
     def _show_cloud(self, on, text, env):
         if not self.winfo_exists():
