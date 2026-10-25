@@ -40,7 +40,7 @@ GEOMETRY_RE = re.compile(r"^\d{3,5}x\d{3,5}\+-?\d+\+-?\d+$")
 _INSTANCE_TAG = ""
 if os.environ.get("ASSIGNMENT_MONITOR_HOME"):
     import hashlib
-    _INSTANCE_TAG = "." + hashlib.sha1(str(BASE_DIR).lower().encode()).hexdigest()[:8]
+    _INSTANCE_TAG = "." + hashlib.sha1(str(BASE_DIR).lower().encode(), usedforsecurity=False).hexdigest()[:8]
 SHOW_EVENT_NAME = f"Local\\AssignmentMonitor.ShowWindow{_INSTANCE_TAG}"
 QUIT_EVENT_NAME = f"Local\\AssignmentMonitor.Quit{_INSTANCE_TAG}"
 MUTEX_NAME = f"Local\\AssignmentMonitor.MainWindow{_INSTANCE_TAG}"
@@ -2134,7 +2134,16 @@ class ResultsView(ctk.CTkFrame):
         self.refresh()
 
     def _recompute(self):
+        """Every figure on the page follows the picks and overrides; labels are updated in place."""
         base, sems = self._base(), self._model()
+        self._update_strip(base, sems)
+        self._update_semester_heading(base, sems)
+        self._update_grade_rows()
+        if self.proj_lbl is not None:
+            self._update_projection(sems)
+            self._update_target(sems)
+
+    def _update_strip(self, base, sems):
         t0 = totals([x for x in base if x.get("complete")])
         t = totals([x for x in sems if x.get("complete")])
         changed = bool(self.overrides) and t["cgpa"] != t0["cgpa"]
@@ -2147,6 +2156,8 @@ class ResultsView(ctk.CTkFrame):
             self.reset_btn.grid()
         else:
             self.reset_btn.grid_remove()
+
+    def _update_semester_heading(self, base, sems):
         by_name = {x["name"]: x for x in sems}
         for name, lbl in self.sem_sub.items():
             orig = next(x for x in base if x["name"] == name)
@@ -2158,13 +2169,15 @@ class ResultsView(ctk.CTkFrame):
             elif orig.get("cgpa") is not None:
                 txt += f"   ·   CGPA {orig['cgpa']:.2f} at the time"
             lbl.configure(text=txt)
+
+    def _update_grade_rows(self):
         for key, (pts, c) in self.pts_lbls.items():
             g = self.overrides.get(key, c["grade"])
             pts.configure(text=f"{grade_points_of(g, c):g} pts")
             if key in self.pill_lbls:
                 self.pill_lbls[key].configure(text=f"  {g}  ", text_color=grade_color(g))
-        if self.proj_lbl is None:
-            return
+
+    def _update_projection(self, sems):
         pr = project(sems, self.picks)
         if pr["picked"]:
             txt = f"Projected GPA {pr['gpa']:.2f}   ·   CGPA {pr['cgpa']:.2f}"
@@ -2184,13 +2197,15 @@ class ResultsView(ctk.CTkFrame):
         self.scen_caption.configure(text=cap)
         for x in uniform_scenarios(sems, self.picks):
             self.scen_lbls[x["grade"]].configure(text=f"{x['cgpa']:.2f}" if x["cgpa"] is not None else "—")
+
+    def _update_target(self, sems):
         raw = (self.target_entry.get() or "").strip()
         try:
             target = float(raw)
-            self.target = raw
         except ValueError:
             self.need_lbl.configure(text="")
             return
+        self.target = raw
         need = required_gpa(sems, target)
         gn = grade_needed(sems, self.picks, target)
         if need is None:
@@ -2210,7 +2225,6 @@ class ResultsView(ctk.CTkFrame):
         else:
             where = f"in each of the {gn['remaining']} courses not picked yet" if self.picks else "in every course"
             self.need_lbl.configure(text=f"you need a GPA of {need:.2f} this semester: at least {gn['grade']} {where}", text_color=C["ink"])
-
 
 def grade_points_of(grade, course):
     from results import GRADE_POINTS

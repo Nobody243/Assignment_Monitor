@@ -66,6 +66,13 @@ def smtp_for(address: str, env: dict | None = None) -> tuple:
     return SMTP_BY_DOMAIN.get(domain, (f"smtp.{domain}" if domain else "", 587))
 
 
+def _https(url: str) -> str:
+    """Refuses anything but an https URL before it is opened (file:, ftp: and custom schemes are never wanted)."""
+    if not str(url).lower().startswith("https://"):
+        raise ValueError(f"refusing a non-https URL: {str(url)[:60]}")
+    return url
+
+
 def email_ready(env: dict | None = None) -> bool:
     env = env or load_env()
     return bool(env.get("EMAIL_ENABLED") and env.get("EMAIL_TO") and env.get("EMAIL_PASS"))
@@ -146,9 +153,9 @@ def pairing_start(env: dict | None = None) -> dict:
 
 
 def _relay_lines(relay: str, topic: str, timeout: float) -> list[str]:
-    req = urllib.request.Request(f"{relay}/{topic}/json?poll=1&since=30m", headers={"User-Agent": APP_NAME})
+    req = urllib.request.Request(_https(f"{relay}/{topic}/json?poll=1&since=30m"), headers={"User-Agent": APP_NAME})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310 - https only
             return r.read().decode("utf-8", "replace").splitlines()
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         log.debug("pairing poll %s: %s", relay, e)

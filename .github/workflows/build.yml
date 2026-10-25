@@ -31,6 +31,10 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Lint
         run: ruff check .
+      - name: Security lint (Bandit)
+        run: |
+          pip install bandit
+          bandit -q -r . -x ./tests,./website,./build,./dist -ll
       - name: Unit tests
         run: pytest
       - name: Dependency audit (advisory)

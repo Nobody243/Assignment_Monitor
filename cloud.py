@@ -59,11 +59,11 @@ def job_log(token: str, repo: str, job_id: int) -> str:
     req = urllib.request.Request(f"{API}/repos/{repo}/actions/jobs/{job_id}/logs",
                                  headers={"Authorization": f"Bearer {token}", "User-Agent": APP_NAME})
     try:
-        with opener.open(req, timeout=30) as r:
+        with opener.open(req, timeout=30) as r:  # nosec B310 - the URL is checked by _https above
             return r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         if e.code in (301, 302, 307) and e.headers.get("Location"):
-            with urllib.request.urlopen(e.headers["Location"], timeout=60) as r:
+            with urllib.request.urlopen(_https(e.headers["Location"]), timeout=60) as r:  # nosec B310 - https only
                 return r.read().decode("utf-8", "replace")
         raise CloudError(f"GitHub answered {e.code} for the log.") from None
 
@@ -82,9 +82,9 @@ def _request(method: str, url: str, token: str | None = None, body: dict | None 
         else:
             data = json.dumps(body).encode()
             headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    req = urllib.request.Request(_https(url), data=data, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310 - https only
             raw = r.read()
             status, hdrs = r.status, dict(r.headers)
     except urllib.error.HTTPError as e:
@@ -97,6 +97,13 @@ def _request(method: str, url: str, token: str | None = None, body: dict | None 
     except ValueError:
         parsed = text
     return status, parsed, hdrs
+
+
+def _https(url: str) -> str:
+    """Refuses anything but an https URL before it is opened (file:, ftp: and custom schemes are never wanted)."""
+    if not str(url).lower().startswith("https://"):
+        raise ValueError(f"refusing a non-https URL: {str(url)[:60]}")
+    return url
 
 
 def api(token: str, method: str, path: str, body: dict | None = None, ok=(200, 201, 204)) -> dict | list:

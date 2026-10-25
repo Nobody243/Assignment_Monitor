@@ -105,8 +105,8 @@
 .feat-ring .card { height: 100%; background: rgba(15, 17, 23, 0.94); border-color: rgba(255, 255, 255, 0.11); transform: translateZ(0);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); }
 .feat-ring .card-shade { position: absolute; inset: 0; background: #04050a; opacity: var(--shade, 0); pointer-events: none; border-radius: inherit; }
-.feat-dots { display: flex; justify-content: center; gap: 2px; margin-top: 4px; }
-.feat-dots button { position: relative; width: 34px; height: 34px; }
+.feat-dots { display: flex; justify-content: center; gap: 6px; margin-top: 4px; }
+.feat-dots button { position: relative; width: 34px; height: 34px; min-width: 32px; min-height: 32px; }
 .feat-dots button::after { content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border-radius: 4px; background: var(--line-3); transition: width var(--d-2) var(--ease-out), background var(--d-2); }
 .feat-dots button[aria-selected="true"]::after { width: 22px; background: var(--accent); }
 .card { position: relative; padding: 32px 28px 34px; background: var(--glass); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; }
@@ -123,7 +123,7 @@
 .card ul li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .card ul li span { font-family: var(--mono); font-size: var(--t-2xs); color: var(--ink-3); letter-spacing: 0.04em; }
 @media (max-width: 600px) { .feat-head { flex-direction: column; align-items: flex-start; } .card { padding: 24px 20px 26px; } .card .mono { margin-bottom: 24px; } .feat-wheel { padding: 20px 0 22px; perspective: 900px; perspective-origin: 50% 20%; }
-  .feat-ring .card3d { width: 74vw; margin-left: -37vw; } .feat-dots button { width: 28px; } }
+  .feat-ring .card3d { width: 74vw; margin-left: -37vw; } .feat-dots button { width: 32px; } }
 
 /* ============================================================ steps */
 /* setup timeline: a line drawn as the section scrolls in, with a current flowing along it, and nodes that light up */
