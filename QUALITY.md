@@ -28,7 +28,7 @@ this document uses.
 
 ### Functional suitability
 - Covers what students asked for: assignments with extended-deadline detection, attendance margins against a
-  minimum, exam seating, announcements, lecture and miscellaneous files, timetable, assignment files (brief,
+  minimum, exam seating, announcements, lecture and miscellaneous files, timetable, results with GPA and CGPA, assignment files (brief,
   own submission, returned work, solution), delivered by voice, Windows notification, phone push, email and
   calendar, on the PC and from the cloud with the PC off.
 - Parsers are tested against saved copies of the portal's real HTML, and the portal is read live on every

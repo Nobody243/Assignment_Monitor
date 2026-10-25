@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Results page: every semester's grades, GPA and CGPA read from the CMS Provisional Result page, newest first, with credits earned and the cumulative figure worked out the way the portal does (verified against a real transcript). The moment a result is posted, whole or course by course, a notification goes out (phone and email too). A what-if calculator on the running semester: pick the grade you expect in each course and see the projected GPA and CGPA, or enter a target CGPA and see the semester GPA it needs. Switchable under Settings → Campus tracking; cloud checks read it too.
+
 ## 1.5.12 - 2026-10-24
 
 - Cloud checks now reach the phone and the mailbox. The run handed the sends to a background thread and exited as soon as the check was done, so they were cut off before they went out; the test alert at set-up was sent directly, which is why it arrived. Deliveries in the cloud now happen before the run finishes.

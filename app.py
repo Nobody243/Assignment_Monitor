@@ -65,7 +65,8 @@ def main():
     parser.add_argument("--disable-cloud", action="store_true",
                         help="turn off cloud checks (remove the secrets and workflow from your GitHub repository), then exit")
     parser.add_argument("--view", default="dashboard",
-                        choices=["dashboard", "assignments", "attendance", "exams", "timetable", "announcements", "lectures", "settings",
+                        choices=["dashboard", "assignments", "attendance", "exams", "results", "timetable", "announcements",
+                                 "lectures", "settings",
                                  "activity"])
     args = parser.parse_args()
     setup_logging(to_console=not FROZEN)
@@ -175,6 +176,8 @@ from tkinter import filedialog, messagebox, simpledialog  # noqa: E402
 import automation                                                                           # noqa: E402
 import updater                                                                              # noqa: E402
 from tray import TrayIcon                                                                   # noqa: E402
+from results import GRADES, current_semester, gpa_of, project, required_gpa, totals
+from tracker import load_results
 from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
                      load_exams, load_announcements, load_lectures, load_timetable)
 from lms_scraper import run_sync, download_lectures, download_assignment_files, FILE_KIND_LABELS, LoginError, _release_lock              # noqa: E402
@@ -1862,6 +1865,168 @@ class ExamsView(ctk.CTkScrollableFrame):
         pill(r, countdown(e["days"]), key).pack(side="right")
 
 
+# ---------------------------------------------------------------------------- results
+def grade_color(grade: str) -> str:
+    g = (grade or "").upper()
+    if g.startswith("A"):
+        return C["green"]
+    if g.startswith("B"):
+        return C["accent"]
+    if g.startswith("C"):
+        return C["amber"]
+    return C["red"]
+
+
+class ResultsView(ctk.CTkScrollableFrame):
+    """Every semester's grades with the portal's GPA and CGPA, the cumulative figures, and a what-if calculator
+    for the running semester. Picks are kept for the session only."""
+
+    def __init__(self, master, app):
+        super().__init__(master, fg_color="transparent")
+        self.app = app
+        self.picks = {}
+        self.target = "3.50"
+
+    def refresh(self):
+        for w in self.winfo_children():
+            w.destroy()
+        env = self.app.env
+        if not env.get("TRACK_RESULTS", True):
+            self._empty("Results tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
+            return
+        data = self.app.results
+        semesters = (data or {}).get("semesters") or []
+        if not semesters:
+            self._empty("No results yet", "Press Sync now (or F5). The transcript is read from the CMS Provisional Result page "
+                                           "with every check.")
+            return
+        done = [x for x in semesters if x.get("complete")]
+        t = totals(done)
+        self._stats(t, len(done), (data or {}).get("student") or {})
+        cur = current_semester(semesters)
+        if cur:
+            self._what_if(semesters, cur)
+        for sem in reversed(semesters):
+            self._semester(sem)
+
+    # -- pieces
+    def _empty(self, title, sub):
+        box = surface(self)
+        box.pack(fill="x")
+        ctk.CTkLabel(box, text=title, font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
+        ctk.CTkLabel(box, text=sub, font=F(MD), text_color=C["muted"], wraplength=720).pack(pady=(0, 28))
+
+    def _stats(self, t, graded, student):
+        strip = surface(self)
+        strip.pack(fill="x", pady=(2, 10))
+        cells = [("CGPA", f"{t['cgpa']:.2f}" if t["cgpa"] is not None else "—", "over every graded semester"),
+                 ("Credits earned", f"{t['earned']:g} / {t['credits']:g}", "earned / attempted"),
+                 ("Semesters graded", str(graded),
+                  student.get("program", "") + (f" · since {student['intake_semester']}" if student.get("intake_semester") else ""))]
+        for i, (label, value, sub) in enumerate(cells):
+            strip.grid_columnconfigure(i, weight=1, uniform="res")
+            cell = ctk.CTkFrame(strip, fg_color="transparent")
+            cell.grid(row=0, column=i, sticky="nsew", padx=(20, 10), pady=18)
+            ctk.CTkLabel(cell, text=label.upper(), font=F(XS, "semibold"), text_color=C["muted"], anchor="w").pack(anchor="w")
+            ctk.CTkLabel(cell, text=value, font=F(D1, "semibold", display=True), text_color=C["ink"], anchor="w").pack(
+                anchor="w", pady=(2, 0))
+            ctk.CTkLabel(cell, text=sub, font=F(SM), text_color=C["dim"], anchor="w", wraplength=260, justify="left").pack(anchor="w")
+
+    def _what_if(self, semesters, cur):
+        box = surface(self)
+        box.pack(fill="x", pady=(0, 10))
+        heading(box, f"{cur['name']}: what if", "Pick the grade you expect in each course. The figures update as you go; "
+                                                "nothing is saved.").pack(anchor="w", padx=20, pady=(18, 8))
+        for i, c in enumerate(cur["courses"]):
+            if i:
+                hairline(box)
+            r = ctk.CTkFrame(box, fg_color="transparent")
+            r.pack(fill="x", padx=20, pady=6)
+            ctk.CTkLabel(r, text=c["title"], font=F(MD, "medium"), text_color=C["ink"], anchor="w").pack(side="left")
+            ctk.CTkLabel(r, text=f"{c['code']}  ·  {c['credits']:g} cr", font=F(SM), text_color=C["muted"]).pack(side="left", padx=(12, 0))
+            menu = ctk.CTkOptionMenu(r, values=["—"] + GRADES, width=86, height=30, font=F(SM), fg_color=C["field"],
+                                     button_color=C["line2"], button_hover_color=C["line2"], text_color=C["ink"],
+                                     dropdown_fg_color=C["surface"], dropdown_text_color=C["ink"], dropdown_hover_color=C["surface2"],
+                                     dropdown_font=F(SM), command=lambda g, code=c["code"]: self._pick(code, g))
+            menu.set(self.picks.get(c["code"], "—"))
+            menu.pack(side="right")
+        hairline(box)
+        self.proj_lbl = ctk.CTkLabel(box, text="", font=F(LG, "semibold", display=True), text_color=C["ink"], anchor="w",
+                                     wraplength=820, justify="left")
+        self.proj_lbl.pack(anchor="w", padx=20, pady=(12, 2))
+        tr = ctk.CTkFrame(box, fg_color="transparent")
+        tr.pack(fill="x", padx=20, pady=(4, 18))
+        ctk.CTkLabel(tr, text="To finish the semester with a CGPA of", font=F(MD), text_color=C["muted"]).pack(side="left")
+        self.target_entry = ctk.CTkEntry(tr, width=72, height=30, font=F(MD), fg_color=C["field"], border_color=C["line2"],
+                                         text_color=C["ink"], justify="center")
+        self.target_entry.insert(0, self.target)
+        self.target_entry.pack(side="left", padx=8)
+        self.target_entry.bind("<KeyRelease>", lambda e: self._update(semesters))
+        self.need_lbl = ctk.CTkLabel(tr, text="", font=F(MD), text_color=C["muted"], anchor="w")
+        self.need_lbl.pack(side="left")
+        self._update(semesters)
+
+    def _pick(self, code, grade):
+        if grade == "—":
+            self.picks.pop(code, None)
+        else:
+            self.picks[code] = grade
+        self._update(self.app.results.get("semesters") or [])
+
+    def _update(self, semesters):
+        pr = project(semesters, self.picks)
+        if pr["picked"]:
+            txt = f"Projected GPA {pr['gpa']:.2f}   ·   CGPA {pr['cgpa']:.2f}"
+            if pr["picked"] < pr["of"]:
+                txt += f"   ·   {pr['picked']} of {pr['of']} courses picked; the rest are left out"
+        else:
+            txt = "Pick a grade to see the projected GPA and CGPA."
+        self.proj_lbl.configure(text=txt)
+        raw = (self.target_entry.get() or "").strip()
+        try:
+            target = float(raw)
+            self.target = raw
+        except ValueError:
+            self.need_lbl.configure(text="")
+            return
+        need = required_gpa(semesters, target)
+        if need is None:
+            self.need_lbl.configure(text="")
+        elif need > 4:
+            self.need_lbl.configure(text=f"you would need a GPA of {need:.2f} this semester: out of reach", text_color=C["red"])
+        elif need <= 0:
+            self.need_lbl.configure(text="you are already there, whatever this semester brings", text_color=C["green"])
+        else:
+            self.need_lbl.configure(text=f"you need a GPA of {need:.2f} this semester", text_color=C["ink"])
+
+    def _semester(self, sem):
+        box = surface(self)
+        box.pack(fill="x", pady=(0, 10))
+        if sem.get("complete"):
+            sub = f"GPA {sem['gpa']:.2f}" if sem.get("gpa") is not None else f"GPA {gpa_of(sem['courses']) or '—'}"
+            if sem.get("cgpa") is not None:
+                sub += f"   ·   CGPA {sem['cgpa']:.2f}"
+        else:
+            graded = sum(1 for c in sem["courses"] if c.get("grade"))
+            sub = "Result not posted yet" if not graded else f"{graded} of {len(sem['courses'])} courses graded so far"
+        heading(box, sem["name"], sub).pack(anchor="w", padx=20, pady=(18, 8))
+        for i, c in enumerate(sem["courses"]):
+            if i:
+                hairline(box)
+            r = ctk.CTkFrame(box, fg_color="transparent")
+            r.pack(fill="x", padx=20, pady=7)
+            ctk.CTkLabel(r, text=c["title"], font=F(MD, "medium"), text_color=C["ink"] if c.get("grade") else C["muted"],
+                         anchor="w").pack(side="left")
+            ctk.CTkLabel(r, text=f"{c['code']}  ·  {c['credits']:g} cr", font=F(SM), text_color=C["muted"]).pack(side="left", padx=(12, 0))
+            if c.get("grade"):
+                pill(r, c["grade"], grade_color(c["grade"])).pack(side="right")
+                if c.get("points") is not None:
+                    ctk.CTkLabel(r, text=f"{c['points']:g} pts", font=F(SM), text_color=C["dim"]).pack(side="right", padx=(0, 10))
+            else:
+                ctk.CTkLabel(r, text="pending", font=F(SM), text_color=C["dim"]).pack(side="right")
+        ctk.CTkLabel(box, text="", height=6).pack()
+
+
 # ---------------------------------------------------------------------------- announcements
 class AnnouncementsView(ctk.CTkFrame):
     def __init__(self, master, app):
@@ -2317,6 +2482,8 @@ class SettingsView(ctk.CTkScrollableFrame):
                                             "drops under the minimum", env.get("TRACK_ATTENDANCE", True))
         self.track_exams = self._switch(camp, "Exam seating plan, with a reminder before each paper and on the morning of it",
                                         env.get("TRACK_EXAMS", True))
+        self.track_results = self._switch(camp, "Results: every semester's grades, GPA and CGPA, with an alert the moment a result "
+                                                "is posted", env.get("TRACK_RESULTS", True))
         self.track_ann = self._switch(camp, "Course announcements, with an alert for each new one", env.get("TRACK_ANNOUNCEMENTS", True))
         self.track_lec = self._switch(camp, "Lecture notes from every course, with an alert when new ones are uploaded "
                                             "(downloads happen only when you ask, from the Lectures page)", env.get("TRACK_LECTURES", True))
@@ -2949,6 +3116,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         if hasattr(self, "track_att"):
             env["TRACK_ATTENDANCE"] = bool(self.track_att.get())
             env["TRACK_EXAMS"] = bool(self.track_exams.get())
+            env["TRACK_RESULTS"] = bool(self.track_results.get())
             env["TRACK_ANNOUNCEMENTS"] = bool(self.track_ann.get())
             env["ATTENDANCE_MIN"] = int(self.att_min.get())
             env["EXAM_REMIND_DAYS"] = self.EXAM_LEAD.get(self.exam_days.get(), 1)
@@ -3093,7 +3261,8 @@ class ActivityView(ctk.CTkFrame):
 # ---------------------------------------------------------------------------- main window
 class App(ctk.CTk):
     NAV = [("dashboard", "Dashboard"), ("assignments", "Assignments"), ("attendance", "Attendance"), ("exams", "Exams"),
-           ("timetable", "Timetable"), ("announcements", "Announcements"), ("lectures", "Lectures"), ("settings", "Settings")]
+           ("results", "Results"), ("timetable", "Timetable"), ("announcements", "Announcements"), ("lectures", "Lectures"),
+           ("settings", "Settings")]
     # pages reachable without a sidebar button (the activity log opens from Settings and from the Dashboard's
     # failed-checks line); the sidebar keeps Settings lit while one of them is shown
     TITLES = dict(NAV + [("activity", "Activity log")])
@@ -3128,6 +3297,7 @@ class App(ctk.CTk):
         self.data = {}
         self.attendance = {}
         self.exams = []
+        self.results = None
         self.announcements = []
         self.lectures = []
         self.timetable = {"semester": "", "sessions": []}
@@ -3458,7 +3628,7 @@ class App(ctk.CTk):
         ctk.CTkFrame(status, fg_color=C["line"], height=1, corner_radius=0).pack(fill="x", side="top")
         self.status_lbl = ctk.CTkLabel(status, text="Ready.", font=F(XS), text_color=C["muted"], anchor="w")
         self.status_lbl.pack(side="left", padx=32, pady=4)
-        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–8 pages  ·  v{APP_VERSION}", font=F(XS),
+        ctk.CTkLabel(status, text=f"F5 sync  ·  Ctrl+1–9 pages  ·  v{APP_VERSION}", font=F(XS),
                      text_color=C["dim"]).pack(side="right", padx=32)
 
         self.views = {
@@ -3466,6 +3636,7 @@ class App(ctk.CTk):
             "assignments": AssignmentsView(self.body, self),
             "attendance": AttendanceView(self.body, self),
             "exams": ExamsView(self.body, self),
+            "results": ResultsView(self.body, self),
             "timetable": TimetableView(self.body, self),
             "announcements": AnnouncementsView(self.body, self),
             "lectures": LecturesView(self.body, self),
@@ -3596,6 +3767,7 @@ class App(ctk.CTk):
         self.data = load_stored_assignments()
         self.attendance = load_attendance()
         self.exams = load_exams()
+        self.results = load_results()
         self.announcements = load_announcements()
         self.lectures = load_lectures()
         self.timetable = load_timetable()

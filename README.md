@@ -10,6 +10,7 @@ A desktop app that keeps an eye on your LMS and CMS so you don't have to: assign
 - **Reminds you aloud every hour** on the day an unsubmitted assignment is due
 - **Attendance** per course with the margin to your minimum, class-by-class, and an alert when an absence is recorded
 - **Exam seating plan** with room and seat, a countdown, a reminder the day before and on the morning of each paper
+- **Results**: every semester's grades, GPA and CGPA from the CMS, an alert the moment a result is posted, and a what-if calculator for the running semester
 - **Announcements** from every course in one place, with an alert for each new one
 - **Lecture notes** and **Miscellaneous files** from every course in one list; tick the files you want and download them into tidy folders
 - **Timetable** from the CMS drawn as a clean week grid, saved as PNG, JPG or PDF; today's classes on the dashboard

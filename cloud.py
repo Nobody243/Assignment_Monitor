@@ -38,10 +38,10 @@ SCOPES = "repo workflow"
 SECRET_KEYS = ("ENROLLMENT", "PASSWORD", "PUSH_SUB", "PUSH_VAPID", "EMAIL_PASS")
 PLAIN_KEYS = ("INSTITUTE_ID", "NOTIFY_DAYS_AHEAD", "ATTENDANCE_MIN", "EXAM_REMIND_DAYS",
               "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
-              "PUSH_ENABLED", "EMAIL_ENABLED", "EMAIL_TO", "EMAIL_USER", "EMAIL_HOST", "EMAIL_PORT")
+              "TRACK_RESULTS", "PUSH_ENABLED", "EMAIL_ENABLED", "EMAIL_TO", "EMAIL_USER", "EMAIL_HOST", "EMAIL_PORT")
 CLOUD_KEYS = SECRET_KEYS + PLAIN_KEYS
 STATE_FILES = ("assignments.json", "attendance.json", "exams.json", "announcements.json", "lectures.json",
-               "timetable.json", "reminders.json", "meta.json")
+               "timetable.json", "results.json", "reminders.json", "meta.json")
 
 
 class CloudError(RuntimeError):

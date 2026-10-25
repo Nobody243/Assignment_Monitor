@@ -75,7 +75,7 @@ def gui(tmp_path_factory):
 def test_every_page_draws(gui):
     win, m = gui
     seen = []
-    pages = ("dashboard", "assignments", "attendance", "exams", "timetable", "announcements", "lectures", "settings", "activity")
+    pages = ("dashboard", "assignments", "attendance", "exams", "results", "timetable", "announcements", "lectures", "settings", "activity")
     steps = [(300, lambda key=key: (win.navigate(key), seen.append(win.current))) for key in pages]
     errors = run_steps(win, steps, settle_ms=400)
     assert errors == []
