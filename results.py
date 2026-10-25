@@ -162,3 +162,53 @@ def newly_graded(old: Optional[dict], new: dict) -> List[dict]:
         if graded_count(s) > had:
             out.append(s)
     return out
+
+
+# ---------------------------------------------------------------------------- what-if on past semesters
+def apply_overrides(semesters: List[dict], overrides: Dict[tuple, str]) -> List[dict]:
+    """A copy of `semesters` with hypothetical grades swapped in: `overrides` maps (semester name, course code)
+    to a letter grade. Only graded courses can be overridden; the running semester is left to `project`."""
+    out = []
+    for s in semesters:
+        courses = []
+        for c in s["courses"]:
+            g = overrides.get((s["name"], c["code"]))
+            if g in GRADE_POINTS and c.get("grade"):
+                courses.append({**c, "grade": g, "points": GRADE_POINTS[g], "product": round(c["credits"] * GRADE_POINTS[g], 2)})
+            else:
+                courses.append(c)
+        out.append({**s, "courses": courses})
+    return out
+
+
+def uniform_scenarios(semesters: List[dict], picks: Optional[Dict[str, str]] = None) -> List[dict]:
+    """For each letter grade: the semester GPA and CGPA if every course of the running semester that has no pick
+    yet ends with that grade (picked courses keep their pick). Empty without a running semester."""
+    cur = current_semester(semesters)
+    if not cur:
+        return []
+    picks = picks or {}
+    out = []
+    for g in GRADES:
+        full = {c["code"]: picks.get(c["code"], g) for c in cur["courses"]}
+        p = project(semesters, full)
+        out.append({"grade": g, "gpa": p["gpa"], "cgpa": p["cgpa"]})
+    return out
+
+
+def grade_needed(semesters: List[dict], picks: Dict[str, str], target_cgpa: float) -> dict:
+    """The lowest uniform grade in the courses not picked yet that still reaches `target_cgpa`.
+    Returns {"grade": "B+" | None, "best": <CGPA with straight A's>, "remaining": n, "reached": bool}."""
+    cur = current_semester(semesters)
+    if not cur:
+        return {"grade": None, "best": None, "remaining": 0, "reached": False}
+    remaining = [c for c in cur["courses"] if picks.get(c["code"]) not in GRADE_POINTS]
+    scen = {x["grade"]: x for x in uniform_scenarios(semesters, picks)}
+    best = scen["A"]["cgpa"]
+    if not remaining:
+        p = project(semesters, picks)
+        return {"grade": None, "best": p["cgpa"], "remaining": 0, "reached": (p["cgpa"] or 0) >= target_cgpa}
+    for g in reversed(GRADES):          # F upwards: the first that reaches the target is the lowest that does
+        if scen[g]["cgpa"] is not None and scen[g]["cgpa"] >= target_cgpa:
+            return {"grade": g, "best": best, "remaining": len(remaining), "reached": True}
+    return {"grade": None, "best": best, "remaining": len(remaining), "reached": False}
