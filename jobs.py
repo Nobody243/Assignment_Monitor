@@ -6,6 +6,8 @@ from campus import seat_text
 from config import APP_NAME, DB_PATH, has_credentials, load_env, load_meta, save_meta
 from deadlines import classify, is_open_pending, sort_key
 from lms_scraper import LoginError, run_sync
+from notifier import alert_results_posted
+from tracker import save_results
 from notifier import (alert_assignments, alert_assignment_files, alert_announcements, alert_attendance, alert_exam_today,
                       alert_exams_scheduled, alert_exams_soon, alert_lectures, send_toast, speak_voice)
 from tracker import (compare_announcements, compare_assignments, compare_attendance, compare_lectures, exams_within,
@@ -21,6 +23,8 @@ def collectors_for(env: dict) -> tuple:
         out.append("attendance")
     if env.get("TRACK_EXAMS", True):
         out.append("exams")
+    if env.get("TRACK_RESULTS", True):
+        out.append("results")
     if env.get("TRACK_ANNOUNCEMENTS", True):
         out.append("announcements")
     if env.get("TRACK_LECTURES", True):
@@ -87,6 +91,13 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
             for e in soon:
                 mark_reminder(f"exam-soon:{e['id']}:{e['date']}")
 
+    if "results" in result:
+        posted = save_results(result["results"])
+        summary["results"] = len(result["results"].get("semesters", []))
+        for sem in posted:
+            log.info("  result   %-16s GPA %s, CGPA %s", sem["name"], sem.get("gpa"), sem.get("cgpa"))
+        if notify:
+            alert_results_posted(posted)
     if "announcements" in result:
         new_ann = compare_announcements(result["announcements"], result.get("semester"))
         summary["announcements"] = len(result["announcements"])

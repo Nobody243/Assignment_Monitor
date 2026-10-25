@@ -24,6 +24,7 @@ export const PAGES = {
         "Assignments across every course, with the due date and time, your submission status, and extended deadlines flagged with the old and the new date.",
         "Attendance per course in hours and percent, with how many hours you can still miss for the 75% rule, or how many you need.",
         "The exam seating plan: date, time, room, row and seat, with a countdown and a reminder the day before.",
+        "Results: every semester's grades, GPA and CGPA, a notification the moment a result is posted, and a what-if calculator for the running semester.",
         "Course announcements from every course in one feed.",
         "Lecture notes and course files, downloaded into tidy course and week folders.",
         "The timetable, drawn as a clean week grid and saved as PNG, JPG or PDF.",

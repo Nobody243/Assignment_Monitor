@@ -2,12 +2,14 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from campus import attendance_margin, upcoming_exams
 from config import (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH,
                     TIMETABLE_PATH)
 from deadlines import is_open_pending
+from config import RESULTS_PATH
+from results import newly_graded
 
 log = logging.getLogger("bahria.tracker")
 
@@ -165,6 +167,21 @@ def save_exams(current: List[dict]) -> List[dict]:
     if current:
         _save_json(EXAMS_PATH, current)
     return newly_scheduled
+
+
+def load_results() -> Optional[dict]:
+    """The stored transcript ({"student", "semesters"}) or None before the first read."""
+    return _load_json(RESULTS_PATH, None)
+
+
+def save_results(current: dict) -> List[dict]:
+    """Stores the transcript (when the read returned any semester) and returns the semesters that gained grades
+    since the last read, for the "result posted" alert."""
+    old = load_results()
+    posted = newly_graded(old, current)
+    if current.get("semesters"):
+        _save_json(RESULTS_PATH, current)
+    return posted
 
 
 def exams_within(days: int, exams: List[dict] = None, now: datetime = None) -> List[dict]:

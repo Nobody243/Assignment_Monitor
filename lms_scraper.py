@@ -13,6 +13,8 @@ from playwright.sync_api import sync_playwright
 
 from campus import (parse_announcements, parse_attendance, parse_attendance_detail, parse_exam_seats, parse_lectures,
                     parse_misc, parse_timetable, safe_name)
+from config import RESULTS_URL
+from results import parse_results
 from config import (PROFILE_DIR, DATA_DIR, BROWSERS_DIR, LOGIN_URL, SSO_URL, ASSIGNMENTS_URL, ATTENDANCE_URL,
                     EXAMS_URL, ANNOUNCEMENTS_URL, LECTURES_URL, MISC_URL, TIMETABLE_URL, LMS_BASE_URL, load_env, save_meta,
                     campus_name)
@@ -29,7 +31,7 @@ def mask_enrollment(enrollment: str) -> str:
 
 LOCK_PATH = DATA_DIR / "sync.lock"
 LOCK_STALE_SECONDS = 15 * 60
-ALL_COLLECTORS = ("assignments", "attendance", "exams", "announcements", "lectures", "timetable")
+ALL_COLLECTORS = ("assignments", "attendance", "exams", "results", "announcements", "lectures", "timetable")
 
 
 class LoginError(RuntimeError):
@@ -319,6 +321,15 @@ def _collect_exams(s: PortalSession) -> List[dict]:
     return out
 
 
+def _collect_results(s: PortalSession) -> dict:
+    """The Provisional Result page: every semester's grades with the GPA and CGPA the portal prints."""
+    data = parse_results(_html(s.cms(RESULTS_URL)))
+    done = [x for x in data["semesters"] if x["complete"]]
+    cgpa = done[-1].get("cgpa") if done else None
+    log.info("Results: %d semesters, %d graded%s.", len(data["semesters"]), len(done), f", CGPA {cgpa}" if cgpa is not None else "")
+    return data
+
+
 def _collect_lectures(s: PortalSession) -> List[dict]:
     """Lecture notes and the Miscellaneous files of every course, in one list (misc records carry kind='misc')."""
     page = s.lms(LECTURES_URL)
@@ -395,6 +406,7 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     ("assignments", "Reading assignments", lambda: _collect_assignments(session, meta)),
                     ("attendance", "Reading attendance", lambda: _collect_attendance(session, previous_attendance)),
                     ("exams", "Reading the exam schedule", lambda: _collect_exams(session)),
+                    ("results", "Reading results", lambda: _collect_results(session)),
                     ("announcements", "Reading announcements", lambda: _collect_announcements(session)),
                     ("lectures", "Reading lecture notes", lambda: _collect_lectures(session)),
                     ("timetable", "Reading the timetable", lambda: _collect_timetable(session)),
@@ -420,6 +432,9 @@ def run_sync(headless: bool = True, interactive: bool = False, collect=ALL_COLLE
                     summary.append(f"attendance for {len(result['attendance'])} courses")
                 if "exams" in result:
                     summary.append(f"{sum(1 for e in result['exams'] if e['scheduled'])} scheduled exams")
+                if "results" in result:
+                    graded = [x for x in result["results"]["semesters"] if x["complete"]]
+                    summary.append(f"CGPA {graded[-1]['cgpa']}" if graded and graded[-1].get("cgpa") is not None else "no results yet")
                 if "announcements" in result:
                     summary.append(f"{len(result['announcements'])} announcements")
                 if "lectures" in result:

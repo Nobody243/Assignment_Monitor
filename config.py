@@ -59,6 +59,7 @@ DB_PATH = DATA_DIR / "assignments.json"
 META_PATH = DATA_DIR / "meta.json"
 ATTENDANCE_PATH = DATA_DIR / "attendance.json"
 EXAMS_PATH = DATA_DIR / "exams.json"
+RESULTS_PATH = DATA_DIR / "results.json"
 ANNOUNCEMENTS_PATH = DATA_DIR / "announcements.json"
 REMINDERS_PATH = DATA_DIR / "reminders.json"
 LECTURES_PATH = DATA_DIR / "lectures.json"
@@ -80,6 +81,7 @@ ANNOUNCEMENTS_URL = f"{LMS_BASE_URL}/Student/Announcements.php"
 LECTURES_URL = f"{LMS_BASE_URL}/Student/LectureNotes.php"
 MISC_URL = f"{LMS_BASE_URL}/Student/Miscellaneous.php"
 ATTENDANCE_URL = f"{CMS_BASE_URL}/Sys/Student/ClassAttendance/StudentWiseAttendance.aspx"
+RESULTS_URL = f"{CMS_BASE_URL}/Sys/Student/Exams/ExamResult.aspx"
 EXAMS_URL = f"{CMS_BASE_URL}/Sys/Student/ExamSeatingPlan/ExamSeats"
 TIMETABLE_URL = f"{CMS_BASE_URL}/Sys/Student/CourseRegistration/TimeTable.aspx"
 
@@ -127,6 +129,7 @@ DEFAULTS = {
     "EXAM_REMIND_DAYS": 1,
     "TRACK_LECTURES": True,
     "TRACK_TIMETABLE": True,
+    "TRACK_RESULTS": True,
     # phone, email and calendar (secrets are stored encrypted, like the password)
     "EMAIL_ENABLED": False,
     "EMAIL_TO": "",
@@ -151,7 +154,7 @@ DEFAULTS = {
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
               "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
-              "ANIMATIONS", "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES", "CLOUD_ENABLED")
+              "TRACK_RESULTS", "ANIMATIONS", "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES", "CLOUD_ENABLED")
 _SECRET_KEYS = ("PASSWORD", "EMAIL_PASS", "PUSH_SUB", "PUSH_VAPID", "GITHUB_TOKEN")
 
 

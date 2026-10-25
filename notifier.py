@@ -1,6 +1,7 @@
 import logging
 import subprocess
 
+from results import gpa_of
 from campus import seat_text
 from config import load_env, APP_NAME
 from deadlines import classify
@@ -183,6 +184,22 @@ def alert_exams_scheduled(exams: list) -> None:
     body = "\n".join(f"- {e['title'][:34]}: {e['date']} {e['start_time']}" + (f" · {seat_text(e)}" if seat_text(e) else "")
                      for e in ups[:4])
     _notify(title, body)
+
+
+def alert_results_posted(semesters: list) -> None:
+    """A semester's result appeared on the CMS, whole or in part (phone and email too; no voice)."""
+    if not semesters:
+        return
+    lines = []
+    for s in semesters[:3]:
+        gpa = gpa_of(s["courses"])
+        graded = sum(1 for c in s["courses"] if c.get("grade"))
+        if s.get("complete"):
+            state = f"GPA {gpa}" + (f", CGPA {s['cgpa']}" if s.get("cgpa") is not None else "")
+        else:
+            state = f"{graded} of {len(s['courses'])} courses graded" + (f", GPA so far {gpa}" if gpa is not None else "")
+        lines.append(f"- {s['name']}: {state}")
+    _notify("Result posted" if len(semesters) == 1 else f"{len(semesters)} results posted", "\n".join(lines))
 
 
 def alert_lectures(new_items: list) -> None:
