@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Settings: the cloud-checks texts say the real schedule (07:43 and 18:37) instead of 8 AM and 7 PM; the data folder is shown as %LOCALAPPDATA%\Assignment Monitor when it lives there.
 - Start-up race fixed: the Settings page's cloud-status worker could call into the window before the main loop was running, and the error ("main thread is not in main loop") landed in the status bar. The worker now waits for the loop.
 
 ## 1.6.0 - 2026-10-25

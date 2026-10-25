@@ -770,6 +770,20 @@ class QueueHandler(logging.Handler):
 
 
 # ---------------------------------------------------------------------------- sign-in screen
+def shown_home() -> str:
+    r"""The data folder as the user knows it: %LOCALAPPDATA%\Assignment Monitor when it lives there (the usual
+    install), the real path otherwise (running from source, or a chosen folder)."""
+    local = os.environ.get("LOCALAPPDATA")
+    try:
+        if local:
+            base, root = os.path.realpath(str(BASE_DIR)), os.path.realpath(local)
+            if os.path.commonpath([base, root]) == root:
+                return "%LOCALAPPDATA%\\" + os.path.relpath(base, root)
+    except (OSError, ValueError):
+        pass
+    return str(BASE_DIR)
+
+
 def empty_semester_box(parent, app, title="No courses registered yet"):
     """What every page shows after a check that found no courses on the portal (between semesters)."""
     box = surface(parent)
@@ -2699,7 +2713,7 @@ class SettingsView(ctk.CTkScrollableFrame):
 
         self._cloud_section(env)
 
-        data = self._section("Your data", f"Everything the app keeps is on this PC, in {BASE_DIR}. The activity log is what it "
+        data = self._section("Your data", f"Everything the app keeps is on this PC, in {shown_home()}. The activity log is what it "
                                           "did and when, including the background checks.")
         row = ctk.CTkFrame(data, fg_color="transparent")
         row.pack(fill="x", padx=20, pady=(0, 18))
@@ -2833,7 +2847,7 @@ class SettingsView(ctk.CTkScrollableFrame):
     # ---- cloud checks
     def _cloud_section(self, env):
         box = self._section("Cloud checks (PC off)",
-                            "GitHub runs the same check twice a day, at 8 AM and 7 PM, from a private repository in "
+                            "GitHub runs the same check each morning and evening (07:43 and 18:37), from a private repository in "
                             "your own GitHub account, so phone and email alerts arrive even when this PC is off. Free. "
                             "While it is on, this PC keeps its desktop and voice alerts and leaves phone and email to "
                             "the cloud, so nothing arrives twice.")
@@ -2981,7 +2995,7 @@ class SettingsView(ctk.CTkScrollableFrame):
                          "into it and keep that cache updated there."):
                 ctk.CTkLabel(body, text="•  " + line, font=F(SM), text_color=C["ink"], justify="left", anchor="w",
                              wraplength=480).pack(fill="x", padx=(12, 0), pady=2)
-            text(body, "GitHub's machines then sign in to the portal twice a day, at 8 AM and 7 PM. Until now your "
+            text(body, "GitHub's machines then sign in to the portal each morning and evening (07:43 and 18:37). Until now your "
                        "password never left this PC; with cloud checks it also lives in GitHub's encrypted secrets. "
                        "Turning cloud checks off removes the secrets and the workflow.", pady=(12, 10))
             text(body, "You need a free GitHub account. GitHub will ask you to grant the \"repo\" and \"workflow\" "
@@ -3071,7 +3085,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         def stage_done(info):
             clear()
             text(body, "Cloud checks are on", H3, weight="semibold", pady=(0, 12))
-            text(body, f"GitHub ({info['login']}) now checks the portal for you at 8 AM and 7 PM, PC on or off. "
+            text(body, f"GitHub ({info['login']}) now checks the portal for you at 07:43 and 18:37, PC on or off. "
                        "A first check is running right now; within a few minutes it sends a test alert to your "
                        "phone and mailbox (whichever are set up) and the result shows in Settings.")
             text(body, "From now on this PC keeps its desktop and voice alerts and leaves phone and email to the "
