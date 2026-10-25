@@ -94,3 +94,28 @@ def test_tracker_stores_results_and_returns_posted(tmp_path, monkeypatch):
     assert [s["name"] for s in posted] == ["Fall-2024"]
     assert tracker.save_results({"student": {}, "semesters": []}) == []   # an empty read never overwrites
     assert len(tracker.load_results()["semesters"]) == 3
+
+
+def test_overrides_scenarios_and_grade_needed():
+    d = results.parse_results(RESULTS)
+    sems = d["semesters"]
+    # a past grade changed hypothetically: that semester's GPA and the cumulative figure follow, nothing else moves
+    alt = results.apply_overrides(sems, {("Spring-2024", "ENG 100"): "A"})
+    assert results.gpa_of(alt[1]["courses"]) == 3.0 and results.gpa_of(sems[1]["courses"]) == 1.0
+    assert results.totals(alt[:2])["cgpa"] == round((15.33 + 6 + 12) / 10, 2)
+    assert alt[2]["courses"][0]["grade"] == ""              # the running semester is not touched
+    assert results.apply_overrides(sems, {("Fall-2024", "ENG 100"): "A"})[2]["courses"][0]["grade"] == ""
+    # uniform scenarios: straight A's and straight F's in the running semester
+    scen = {x["grade"]: x for x in results.uniform_scenarios(sems)}
+    assert scen["A"]["gpa"] == 4.0 and scen["A"]["cgpa"] == round((21.33 + 20) / 15, 2)
+    assert scen["F"]["gpa"] == 0.0 and scen["F"]["cgpa"] == round(21.33 / 15, 2)
+    # with one course picked, the scenario fills only the other one
+    scen2 = {x["grade"]: x for x in results.uniform_scenarios(sems, {"ENG 100": "C"})}
+    assert scen2["A"]["gpa"] == round((6 + 8) / 5, 2)
+    # the lowest grade that still reaches a target, and an unreachable one
+    need = results.grade_needed(sems, {}, 2.5)
+    assert need["reached"] and need["grade"] == "B+" and need["remaining"] == 2 and need["best"] == scen["A"]["cgpa"]
+    assert results.grade_needed(sems, {}, 3.9) == {"grade": None, "best": scen["A"]["cgpa"], "remaining": 2, "reached": False}
+    full = results.grade_needed(sems, {"ENG 100": "A", "SEN 300": "A"}, 2.5)
+    assert full["remaining"] == 0 and full["reached"]
+    assert results.uniform_scenarios(sems[:2]) == []

@@ -176,7 +176,7 @@ from tkinter import filedialog, messagebox, simpledialog  # noqa: E402
 import automation                                                                           # noqa: E402
 import updater                                                                              # noqa: E402
 from tray import TrayIcon                                                                   # noqa: E402
-from results import GRADES, current_semester, gpa_of, project, required_gpa, totals
+from results import GRADES, apply_overrides, gpa_of, grade_needed, project, required_gpa, totals, uniform_scenarios
 from tracker import load_results
 from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
                      load_exams, load_announcements, load_lectures, load_timetable)
@@ -1877,37 +1877,110 @@ def grade_color(grade: str) -> str:
     return C["red"]
 
 
-class ResultsView(ctk.CTkScrollableFrame):
-    """Every semester's grades with the portal's GPA and CGPA, the cumulative figures, and a what-if calculator
-    for the running semester. Picks are kept for the session only."""
+def grade_menu(parent, values, current, command, width=86):
+    m = ctk.CTkOptionMenu(parent, values=values, width=width, height=30, font=F(SM), fg_color=C["field"],
+                          button_color=C["line2"], button_hover_color=C["line2"], text_color=C["ink"],
+                          dropdown_fg_color=C["surface"], dropdown_text_color=C["ink"], dropdown_hover_color=C["surface2"],
+                          dropdown_font=F(SM), command=command)
+    m.set(current)
+    return m
+
+
+class ResultsView(ctk.CTkFrame):
+    """The transcript one semester at a time. A strip with the cumulative figures, a semester picker (newest
+    first), and below it the chosen semester: for the running one, the calculator (the grade you expect in each
+    course, a target CGPA and what it takes, same-grade scenarios); for a past one, the grades with the portal's
+    GPA and CGPA and a "Try other grades" mode to see how a different grade would have moved the CGPA. Nothing
+    is saved; Reset puts the real transcript back."""
 
     def __init__(self, master, app):
         super().__init__(master, fg_color="transparent")
         self.app = app
-        self.picks = {}
+        self.picks = {}          # running semester: course code -> grade
+        self.overrides = {}      # past semesters: (semester, code) -> grade
+        self.trying = set()      # past semesters showing grade menus
         self.target = "3.50"
+        self.selected = None     # semester name
+        self.strip = None
+        self.seg = None
+        self.body = ctk.CTkScrollableFrame(self, fg_color="transparent")
 
+    # -- model
+    def _base(self):
+        return (self.app.results or {}).get("semesters") or []
+
+    def _model(self):
+        return apply_overrides(self._base(), self.overrides)
+
+    def _dirty(self):
+        return bool(self.picks or self.overrides)
+
+    def _label(self, sem):
+        compact = len(self._base()) > 8          # many semesters: names only, so the bar fits the window
+        if not sem.get("complete"):
+            return sem["name"] if compact else f"{sem['name']}  ·  now"
+        return f"{sem['name']}  ·  {sem['gpa']:.2f}" if sem.get("gpa") is not None and not compact else sem["name"]
+
+    # -- page
     def refresh(self):
+        outer = getattr(self.body, "_parent_frame", self.body)    # a scrollable frame packs its outer frame
         for w in self.winfo_children():
+            if w is not outer:
+                w.destroy()
+        for w in self.body.winfo_children():
             w.destroy()
+        self.body.pack_forget()
         env = self.app.env
+        semesters = self._base()
         if not env.get("TRACK_RESULTS", True):
             self._empty("Results tracking is off", "Turn it on in Settings → Campus tracking and sync again.")
             return
-        data = self.app.results
-        semesters = (data or {}).get("semesters") or []
         if not semesters:
             self._empty("No results yet", "Press Sync now (or F5). The transcript is read from the CMS Provisional Result page "
-                                           "with every check.")
+                                          "with every check.")
             return
-        done = [x for x in semesters if x.get("complete")]
-        t = totals(done)
-        self._stats(t, len(done), (data or {}).get("student") or {})
-        cur = current_semester(semesters)
-        if cur:
-            self._what_if(semesters, cur)
-        for sem in reversed(semesters):
-            self._semester(sem)
+        names = [x["name"] for x in semesters]
+        if self.selected not in names:
+            self.selected = names[-1]
+        self._stats((self.app.results or {}).get("student") or {})
+        bar = ctk.CTkFrame(self, fg_color="transparent")
+        bar.pack(fill="x", pady=(0, 8))
+        labels = [self._label(x) for x in reversed(semesters)]
+        self._by_label = {self._label(x): x["name"] for x in semesters}
+        self.seg = ctk.CTkSegmentedButton(bar, values=labels, command=self._choose, font=F(SM, "semibold"), height=34,
+                                          corner_radius=8, selected_color=C["accent"], selected_hover_color=C["accent_h"],
+                                          unselected_color=C["surface"], unselected_hover_color=C["surface2"],
+                                          text_color=C["ink"], fg_color=C["line"])
+        self.seg.set(self._label(next(x for x in semesters if x["name"] == self.selected)))
+        self.seg.pack(side="left")
+        self.hint = ctk.CTkLabel(self, text="", font=F(SM), text_color=C["muted"], anchor="w")
+        self.hint.pack(fill="x", pady=(0, 8))
+        self.body.pack(fill="both", expand=True)
+        self._show_semester()
+
+    def _choose(self, label):
+        self.selected = self._by_label.get(label, self.selected)
+        self._show_semester()
+
+    def _show_semester(self):
+        for w in self.body.winfo_children():
+            w.destroy()
+        try:
+            self.body._parent_canvas.yview_moveto(0)
+        except Exception:
+            pass
+        self.sem_sub, self.pts_lbls, self.pill_lbls, self.scen_lbls = {}, {}, {}, {}
+        self.proj_lbl = self.need_lbl = self.target_entry = self.scen_caption = None
+        sem = next(x for x in self._base() if x["name"] == self.selected)
+        if sem.get("complete"):
+            self.hint.configure(text="Try other grades shows how a different grade in this semester would have moved the CGPA; "
+                                     "nothing is saved.")
+            self._past(sem)
+        else:
+            self.hint.configure(text="This semester is running: choose the grades you expect and watch the GPA, the CGPA and "
+                                     "the target line.")
+            self._running(sem)
+        self._recompute()
 
     # -- pieces
     def _empty(self, title, sub):
@@ -1916,65 +1989,169 @@ class ResultsView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(box, text=title, font=F(XL, "semibold", display=True), text_color=C["ink"]).pack(pady=(28, 2))
         ctk.CTkLabel(box, text=sub, font=F(MD), text_color=C["muted"], wraplength=720).pack(pady=(0, 28))
 
-    def _stats(self, t, graded, student):
+    def _stats(self, student):
         strip = surface(self)
         strip.pack(fill="x", pady=(2, 10))
-        cells = [("CGPA", f"{t['cgpa']:.2f}" if t["cgpa"] is not None else "—", "over every graded semester"),
-                 ("Credits earned", f"{t['earned']:g} / {t['credits']:g}", "earned / attempted"),
-                 ("Semesters graded", str(graded),
-                  student.get("program", "") + (f" · since {student['intake_semester']}" if student.get("intake_semester") else ""))]
-        for i, (label, value, sub) in enumerate(cells):
+        since = f" · since {student['intake_semester']}" if student.get("intake_semester") else ""
+        labels = [("CGPA", "over every graded semester"), ("Credits earned", "earned / attempted"),
+                  ("Semesters graded", student.get("program", "") + since)]
+        self.stat_vals, self.stat_subs = [], []
+        for i, (label, sub) in enumerate(labels):
             strip.grid_columnconfigure(i, weight=1, uniform="res")
             cell = ctk.CTkFrame(strip, fg_color="transparent")
             cell.grid(row=0, column=i, sticky="nsew", padx=(20, 10), pady=18)
             ctk.CTkLabel(cell, text=label.upper(), font=F(XS, "semibold"), text_color=C["muted"], anchor="w").pack(anchor="w")
-            ctk.CTkLabel(cell, text=value, font=F(D1, "semibold", display=True), text_color=C["ink"], anchor="w").pack(
-                anchor="w", pady=(2, 0))
-            ctk.CTkLabel(cell, text=sub, font=F(SM), text_color=C["dim"], anchor="w", wraplength=260, justify="left").pack(anchor="w")
+            v = ctk.CTkLabel(cell, text="—", font=F(D1, "semibold", display=True), text_color=C["ink"], anchor="w")
+            v.pack(anchor="w", pady=(2, 0))
+            sl = ctk.CTkLabel(cell, text=sub, font=F(SM), text_color=C["dim"], anchor="w", wraplength=260, justify="left")
+            sl.pack(anchor="w")
+            self.stat_vals.append(v)
+            self.stat_subs.append(sl)
+        strip.grid_columnconfigure(3, weight=0)
+        self.reset_btn = soft_button(strip, "Reset what-ifs", self._reset, width=130)
+        self.reset_btn.grid(row=0, column=3, sticky="ne", padx=(0, 20), pady=18)
 
-    def _what_if(self, semesters, cur):
-        box = surface(self)
+    def _course_row(self, parent, c, right):
+        r = ctk.CTkFrame(parent, fg_color="transparent")
+        r.pack(fill="x", padx=20, pady=7)
+        ctk.CTkLabel(r, text=c["title"], font=F(MD, "medium"), text_color=C["ink"], anchor="w").pack(side="left")
+        ctk.CTkLabel(r, text=f"{c['code']}  ·  {c['credits']:g} cr", font=F(SM), text_color=C["muted"]).pack(side="left", padx=(12, 0))
+        right(r)
+        return r
+
+    def _running(self, sem):
+        box = surface(self.body)
         box.pack(fill="x", pady=(0, 10))
-        heading(box, f"{cur['name']}: what if", "Pick the grade you expect in each course. The figures update as you go; "
-                                                "nothing is saved.").pack(anchor="w", padx=20, pady=(18, 8))
-        for i, c in enumerate(cur["courses"]):
-            if i:
-                hairline(box)
-            r = ctk.CTkFrame(box, fg_color="transparent")
-            r.pack(fill="x", padx=20, pady=6)
-            ctk.CTkLabel(r, text=c["title"], font=F(MD, "medium"), text_color=C["ink"], anchor="w").pack(side="left")
-            ctk.CTkLabel(r, text=f"{c['code']}  ·  {c['credits']:g} cr", font=F(SM), text_color=C["muted"]).pack(side="left", padx=(12, 0))
-            menu = ctk.CTkOptionMenu(r, values=["—"] + GRADES, width=86, height=30, font=F(SM), fg_color=C["field"],
-                                     button_color=C["line2"], button_hover_color=C["line2"], text_color=C["ink"],
-                                     dropdown_fg_color=C["surface"], dropdown_text_color=C["ink"], dropdown_hover_color=C["surface2"],
-                                     dropdown_font=F(SM), command=lambda g, code=c["code"]: self._pick(code, g))
-            menu.set(self.picks.get(c["code"], "—"))
-            menu.pack(side="right")
-        hairline(box)
+        heading(box, f"{sem['name']}: the grade you expect", "Pick a grade per course; the projection, the scenarios and the "
+                                                              "target line update as you go.").pack(anchor="w", padx=20, pady=(18, 8))
         self.proj_lbl = ctk.CTkLabel(box, text="", font=F(LG, "semibold", display=True), text_color=C["ink"], anchor="w",
                                      wraplength=820, justify="left")
-        self.proj_lbl.pack(anchor="w", padx=20, pady=(12, 2))
+        self.proj_lbl.pack(anchor="w", padx=20, pady=(4, 2))
+        self.scen_caption = ctk.CTkLabel(box, text="", font=F(SM), text_color=C["muted"], anchor="w", wraplength=820, justify="left")
+        self.scen_caption.pack(anchor="w", padx=20, pady=(8, 2))
+        row = ctk.CTkFrame(box, fg_color="transparent")
+        row.pack(fill="x", padx=20, pady=(2, 6))
+        for g in GRADES:
+            cell = ctk.CTkFrame(row, fg_color=C["surface2"], corner_radius=10)
+            cell.pack(side="left", padx=(0, 6), pady=2)
+            ctk.CTkLabel(cell, text=g, font=F(XS, "semibold"), text_color=grade_color(g), width=44).pack(pady=(5, 0))
+            lbl = ctk.CTkLabel(cell, text="—", font=F(SM, "semibold"), text_color=C["ink"], width=44)
+            lbl.pack(pady=(0, 5))
+            self.scen_lbls[g] = lbl
         tr = ctk.CTkFrame(box, fg_color="transparent")
-        tr.pack(fill="x", padx=20, pady=(4, 18))
+        tr.pack(fill="x", padx=20, pady=(10, 14))
         ctk.CTkLabel(tr, text="To finish the semester with a CGPA of", font=F(MD), text_color=C["muted"]).pack(side="left")
         self.target_entry = ctk.CTkEntry(tr, width=72, height=30, font=F(MD), fg_color=C["field"], border_color=C["line2"],
                                          text_color=C["ink"], justify="center")
         self.target_entry.insert(0, self.target)
         self.target_entry.pack(side="left", padx=8)
-        self.target_entry.bind("<KeyRelease>", lambda e: self._update(semesters))
-        self.need_lbl = ctk.CTkLabel(tr, text="", font=F(MD), text_color=C["muted"], anchor="w")
-        self.need_lbl.pack(side="left")
-        self._update(semesters)
+        self.target_entry.bind("<KeyRelease>", lambda e: self._recompute())
+        self.need_lbl = ctk.CTkLabel(tr, text="", font=F(MD), text_color=C["muted"], anchor="w", wraplength=560, justify="left")
+        self.need_lbl.pack(side="left", fill="x", expand=True)
+        hairline(box)
+        for i, c in enumerate(sem["courses"]):
+            if i:
+                hairline(box)
+            if c.get("grade"):
+                def posted(r, c=c):
+                    pill(r, c["grade"], grade_color(c["grade"])).pack(side="right")
+                    ctk.CTkLabel(r, text="posted", font=F(SM), text_color=C["dim"]).pack(side="right", padx=(0, 10))
+                self._course_row(box, c, posted)
+            else:
+                self._course_row(box, c, lambda r, c=c: grade_menu(r, ["—"] + GRADES, self.picks.get(c["code"], "—"),
+                                                                   lambda g, code=c["code"]: self._pick(code, g)).pack(side="right"))
+        ctk.CTkLabel(box, text="", height=6).pack()
 
+    def _past(self, sem):
+        box = surface(self.body)
+        box.pack(fill="x", pady=(0, 10))
+        head = ctk.CTkFrame(box, fg_color="transparent")
+        head.pack(fill="x", padx=20, pady=(18, 8))
+        h = heading(head, sem["name"], "")
+        h.pack(side="left")
+        self.sem_sub[sem["name"]] = [w for w in h.winfo_children() if isinstance(w, ctk.CTkLabel)][-1]
+        trying = sem["name"] in self.trying
+        soft_button(head, "Done trying" if trying else "Try other grades", lambda n=sem["name"]: self._toggle_try(n),
+                    width=140).pack(side="right")
+        for i, c in enumerate(sem["courses"]):
+            if i:
+                hairline(box)
+            key = (sem["name"], c["code"])
+            shown = self.overrides.get(key, c["grade"])
+
+            def right(r, c=c, key=key, shown=shown):
+                if trying:
+                    grade_menu(r, GRADES, shown, lambda g, k=key, actual=c["grade"]: self._override(k, actual, g),
+                               width=78).pack(side="right")
+                else:
+                    pl = pill(r, shown, grade_color(shown))
+                    pl.pack(side="right")
+                    self.pill_lbls[key] = pl
+                pts = ctk.CTkLabel(r, text="", font=F(SM), text_color=C["dim"])
+                pts.pack(side="right", padx=(0, 10))
+                self.pts_lbls[key] = (pts, c)
+            self._course_row(box, c, right)
+        ctk.CTkLabel(box, text="", height=6).pack()
+
+    # -- interaction
     def _pick(self, code, grade):
         if grade == "—":
             self.picks.pop(code, None)
         else:
             self.picks[code] = grade
-        self._update(self.app.results.get("semesters") or [])
+        self._recompute()
 
-    def _update(self, semesters):
-        pr = project(semesters, self.picks)
+    def _override(self, key, actual, grade):
+        if grade == actual:
+            self.overrides.pop(key, None)
+        else:
+            self.overrides[key] = grade
+        self._recompute()
+
+    def _toggle_try(self, name):
+        if name in self.trying:
+            self.trying.discard(name)
+        else:
+            self.trying.add(name)
+        self._show_semester()
+
+    def _reset(self):
+        self.picks, self.overrides, self.trying = {}, {}, set()
+        self.refresh()
+
+    def _recompute(self):
+        base, sems = self._base(), self._model()
+        t0 = totals([x for x in base if x.get("complete")])
+        t = totals([x for x in sems if x.get("complete")])
+        changed = bool(self.overrides) and t["cgpa"] != t0["cgpa"]
+        self.stat_vals[0].configure(text=f"{t['cgpa']:.2f}" if t["cgpa"] is not None else "—",
+                                    text_color=C["accent"] if changed else C["ink"])
+        self.stat_subs[0].configure(text=f"was {t0['cgpa']:.2f}: with your changes" if changed else "over every graded semester")
+        self.stat_vals[1].configure(text=f"{t['earned']:g} / {t['credits']:g}")
+        self.stat_vals[2].configure(text=str(sum(1 for x in base if x.get("complete"))))
+        if self._dirty():
+            self.reset_btn.grid()
+        else:
+            self.reset_btn.grid_remove()
+        by_name = {x["name"]: x for x in sems}
+        for name, lbl in self.sem_sub.items():
+            orig = next(x for x in base if x["name"] == name)
+            was = orig["gpa"] if orig.get("gpa") is not None else gpa_of(orig["courses"])
+            now = gpa_of(by_name[name]["courses"])
+            txt = f"GPA {was:.2f}" if was is not None else "GPA —"
+            if now is not None and was is not None and abs(now - was) >= 0.005:
+                txt = f"GPA {was:.2f} → {now:.2f} with your changes"
+            elif orig.get("cgpa") is not None:
+                txt += f"   ·   CGPA {orig['cgpa']:.2f} at the time"
+            lbl.configure(text=txt)
+        for key, (pts, c) in self.pts_lbls.items():
+            g = self.overrides.get(key, c["grade"])
+            pts.configure(text=f"{grade_points_of(g, c):g} pts")
+            if key in self.pill_lbls:
+                self.pill_lbls[key].configure(text=f"  {g}  ", text_color=grade_color(g))
+        if self.proj_lbl is None:
+            return
+        pr = project(sems, self.picks)
         if pr["picked"]:
             txt = f"Projected GPA {pr['gpa']:.2f}   ·   CGPA {pr['cgpa']:.2f}"
             if pr["picked"] < pr["of"]:
@@ -1982,6 +2159,17 @@ class ResultsView(ctk.CTkScrollableFrame):
         else:
             txt = "Pick a grade to see the projected GPA and CGPA."
         self.proj_lbl.configure(text=txt)
+        left = pr["of"] - pr["picked"]
+        if not pr["picked"]:
+            cap = "If every course ends with the same grade, the CGPA lands at:"
+        elif left:
+            head = f"If the {left} course not picked yet ends" if left == 1 else f"If the {left} courses not picked yet end"
+            cap = head + " with the same grade, the CGPA lands at:"
+        else:
+            cap = "Every course is picked; the scenarios below use your picks:"
+        self.scen_caption.configure(text=cap)
+        for x in uniform_scenarios(sems, self.picks):
+            self.scen_lbls[x["grade"]].configure(text=f"{x['cgpa']:.2f}" if x["cgpa"] is not None else "—")
         raw = (self.target_entry.get() or "").strip()
         try:
             target = float(raw)
@@ -1989,42 +2177,30 @@ class ResultsView(ctk.CTkScrollableFrame):
         except ValueError:
             self.need_lbl.configure(text="")
             return
-        need = required_gpa(semesters, target)
+        need = required_gpa(sems, target)
+        gn = grade_needed(sems, self.picks, target)
         if need is None:
             self.need_lbl.configure(text="")
-        elif need > 4:
-            self.need_lbl.configure(text=f"you would need a GPA of {need:.2f} this semester: out of reach", text_color=C["red"])
-        elif need <= 0:
-            self.need_lbl.configure(text="you are already there, whatever this semester brings", text_color=C["green"])
-        else:
-            self.need_lbl.configure(text=f"you need a GPA of {need:.2f} this semester", text_color=C["ink"])
-
-    def _semester(self, sem):
-        box = surface(self)
-        box.pack(fill="x", pady=(0, 10))
-        if sem.get("complete"):
-            sub = f"GPA {sem['gpa']:.2f}" if sem.get("gpa") is not None else f"GPA {gpa_of(sem['courses']) or '—'}"
-            if sem.get("cgpa") is not None:
-                sub += f"   ·   CGPA {sem['cgpa']:.2f}"
-        else:
-            graded = sum(1 for c in sem["courses"] if c.get("grade"))
-            sub = "Result not posted yet" if not graded else f"{graded} of {len(sem['courses'])} courses graded so far"
-        heading(box, sem["name"], sub).pack(anchor="w", padx=20, pady=(18, 8))
-        for i, c in enumerate(sem["courses"]):
-            if i:
-                hairline(box)
-            r = ctk.CTkFrame(box, fg_color="transparent")
-            r.pack(fill="x", padx=20, pady=7)
-            ctk.CTkLabel(r, text=c["title"], font=F(MD, "medium"), text_color=C["ink"] if c.get("grade") else C["muted"],
-                         anchor="w").pack(side="left")
-            ctk.CTkLabel(r, text=f"{c['code']}  ·  {c['credits']:g} cr", font=F(SM), text_color=C["muted"]).pack(side="left", padx=(12, 0))
-            if c.get("grade"):
-                pill(r, c["grade"], grade_color(c["grade"])).pack(side="right")
-                if c.get("points") is not None:
-                    ctk.CTkLabel(r, text=f"{c['points']:g} pts", font=F(SM), text_color=C["dim"]).pack(side="right", padx=(0, 10))
+        elif need <= 0 or (gn["remaining"] == 0 and gn["reached"]) or gn["grade"] == "F":
+            if gn["remaining"] == 0:
+                txt = "you are already there with the grades you picked"
+            elif self.picks:
+                txt = "you are already there, whatever the other courses bring"
             else:
-                ctk.CTkLabel(r, text="pending", font=F(SM), text_color=C["dim"]).pack(side="right")
-        ctk.CTkLabel(box, text="", height=6).pack()
+                txt = "you are already there, whatever this semester brings"
+            self.need_lbl.configure(text=txt, text_color=C["green"])
+        elif not gn["reached"]:
+            best = f"{gn['best']:.2f}" if gn["best"] is not None else "—"
+            self.need_lbl.configure(text=f"not reachable this semester: a GPA of {need:.2f} would be needed, and straight A's "
+                                         f"{'in the rest ' if self.picks else ''}end at {best}", text_color=C["red"])
+        else:
+            where = f"in each of the {gn['remaining']} courses not picked yet" if self.picks else "in every course"
+            self.need_lbl.configure(text=f"you need a GPA of {need:.2f} this semester: at least {gn['grade']} {where}", text_color=C["ink"])
+
+
+def grade_points_of(grade, course):
+    from results import GRADE_POINTS
+    return GRADE_POINTS.get(grade, course.get("points") or 0)
 
 
 # ---------------------------------------------------------------------------- announcements
