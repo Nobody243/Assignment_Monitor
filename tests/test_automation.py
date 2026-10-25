@@ -36,3 +36,30 @@ def test_task_xml_has_the_laptop_settings():
     assert root.find("t:Settings/t:RestartOnFailure", ns) is None
     assert root.find("t:Triggers/t:TimeTrigger/t:Repetition/t:Interval", ns).text == "PT1H"
     assert automation.TASK_MARK in daily
+
+
+def test_source_run_leaves_the_installed_apps_tasks_alone(monkeypatch, tmp_path):
+    """Running from source next to an installation (tests, screenshots) must not re-point the tasks at the source."""
+    exe = tmp_path / "AssignmentMonitor.exe"
+    exe.write_bytes(b"")
+
+    class R:
+        returncode = 0
+        stdout = f"<Task><Actions><Exec><Command>{exe}</Command></Exec></Actions></Task>"
+        stderr = ""
+
+    monkeypatch.setattr(automation, "FROZEN", False)
+    monkeypatch.setattr(automation, "_run", lambda cmd, timeout=60: R())
+    assert automation.installed_owner() == str(exe)
+    registered = []
+    monkeypatch.setattr(automation, "_register", lambda *a, **k: registered.append(a[0]))
+    ok, msg = automation.ORIGINALS["enable"]()
+    assert ok and "installed app" in msg and registered == []
+    assert automation.ORIGINALS["refresh_if_outdated"]() is False
+    # the installed program itself (frozen) is never blocked by this rule
+    monkeypatch.setattr(automation, "FROZEN", True)
+    assert automation.installed_owner() == ""
+    # and a task pointing at a program that no longer exists does not block a fresh source registration
+    monkeypatch.setattr(automation, "FROZEN", False)
+    R.stdout = "<Command>C:/gone/AssignmentMonitor.exe</Command>"
+    assert automation.installed_owner() == ""
