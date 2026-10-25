@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0 - 2026-10-25
 
 - Results page: your transcript one semester at a time, read from the CMS Provisional Result page. A strip with the CGPA, credits earned and semesters graded, a semester bar with each semester's GPA, and below it the chosen semester. For the running semester, a calculator: pick the grade you expect in each course and see the projected GPA and CGPA, a row of same-grade scenarios (every course at A, A-, B+ ... and where the CGPA lands), and a target CGPA with the semester GPA it needs and the lowest grade that gets there, or a plain "not reachable this semester". For a past semester, the grades with the portal's GPA and CGPA at the time, and Try other grades to see how a different grade in any course would have moved the CGPA. Nothing is saved; Reset what-ifs puts the real transcript back. The arithmetic matches the portal's own figures (checked against a real six-semester transcript). The moment a result is posted, whole or course by course, a notification goes out, phone and email too; the first read after this update stays quiet. Switchable under Settings → Campus tracking; cloud checks read it too.
 
