@@ -7,7 +7,10 @@
     { "source": "/", "has": [{ "type": "host", "value": "assignment-monitor.vercel.app" }], "destination": "https://assignment-monitor.saaddev.top/", "permanent": true },
     { "source": "/:page(download|privacy|faq|cloud)", "has": [{ "type": "host", "value": "assignment-monitor.vercel.app" }], "destination": "https://assignment-monitor.saaddev.top/:page", "permanent": true }
   ],
-  "rewrites": [{ "source": "/:page(download|privacy|faq|phone|cloud)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/:page(download|privacy|faq|phone|cloud)", "destination": "/:page.html" },
+    { "source": "/guide/:slug(bahria-attendance|bahria-lms-deadlines)", "destination": "/guide/:slug.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

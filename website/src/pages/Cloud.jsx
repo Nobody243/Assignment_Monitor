@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { usePageMeta } from "../lib/meta.js";
+import { metaFor } from "../data/pages.js";
 import { PageHero, SectionHead, Stagger, Item, Reveal, Window } from "../components/Reveal.jsx";
 import { Button, DownloadButton } from "../components/Button.jsx";
 import { LINKS, shot } from "../data/content.js";
@@ -36,7 +37,7 @@ const STEPS = [
 ];
 
 export default function Cloud() {
-  usePageMeta("Cloud checks", "How Assignment Monitor's cloud checks work: the same check on GitHub's machines from a private repository in your own account, so phone and email alerts arrive with the PC off. Every step with screenshots.");
+  usePageMeta(...metaFor("/cloud"));
   const [theme, setTheme] = useState("light");
   return (
     <>

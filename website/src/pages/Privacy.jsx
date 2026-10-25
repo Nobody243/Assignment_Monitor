@@ -1,5 +1,6 @@
 import React from "react";
 import { usePageMeta } from "../lib/meta.js";
+import { metaFor } from "../data/pages.js";
 import { PageHero, SectionHead, Stagger, Item, Reveal } from "../components/Reveal.jsx";
 import { Button } from "../components/Button.jsx";
 import { LINKS, PRIVACY_CARDS } from "../data/content.js";
@@ -25,7 +26,7 @@ const NOT = [
 ];
 
 export default function Privacy() {
-  usePageMeta("Privacy & security", "What Assignment Monitor stores, where, how it is protected, and the only hosts it talks to.");
+  usePageMeta(...metaFor("/privacy"));
   return (
     <>
       <PageHero kicker="Privacy & security" title={<>No server. No account. <span className="heading-accent">Nothing leaves your PC.</span></>}

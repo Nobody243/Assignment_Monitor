@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
-const BASE = "Assignment Monitor";
-const SITE = "https://assignment-monitor.saaddev.top";
+import { BASE, SITE, DEFAULT_TITLE } from "../data/pages.js";
 
 function setMeta(selector, attr, value) {
   let el = document.head.querySelector(selector);
@@ -19,7 +18,7 @@ function setMeta(selector, attr, value) {
    options.noindex marks a page (the 404) as not worth indexing. */
 export function usePageMeta(title, description, options = {}) {
   useEffect(() => {
-    const full = title ? `${title} · ${BASE}` : `${BASE} — never miss a Bahria LMS deadline`;
+    const full = title ? `${title} · ${BASE}` : DEFAULT_TITLE;
     document.title = full;
     const path = window.location.pathname.replace(/\/+$/, "") || "/";
     const url = SITE + (path === "/" ? "/" : path);

@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { usePageMeta } from "../lib/meta.js";
+import { metaFor } from "../data/pages.js";
 import { useScroll } from "../lib/scroll.jsx";
 import { useScene } from "../lib/scene.jsx";
 import Hero from "../components/home/Hero.jsx";
@@ -19,7 +20,7 @@ import { SectionHead, Reveal } from "../components/Reveal.jsx";
 import { FAQ } from "../data/content.js";
 
 export default function Home() {
-  usePageMeta("", "A free, open-source Windows app that watches your Bahria University LMS and CMS: assignments with extended-deadline detection, attendance margins, the exam seating plan and course announcements. Everything stays on your PC.");
+  usePageMeta(...metaFor("/"));
   const { hash } = useLocation();
   const { scrollTo } = useScroll();
   const { introDone } = useScene();

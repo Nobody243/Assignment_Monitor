@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useScroll } from "../lib/scroll.jsx";
 import { usePageMeta } from "../lib/meta.js";
+import { metaFor } from "../data/pages.js";
 import { useRelease, fmtMB, fmtDate } from "../lib/release.jsx";
 import { PageHero, SectionHead, Stagger, Item, Reveal } from "../components/Reveal.jsx";
 import { Button, DownloadButton } from "../components/Button.jsx";
@@ -10,7 +11,7 @@ import { IS_WINDOWS, PLATFORM_NOTE } from "../lib/platform.js";
 import { LINKS, WHAT_INSTALLER_DOES, UNINSTALL_STEPS } from "../data/content.js";
 
 export default function Download() {
-  usePageMeta("Download", "Download Assignment Monitor for Windows: installer or portable zip, what the installer does, SmartScreen, requirements and uninstall.");
+  usePageMeta(...metaFor("/download"));
   const rel = useRelease();
   const { hash } = useLocation();
   const { scrollTo } = useScroll();

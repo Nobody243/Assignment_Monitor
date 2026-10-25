@@ -70,3 +70,22 @@
   .cloud-step.is-flip .cloud-step-text { order: 0; }
   .cloud-step-text p:last-child { max-width: none; }
 }
+
+/* ============================================================ guides */
+.guide-wrap { display: grid; grid-template-columns: minmax(0, 68ch) minmax(220px, 300px); gap: clamp(28px, 5vw, 72px); align-items: start; }
+.guide-body { padding: var(--card-pad); border-radius: var(--card-r); background: var(--glass-2); border: 1px solid var(--line); min-width: 0; }   /* the planet passes behind long text: glass keeps it readable */
+.guide-body > section { padding: 0; margin-bottom: clamp(28px, 4vw, 44px); }   /* sections inside the article are plain blocks, not page bands */
+.guide-body > section:last-of-type { margin-bottom: 0; }
+.guide-body .h-md { margin: 0 0 14px; }
+.guide-body p { font-size: var(--lede); line-height: 1.6; color: var(--ink-2); text-wrap: pretty; }
+.guide-body p + p { margin-top: 14px; }
+.guide-list { margin: 16px 0 0; }
+.guide-list + p { margin-top: 18px; }
+.guide-foot { margin-top: clamp(28px, 4vw, 44px); padding-top: 18px; border-top: 1px solid var(--line); }
+.guide-foot .mono { text-transform: none; letter-spacing: 0; line-height: 1.6; }
+.guide-aside { position: sticky; top: 96px; padding: var(--card-pad); border-radius: var(--card-r); background: var(--glass-2); border: 1px solid var(--line); }
+.guide-aside .plain-list li { grid-template-columns: 1fr; padding: 10px 0; }
+.guide-aside .plain-list a { color: var(--ink-1); text-decoration: none; }
+.guide-aside .plain-list a:hover { color: var(--accent); }
+.guide-aside .hero-cta { margin-top: 20px; }
+@media (max-width: 900px) { .guide-wrap { grid-template-columns: 1fr; } .guide-aside { position: static; } }
