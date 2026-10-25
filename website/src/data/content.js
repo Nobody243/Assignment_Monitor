@@ -60,13 +60,14 @@ export const STEPS = [
   { title: "Let it run", text: "Leave \"Check automatically\" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days." },
 ];
 
-export const SHOT_V = "143";
+export const SHOT_V = "144";
 export const shot = (id, theme) => `/assets/shot-${id}-${theme}.png?v=${SHOT_V}`;
 
 export const SCREENS = [
   { id: "dashboard", label: "Dashboard", caption: "Dashboard: next deadline, counters, attention list, course progress." },
   { id: "attendance", label: "Attendance", caption: "Attendance: every course's hours, the margin to the 75% rule, and the class-by-class record." },
   { id: "exams", label: "Exams", caption: "Exams: the seating plan with room, row and seat, and a countdown to each paper." },
+  { id: "results", label: "Results", caption: "Results: every semester's grades, GPA and CGPA, and the calculator: pick the grades you expect, set a target CGPA, try other grades in a past semester." },
   { id: "timetable", label: "Timetable", caption: "Timetable: the week as a clean grid, one row per day and a colour per course; save it as PNG, JPG or PDF." },
   { id: "lectures", label: "Lectures", caption: "Lectures: every course's notes by week; tick files and download them into course / week folders." },
   { id: "announcements", label: "Announcements", caption: "Announcements: every course's notices in one feed, newest first." },
