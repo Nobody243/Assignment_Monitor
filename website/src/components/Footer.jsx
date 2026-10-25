@@ -38,7 +38,10 @@ export default function Footer() {
             </ul></div>
             <div><h3>Explore</h3><ul>
               <li><Link to="/#story">Tour</Link></li><li><Link to="/#features">Features</Link></li><li><Link to="/#screens">Screens</Link></li>
-              <li><Link to="/faq">FAQ</Link></li><li><Ext href={LINKS.releases}>Release notes</Ext></li>
+              <li><Link to="/faq">FAQ</Link></li>
+              <li><Link to="/guide/bahria-attendance">The 75% attendance rule</Link></li>
+              <li><Link to="/guide/bahria-lms-deadlines">LMS deadlines and extensions</Link></li>
+              <li><Ext href={LINKS.releases}>Release notes</Ext></li>
             </ul></div>
             <div><h3>Project</h3><ul>
               <li><Ext href={LINKS.repo}>Source code</Ext></li>

@@ -1,12 +1,13 @@
 import React from "react";
 import { usePageMeta } from "../lib/meta.js";
+import { metaFor } from "../data/pages.js";
 import { PageHero, Reveal } from "../components/Reveal.jsx";
 import { Button } from "../components/Button.jsx";
 import FaqList from "../components/FaqList.jsx";
 import { FAQ, LINKS } from "../data/content.js";
 
 export default function Faq() {
-  usePageMeta("FAQ", "Answers about SmartScreen, accounts, Chrome, schedules, uninstalling and running Assignment Monitor from source.");
+  usePageMeta(...metaFor("/faq"));
   return (
     <>
       <PageHero kicker="FAQ" title={<>Questions, <span className="heading-accent">answered.</span></>} lede="Short answers. For anything else, open an issue on GitHub and include the app version from Settings → About." />

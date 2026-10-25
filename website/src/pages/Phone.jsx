@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { usePageMeta } from "../lib/meta.js";
+import { metaFor } from "../data/pages.js";
 import { PageHero, Reveal } from "../components/Reveal.jsx";
 import { Button } from "../components/Button.jsx";
 
@@ -46,7 +47,7 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 const standalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 
 export default function Phone() {
-  usePageMeta("Phone alerts", "Pair your phone with Assignment Monitor on your PC so alerts arrive as notifications here.");
+  usePageMeta(...metaFor("/phone"));
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => { const on = () => setHash(window.location.hash); window.addEventListener("hashchange", on); return () => window.removeEventListener("hashchange", on); }, []);
   const params = useMemo(() => new URLSearchParams(hash.slice(1)), [hash]);
