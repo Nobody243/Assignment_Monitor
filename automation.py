@@ -4,6 +4,7 @@ Everything here runs as the current user and needs no administrator rights.
 """
 import logging
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timedelta
@@ -35,6 +36,26 @@ def _quote(parts) -> str:
 
 def _startup_dir() -> Path:
     return Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+
+
+def installed_owner() -> str:
+    """The installed program that owns the background tasks, when this is a source-tree run and the tasks point at
+    an AssignmentMonitor.exe that still exists; "" otherwise. Running the source next to an installation (tests,
+    screenshots, development) must never re-point the installed app's tasks and shortcuts at the source tree:
+    that is exactly what happened once, and the student ended up in a copy of the app with none of their setup."""
+    if FROZEN:
+        return ""
+    try:
+        r = _run(["schtasks", "/Query", "/TN", TASK_DAILY, "/XML"], timeout=20)
+    except Exception:
+        return ""
+    if r.returncode != 0:
+        return ""
+    m = re.search(r"<Command>(.*?)</Command>", r.stdout or "", re.S)
+    cmd = (m.group(1) if m else "").strip()
+    if cmd.lower().endswith("assignmentmonitor.exe") and Path(cmd).exists():
+        return cmd
+    return ""
 
 
 def is_enabled() -> bool:
@@ -161,7 +182,7 @@ def is_outdated() -> bool:
 
 def refresh_if_outdated() -> bool:
     """Re-registers tasks left by an older version so they get the laptop-friendly settings. Returns True if done."""
-    if not is_outdated():
+    if not is_outdated() or installed_owner():
         return False
     ok, msg = enable()
     log.info("Background tasks re-registered with the current settings: %s", msg)
@@ -228,6 +249,10 @@ def set_start_with_windows(enable: bool):
 
 def enable():
     """Registers all background jobs. Returns (ok, message)."""
+    owner = installed_owner()
+    if owner:
+        log.info("Background tasks belong to the installed app (%s); this source run leaves them alone.", owner)
+        return True, "Background automation is on (run by the installed app)."
     try:
         check, remind = app_command("--check"), app_command("--remind")
         check_cmd, remind_cmd = _quote(check), _quote(remind)

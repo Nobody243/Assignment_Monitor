@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Running the app from the source tree next to an installation no longer takes over the installed app's background tasks and shortcuts (they now stay with the installed program), and the test suite runs in a throw-away data folder with alerts, channels, update checks and task registration switched off. A source-tree run had re-pointed the tasks and the Desktop shortcut at the source, which opened a copy of the app with none of the student's setup.
 - Settings: the cloud-checks texts say the real schedule (07:43 and 18:37) instead of 8 AM and 7 PM; the data folder is shown as %LOCALAPPDATA%\Assignment Monitor when it lives there.
 - Start-up race fixed: the Settings page's cloud-status worker could call into the window before the main loop was running, and the error ("main thread is not in main loop") landed in the status bar. The worker now waits for the loop.
 
