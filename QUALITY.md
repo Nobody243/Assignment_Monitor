@@ -12,7 +12,7 @@ this document uses.
 
 - Every change is committed to the public repository with a message that says what changed and why.
 - Every commit runs the linter (ruff) and the unit test suite in GitHub Actions on Windows; a failing test blocks
-  the build. The suite has 133 tests at 1.6.0: parsers against saved portal HTML, deadline logic, the tracker's
+  the build. The suite has 135 tests at 1.6.0: parsers against saved portal HTML, deadline logic, the tracker's
   change detection, channels, calendar export, the updater, the cloud workflow, automation task XML, crash
   handling, failure counting, and a GUI smoke test that opens the real window and runs its pages.
 - Releases are built by GitHub Actions from a tagged commit, never from a developer's machine, so the installer
@@ -84,7 +84,7 @@ this document uses.
 ### Maintainability
 - One repository, plain Python and a small React site, no server to operate. Modules are separated by concern
   (scraper, tracker, notifier, channels, cloud, automation, updater, UI).
-- 133 automated tests, lint on every commit, a changelog entry for every release, and a documented release
+- 135 automated tests, lint on every commit, a changelog entry for every release, and a documented release
   process. Lessons from live failures are turned into tests (the lecture download, the sign-in race, the
   GUI smoke test).
 - Issues are the public channel; the crash dialog and the 404 page pre-fill them with the facts needed.
@@ -93,6 +93,24 @@ this document uses.
 - Installer and portable zip, both built by CI. Silent install and uninstall work for managed machines.
   Settings and data live in one folder under the user's profile; the uninstaller offers to remove them.
 - The clean-machine test is the portability check that runs on every release.
+
+## Automated checks and their last readings
+
+Run on 25 October 2026 against 1.6.0 (the first three run in GitHub Actions on every commit).
+
+| Check | Tool | Reading |
+|---|---|---|
+| Style and correctness lint | ruff | clean |
+| Security lint | Bandit (medium and above) | clean: every opened URL is checked to be https; content hashes are declared non-security |
+| Dependency vulnerabilities | pip-audit on requirements.txt | none |
+| Unit and GUI tests | pytest | 135 passed |
+| Test coverage | coverage.py | 49 % of statements overall; the pure logic is high (results 96 %, tracker 94 %, campus parsers 93 %, deadlines 99 %), the window and the live portal reader are low (app 40 %, scraper 22 %) and are covered by the clean-machine run and the account-level run instead |
+| Complexity | radon | no function above grade D except the Dashboard's refresh (E); the Results page's recompute was F and was split into five steps |
+| Website accessibility | axe-core, Lighthouse | 0 serious or critical violations on every route; Lighthouse accessibility 100 desktop and mobile |
+| Website performance | Lighthouse | desktop: home 85, download 91, FAQ 94, guide 91; mobile home 41 (the 3D globe, an accepted trade-off) |
+| Website SEO and best practices | Lighthouse | 100 and 100 on every page measured |
+| HTML validity | W3C Nu validator | 0 errors, 0 warnings on every page |
+| Security headers | curl | CSP, HSTS, nosniff, frame denial, referrer and permissions policies all present |
 
 ## Honest gaps
 
