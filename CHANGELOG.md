@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.1 - 2026-10-25
 
 - Settings are saved as changes on top of what is on disk, not as a whole snapshot: a window left open for hours (or a second copy of the app) saving its size no longer puts its stale copy of the GitHub sign-in or the phone pairing back over a newer one.
 - Security lint: every URL the app opens is checked to be https first; content hashes declare they are not security hashes; Bandit runs in CI beside ruff.

@@ -12,7 +12,7 @@ this document uses.
 
 - Every change is committed to the public repository with a message that says what changed and why.
 - Every commit runs the linter (ruff) and the unit test suite in GitHub Actions on Windows; a failing test blocks
-  the build. The suite has 135 tests at 1.6.0: parsers against saved portal HTML, deadline logic, the tracker's
+  the build. The suite has 135 tests at 1.6.1: parsers against saved portal HTML, deadline logic, the tracker's
   change detection, channels, calendar export, the updater, the cloud workflow, automation task XML, crash
   handling, failure counting, and a GUI smoke test that opens the real window and runs its pages.
 - Releases are built by GitHub Actions from a tagged commit, never from a developer's machine, so the installer
@@ -96,7 +96,7 @@ this document uses.
 
 ## Automated checks and their last readings
 
-Run on 25 October 2026 against 1.6.0 (the first three run in GitHub Actions on every commit).
+Run on 25 October 2026 against 1.6.0 and 1.6.1 (the first three run in GitHub Actions on every commit).
 
 | Check | Tool | Reading |
 |---|---|---|
@@ -119,4 +119,4 @@ Run on 25 October 2026 against 1.6.0 (the first three run in GitHub Actions on e
 - The portal has no API; the app depends on its HTML, which can change without notice.
 - The installer is unsigned until SignPath approves the application.
 
-Last reviewed with release 1.6.0, 25 October 2026.
+Last reviewed with release 1.6.1, 25 October 2026.
