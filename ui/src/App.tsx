@@ -23,6 +23,7 @@ import { AnnouncementsPage } from '@/pages/announcements-page'
 import { AssignmentsPage, type Filter } from '@/pages/assignments-page'
 import { AttendancePage } from '@/pages/attendance-page'
 import { ExamsPage } from '@/pages/exams-page'
+import { TimetablePage } from '@/pages/timetable-page'
 import { LecturesPage } from '@/pages/lectures-page'
 import { ResultsPage } from '@/pages/results-page'
 import { SettingsPage } from '@/pages/settings-page'
@@ -120,7 +121,7 @@ export default function App() {
     if (r.ok) toast.success(`${a.title}: submission deleted`, { description: r.message }); else toast.error(`${a.title}: could not delete the submission`, { description: r.message })
   }
 
-  const openFolderSafe = (k: 'lectures' | 'data') => void openFolder(k).catch(e => toast.error('Could not open the folder', { description: e instanceof Error ? e.message : undefined }))
+  const openFolderSafe = (k: 'lectures' | 'data' | 'timetable') => void openFolder(k).catch(e => toast.error('Could not open the folder', { description: e instanceof Error ? e.message : undefined }))
   const folderAction = { label: 'Open folder', onClick: () => openFolderSafe('lectures') }
   const doDownload = async (items: Assignment[], kind: FileKind) => {
     let saved = 0, failed = 0
@@ -169,6 +170,7 @@ export default function App() {
           onDownload={(items, kind) => void doDownload(items, kind)} busy={busy} demo={demo} />
       case 'attendance': return <AttendancePage state={state} />
       case 'exams': return <ExamsPage state={state} now={now} />
+      case 'timetable': return <TimetablePage state={state} now={now} dark={dark} demo={demo} />
       case 'lectures': return <LecturesPage lectures={state.lectures} colors={colors} now={now} busy={busy} demo={demo} folder={state.paths.lectures}
         onDownload={ids => void doLectureDownload(ids)} onOpenFolder={() => openFolderSafe('lectures')} />
       case 'announcements': return <AnnouncementsPage items={state.announcements} colors={colors} now={now} />

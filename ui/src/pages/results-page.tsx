@@ -50,11 +50,13 @@ export function ResultsPage({ results }: { results: Results }) {
 
       <section className="bg-card panel-lift rounded-2xl border p-5" aria-label="GPA by semester">
         <div className="mb-4 flex items-center justify-between"><h2 className="text-sm font-semibold">GPA and CGPA by semester</h2><span className="text-muted-foreground text-xs">GPA bars, CGPA beneath</span></div>
-        <div className="flex h-36 items-end gap-3">
+        <div className="flex h-48 items-stretch gap-3">
           {series.map(s => (
-            <button key={s.name} type="button" onClick={() => setSel(s.name)} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={`${s.name}: GPA ${f2(s.gpa)}, CGPA ${f2(s.cgpa)}`}>
+            <button key={s.name} type="button" onClick={() => setSel(s.name)} className="group flex min-w-0 flex-1 flex-col items-center gap-1.5" title={`${s.name}: GPA ${f2(s.gpa)}, CGPA ${f2(s.cgpa)}`}>
               <span className="num text-xs">{f2(s.gpa)}</span>
-              <div className={cn('w-full max-w-20 rounded-lg transition-colors', sel?.name === s.name ? 'bg-primary' : 'bg-banner/70 group-hover:bg-banner dark:bg-foreground/50 dark:group-hover:bg-foreground/70')} style={{ height: `${Math.max(8, ((s.gpa ?? 0) / 4) * 78)}%` }} />
+              <div className="flex min-h-0 w-full flex-1 items-end justify-center">
+                <div className={cn('w-full max-w-16 rounded-lg transition-colors', sel?.name === s.name ? 'bg-primary' : 'bg-primary/35 group-hover:bg-primary/55')} style={{ height: `${Math.max(6, ((s.gpa ?? 0) / 4) * 100)}%` }} />
+              </div>
               <span className="text-muted-foreground text-[11px]">{shortName(s.name)}</span>
               <span className="num text-muted-foreground text-[10px]">{f2(s.cgpa)}</span>
             </button>

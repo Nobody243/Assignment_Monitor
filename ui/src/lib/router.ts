@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export const PAGES = ['home', 'assignments', 'attendance', 'exams', 'lectures', 'announcements', 'results', 'settings'] as const
+export const PAGES = ['home', 'assignments', 'attendance', 'exams', 'timetable', 'lectures', 'announcements', 'results', 'settings'] as const
 export type Page = (typeof PAGES)[number]
 
 /** The tabs inside Settings, in the order they are listed. */
@@ -17,7 +17,7 @@ export const SETTINGS_TABS = [
 export type SettingsTab = (typeof SETTINGS_TABS)[number]['key']
 
 export const PAGE_TITLES: Record<Page | 'notfound', string> = {
-  home: 'Home', assignments: 'Assignments', attendance: 'Attendance', exams: 'Exams', lectures: 'Lectures',
+  home: 'Home', assignments: 'Assignments', attendance: 'Attendance', exams: 'Exams', timetable: 'Timetable', lectures: 'Lectures',
   announcements: 'Announcements', results: 'Results', settings: 'Settings', notfound: 'Not found',
 }
 

@@ -96,7 +96,9 @@ export const downloadAssignmentFiles = (id: string, kind: FileKind = 'all') =>
   call<{ job: string }>(`/api/assignments/download?id=${encodeURIComponent(id)}&kind=${kind}`, { method: 'POST' })
 export const downloadLectures = (ids: string[]) =>
   call<{ job: string }>('/api/lectures/download', { method: 'POST', body: JSON.stringify({ ids }), headers: { 'Content-Type': 'application/json' } })
-export const openFolder = (kind: 'lectures' | 'data') => call<{ ok: boolean; folder: string }>(`/api/open-folder?kind=${kind}`, { method: 'POST' })
+export const saveTimetable = (format: 'png' | 'jpg' | 'pdf', theme: 'light' | 'dark') =>
+  call<{ ok: boolean; file: string; folder: string }>(`/api/timetable/save?format=${format}&theme=${theme}`, { method: 'POST' })
+export const openFolder = (kind: 'lectures' | 'data' | 'timetable') => call<{ ok: boolean; folder: string }>(`/api/open-folder?kind=${kind}`, { method: 'POST' })
 
 // ------------------------------------------------------------------------------------------------ settings
 export type SettingsView = {

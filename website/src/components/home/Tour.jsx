@@ -47,7 +47,7 @@ export default function Tour() {
           </div>
           <div className="story-grid">
             <div className="story-visual">
-              <Window title="Dashboard" className="shot">
+              <Window title="Home" className="shot">
                 <div className="shot-body">
                   <img src={shot("dashboard", "light")} alt="The dashboard in the light theme" width="1280" height="840" loading="lazy" />
                   <div className="spot" style={{ "--sx": `${sx}%`, "--sy": `${sy}%`, "--sw": `${sw}%`, "--sh": `${sh}%` }} />

@@ -27,12 +27,12 @@ export const NUMBERS = [
 ];
 
 export const TOUR = [
-  { spot: [19.6, 17.6, 76.8, 15.6], label: "Next deadline", title: "The next deadline, with a countdown", text: "Whatever is due soonest and still unsubmitted sits at the top, coloured by urgency. Today is red, this week is amber, later is quiet." },
-  { spot: [19.6, 33.6, 76.8, 11.4], label: "Six counters", title: "Pending, due today, this week, extended, overdue, submitted", text: "Each counter is a filter. Click it and the Assignments page opens on exactly that slice." },
-  { spot: [19.6, 45.4, 76.8, 24.8], label: "Today's classes", title: "Today's classes, the one happening now highlighted", text: "Read from the CMS timetable: what is next, where, and when. The Timetable page behind it draws the whole week and saves it as a picture." },
-  { spot: [19.9, 70.8, 44.8, 24.6], label: "Attendance", title: "Your attendance margin, weakest course first", text: "Every course's percentage from the CMS. Red is under the 75% rule; the Attendance page behind it says how many classes you can still miss, or must attend." },
-  { spot: [65.6, 70.8, 30.6, 24.6], label: "Next exam", title: "Room and seat before you have to ask", text: "The seating plan from the CMS with a countdown, time, room, row and seat. A notification comes the day before and on the morning of the paper." },
-  { spot: [1, 2.5, 16, 96], label: "Always a click away", title: "Light or dark, tray or window", text: "Switch the theme any time. Close the window and it keeps running in the tray; the background checks run even when it doesn't." },
+  { spot: [21.9, 10.5, 75.8, 27.1], label: "Today at a glance", title: "What is next, and how you stand", text: "A greeting with the next deadline counting down, your submitted share, attendance, CGPA, what is due this week and what is overdue. Nothing to open first." },
+  { spot: [21.9, 39.6, 47.7, 29.8], label: "This week", title: "Your week: classes and deadlines on one grid", text: "The CMS timetable with every deadline pinned to its day, so a quiet Tuesday and a crowded Thursday are obvious before they arrive." },
+  { spot: [70.9, 39.5, 26.6, 29.3], label: "Due today", title: "The urgent one, with Upload right there", text: "Whatever is due soonest and still unsubmitted gets a big card with the time left. Press Upload, choose the file, confirm: the app uses the portal's own form and checks it worked." },
+  { spot: [70.9, 71, 26.6, 29], label: "Needs attention", title: "Only the things that need you", text: "Due today, overdue work, a course under the 75% attendance rule and how many classes will fix it. When all is well this list is empty." },
+  { spot: [21.9, 71.5, 47.7, 22.5], label: "Deadline load", title: "See a crowded fortnight before you are in it", text: "A bar for each of the next 14 days. Stacked deadlines stand out, so you can start the heavy week early." },
+  { spot: [1.2, 2.5, 17.6, 95], label: "Always a click away", title: "Four colour palettes, light or dark, tray or window", text: "Switch the look in Settings. Close the window and the app keeps running in the tray; the background checks run even when it is closed." },
 ];
 
 export const FEATURES = [
@@ -60,20 +60,19 @@ export const STEPS = [
   { title: "Let it run", text: "Leave \"Check automatically\" ticked. From then on it checks at 7 PM, after you sign in to Windows, and hourly on due days." },
 ];
 
-export const SHOT_V = "144";
+export const SHOT_V = "181";
 export const shot = (id, theme) => `/assets/shot-${id}-${theme}.png?v=${SHOT_V}`;
 
 export const SCREENS = [
-  { id: "dashboard", label: "Dashboard", caption: "Dashboard: next deadline, counters, attention list, course progress." },
+  { id: "dashboard", label: "Home", caption: "Home: the next deadline with a countdown, your week, what needs attention, the deadline load and your standing." },
+  { id: "assignments", label: "Assignments", caption: "Assignments: to do, overdue and submitted at a glance, extension history, marks, files, and Upload, Replace or Delete when the portal allows it." },
   { id: "attendance", label: "Attendance", caption: "Attendance: every course's hours, the margin to the 75% rule, and the class-by-class record." },
   { id: "exams", label: "Exams", caption: "Exams: the seating plan with room, row and seat, and a countdown to each paper." },
   { id: "results", label: "Results", caption: "Results: every semester's grades, GPA and CGPA, and the calculator: pick the grades you expect, set a target CGPA, try other grades in a past semester." },
-  { id: "timetable", label: "Timetable", caption: "Timetable: the week as a clean grid, one row per day and a colour per course; save it as PNG, JPG or PDF." },
+  { id: "timetable", label: "Timetable", caption: "Timetable: the week as a clean grid, a colour per course, today and the current time marked; save it as PNG, JPG or PDF." },
   { id: "lectures", label: "Lectures", caption: "Lectures: every course's notes by week; tick files and download them into course / week folders." },
   { id: "announcements", label: "Announcements", caption: "Announcements: every course's notices in one feed, newest first." },
-  { id: "assignments", label: "Assignments", caption: "Assignments: filters, course picker, search, extension history and marks." },
-  { id: "settings", label: "Settings", caption: "Settings: account, theme, tray, voice and notifications, phone, email and calendar, campus tracking, automatic checks, privacy." },
-  { id: "setup", label: "Sign-in", caption: "First run: sign in once, tick automatic checks, done." },
+  { id: "settings", label: "Settings", caption: "Settings: profile, appearance, notifications, tracking, background and cloud checks, data and files, activity and updates." },
 ];
 
 export const PRIVACY_CARDS = [

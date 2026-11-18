@@ -222,7 +222,27 @@ def job_download_lectures(selection: list):
     return fn
 
 
-OPENABLE = {"lectures": lambda: lectures_dir(load_env()), "data": lambda: DATA_DIR}
+OPENABLE = {"lectures": lambda: lectures_dir(load_env()), "data": lambda: DATA_DIR, "timetable": lambda: documents_dir()}
+
+
+def documents_dir():
+    """Documents / Assignment Monitor: where the timetable picture and the calendar file are written."""
+    from pathlib import Path
+    return Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents" / config.APP_NAME
+
+
+def save_timetable_file(fmt: str, theme: str) -> tuple[int, dict]:
+    """Draws the timetable the app's own way and saves it as PNG, JPG or PDF into Documents / Assignment Monitor."""
+    from timetable_render import save_timetable
+    if fmt not in ("png", "jpg", "pdf") or theme not in ("light", "dark"):
+        return 400, {"error": "bad format"}
+    data = tracker.load_timetable()
+    if not data.get("sessions"):
+        return 409, {"error": "The timetable has not been read yet."}
+    sem = re.sub(r"[^\w .-]", "-", data.get("semester") or "timetable")
+    folder = documents_dir()
+    path = save_timetable(data, folder / f"Timetable {sem}.{fmt}", theme, student=config.load_meta().get("student_name", ""))
+    return 200, {"ok": True, "file": path.name, "folder": str(folder)}
 
 
 def job_sync():
@@ -371,6 +391,8 @@ class Handler(BaseHTTPRequestHandler):
             if not chosen:
                 return self._send(404, {"error": "nothing selected"})
             jid = JOBS.start("download", job_download_lectures(chosen))
+        elif url.path == "/api/timetable/save":
+            return self._send(*save_timetable_file((qs.get("format") or ["png"])[0], (qs.get("theme") or ["light"])[0]))
         elif url.path == "/api/open-folder":
             target = OPENABLE.get((qs.get("kind") or [""])[0])
             if not target:

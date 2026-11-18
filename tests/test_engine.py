@@ -326,3 +326,17 @@ def test_headless_flags_do_the_job_and_exit(monkeypatch, capsys):
 def test_tasks_and_shortcuts_start_the_shell_when_one_owns_the_engine(monkeypatch):
     monkeypatch.setenv("AM_SHELL_EXE", r"C:\Apps\AssignmentMonitor.exe")
     assert config.app_command("--check") == [r"C:\Apps\AssignmentMonitor.exe", "--check"]
+
+
+def test_the_timetable_is_saved_as_a_picture(api, monkeypatch, tmp_path):
+    monkeypatch.setattr(engine, "documents_dir", lambda: tmp_path / "docs")
+    monkeypatch.setitem(engine.OPENABLE, "timetable", lambda: tmp_path / "docs")
+    monkeypatch.setattr(tracker, "load_timetable", lambda: {"semester": "Fall/2026", "sessions": [
+        {"day": "Mon", "start": "09:00", "end": "10:30", "course": "Database Systems", "abbr": "DS", "teacher": "Dr. A", "initials": "A"}]})
+    call, _w, _b = api
+    st, body, _h = call("POST", "/api/timetable/save?format=png&theme=dark")
+    assert st == 200 and body["file"] == "Timetable Fall-2026.png"
+    assert (tmp_path / "docs" / body["file"]).read_bytes()[:4] == b"\x89PNG"
+    assert call("POST", "/api/timetable/save?format=exe")[0] == 400
+    monkeypatch.setattr(tracker, "load_timetable", lambda: {})
+    assert call("POST", "/api/timetable/save?format=pdf")[0] == 409

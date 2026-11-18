@@ -81,7 +81,7 @@ function parseCli(argv) {
 function hashForView(view, setup) {
   if (setup) return '#/settings/profile'
   if (view === 'activity') return '#/settings/activity'
-  if (!view || view === 'dashboard' || view === 'timetable') return ''
+  if (!view || view === 'dashboard') return ''
   return `#/${view}`
 }
 

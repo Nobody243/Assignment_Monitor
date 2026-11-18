@@ -4,11 +4,11 @@ import type { Assignment, AttendanceCourse } from '@/api'
 // neighbours stay distinguishable. They identify a course (a dot, a class edge); they never carry status.
 const HUE = [0, 24, -24, 48, -48, 60, -60, 12, -12]
 const LIGHT = [0.62, 0.72, 0.66, 0.6, 0.74, 0.68, 0.64, 0.76, 0.58]
-const colorAt = (i: number) => `oklch(${LIGHT[i % LIGHT.length]} 0.13 calc(var(--course-h) + ${HUE[i % HUE.length]}))`
+export const courseColorAt = (i: number) => `oklch(${LIGHT[i % LIGHT.length]} 0.13 calc(var(--course-h) + ${HUE[i % HUE.length]}))`
 
 export function courseColors(all: Assignment[]): Record<string, string> {
   const names = [...new Set(all.map(a => a.course))].sort()
-  return Object.fromEntries(names.map((n, i) => [n, colorAt(i)]))
+  return Object.fromEntries(names.map((n, i) => [n, courseColorAt(i)]))
 }
 
 /** Attendance for a course. The portal truncates some attendance titles (a lab shows as "... L"), so: exact first, then
