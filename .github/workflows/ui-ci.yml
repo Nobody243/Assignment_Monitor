@@ -19,7 +19,7 @@ jobs:
   interface:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: "22", cache: npm, cache-dependency-path: "ui/package-lock.json" }
       - name: Install
@@ -48,7 +48,7 @@ jobs:
     runs-on: windows-latest
     needs: interface
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: "22", cache: npm, cache-dependency-path: "desktop/package-lock.json" }
       - uses: actions/setup-python@v5
@@ -78,7 +78,7 @@ jobs:
     runs-on: windows-latest
     needs: interface
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: "22", cache: npm, cache-dependency-path: "ui/package-lock.json" }
       - uses: actions/setup-python@v5
