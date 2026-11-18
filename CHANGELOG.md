@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- A Timetable page: your week as a grid with a colour per course, today and the current time marked, and Save as PNG, JPG or PDF (to Documents / Assignment Monitor).
+- First run: a welcome with three steps (sign in, first check, automatic checks) instead of a dashboard that says you are all caught up.
+- A notice on launch when a newer version exists (installed build, only if update checks are on), with a button to the update.
+- The Results chart now scales its bars and uses your palette.
+- Accessibility: every page passes axe-core in light and dark and all four palettes; status colours have enough contrast on light backgrounds, unlabelled controls are labelled, headings, lists and tabs are correctly structured, the sidebar is a navigation landmark, and no page scrolls sideways on a narrow window.
+
 ## 1.8.0 - 2026-11-18
 
 - A new desktop interface (not a browser tab): a native window with the Home, Assignments, Attendance, Exams, Lectures, Announcements, Results and Settings pages, four colour palettes, light and dark, animations you can switch off, Yes/No confirmations, a not-found page, an engine-offline screen and an Activity log inside Settings.

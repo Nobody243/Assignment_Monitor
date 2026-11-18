@@ -346,10 +346,38 @@ function Load({ all, now }: { all: Assignment[]; now: number }) {
 }
 
 // ------------------------------------------------------------------------------------------------ the page
+/** What a brand-new install shows instead of an empty dashboard that claims you are "all caught up". */
+function FirstRun({ onGo }: { onGo: Go }) {
+  const steps = [
+    ['Sign in', 'Enter your enrollment number, campus and portal password. They are stored encrypted for your Windows user only, and checked against the portal when you save.'],
+    ['Run the first check', 'Press Check now. The app reads your courses, assignments, attendance, exams, lectures, announcements and timetable. It only reads.'],
+    ['Let it run by itself', 'Turn on automatic checks in Settings so Windows checks every evening and reminds you hourly while something is due, even when the app is closed.'],
+  ]
+  return (
+    <section className="bg-card flex flex-col gap-6 rounded-3xl border p-6 md:p-8" aria-label="Getting started">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome to Assignment Monitor</h1>
+        <p className="text-muted-foreground mt-1.5 max-w-2xl text-sm">Three steps and it keeps track of your deadlines for you. Nothing is shared with anyone: your data stays on this PC.</p>
+      </div>
+      <ol className="grid gap-3 md:grid-cols-3">
+        {steps.map(([title, text], i) => (
+          <li key={title} className="bg-muted/50 rounded-2xl p-4">
+            <span className="bg-primary text-primary-foreground num mb-3 grid size-7 place-items-center rounded-full text-sm font-medium">{i + 1}</span>
+            <h2 className="font-semibold">{title}</h2>
+            <p className="text-muted-foreground mt-1 text-sm">{text}</p>
+          </li>
+        ))}
+      </ol>
+      <div><Button onClick={() => onGo('settings')}>Set up your account</Button></div>
+    </section>
+  )
+}
+
 export function Home({ state, now, onOpen, onGo }: { state: State; now: number; onOpen: (id: string) => void; onGo: Go }) {
   const all = state.assignments
   const colors = courseColors(all)
   const next = all.filter(a => a.open && !a.is_submitted).sort(byDue)[0]
+  if (!state.meta.last_sync && all.length === 0) return <FirstRun onGo={onGo} />
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="xl:col-span-2"><Banner state={state} now={now} next={next} /></div>
