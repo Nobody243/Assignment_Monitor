@@ -5,9 +5,11 @@ import { Alert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { byDue, countdown, dueParts } from '@/format'
 import { attendanceFor, courseColors, courseRows } from '@/lib/courses'
+import { parseExamDate } from '@/lib/exams'
+import type { Page } from '@/lib/router'
 import { cn } from '@/lib/utils'
 
-export type Go = (page: 'assignments', opts?: { tab?: 'todo' | 'overdue' | 'submitted' | 'all'; course?: string }) => void
+export type Go = (page: Page, opts?: { tab?: 'todo' | 'overdue' | 'submitted' | 'all'; course?: string }) => void
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -217,11 +219,6 @@ function CoursesPanel({ state, onGo }: { state: State; onGo: Go }) {
       </ul>
     </Panel>
   )
-}
-
-const parseExamDate = (s: string): Date | null => {
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((s ?? '').trim())
-  return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null
 }
 
 function ExamsPanel({ state, now }: { state: State; now: number }) {

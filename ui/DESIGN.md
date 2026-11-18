@@ -88,3 +88,10 @@ active sidebar item, a soft highlight in the banner and on the Up next tile, cha
   next due or "n overdue, not submitted", attendance), deadlines with date and time, an Exams panel, a Results trend. The banner is a
   greeting row plus a KPI row, so it holds at any width (a one-row layout broke at about 1180 px).
 - Contrast: lowest measured pair across all eight themes is 5.9:1.
+
+## Whole app (2026-11-18, third pass)
+Pages, all on real data from the engine, in the same style: Home, Assignments (search, sort, grouped sections, file downloads, marks,
+extension notes, the upload/replace/delete sheet), Attendance (ring per course, minimum marker, advice, class by class), Exams (by type,
+date/time/room/seat, survey and fee flags), Lectures (select and download, New badges, open folder), Announcements, Results (semester
+tabs, trend, what-if per course, same-grade scenarios), Settings (theme, palettes, folders, about). Routing is the URL hash, so back and
+forward work. The Settings page does not yet manage sign-in, alerts, automatic checks or cloud checks: those stay in the desktop app.

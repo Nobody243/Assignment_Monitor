@@ -1,18 +1,23 @@
-import { ArrowRight, Moon, RefreshCw } from 'lucide-react'
+import { ArrowRight, CornerDownRight, Moon, RefreshCw } from 'lucide-react'
 import type { Assignment } from '@/api'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { dueParts } from '@/format'
+import { PAGES, PAGE_TITLES, type Page } from '@/lib/router'
 
-export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onSync, onToggleTheme }: {
+export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onSync, onToggleTheme, onNavigate }: {
   open: boolean; onOpenChange: (o: boolean) => void; assignments: Assignment[]; dark: boolean
-  onPick: (id: string) => void; onSync: () => void; onToggleTheme: () => void
+  onPick: (id: string) => void; onSync: () => void; onToggleTheme: () => void; onNavigate: (p: Page) => void
 }) {
   const run = (fn: () => void) => () => { onOpenChange(false); fn() }
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title="Search" description="Search assignments or run a command">
-      <CommandInput placeholder="Search assignments or type a command" />
+    <CommandDialog open={open} onOpenChange={onOpenChange} title="Search" description="Go to a page, search assignments or run a command">
+      <CommandInput placeholder="Go to a page, search assignments, or type a command" />
       <CommandList>
         <CommandEmpty>Nothing matches.</CommandEmpty>
+        <CommandGroup heading="Go to">
+          {PAGES.map(p => <CommandItem key={p} value={`go ${PAGE_TITLES[p]}`} onSelect={run(() => onNavigate(p))}><CornerDownRight />{PAGE_TITLES[p]}</CommandItem>)}
+        </CommandGroup>
+        <CommandSeparator />
         <CommandGroup heading="Commands">
           <CommandItem onSelect={run(onSync)}><RefreshCw />Check the portal now</CommandItem>
           <CommandItem onSelect={run(onToggleTheme)}><Moon />{dark ? 'Switch to the light theme' : 'Switch to the dark theme'}</CommandItem>

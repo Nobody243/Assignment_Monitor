@@ -24,16 +24,33 @@ export type Assignment = {
 }
 
 export type Meta = { student_name?: string; semester?: string; courses?: string[]; last_sync?: string | null; enrollment?: string }
-export type AttendanceCourse = { code: string; title: string; present: number; absent: number; recorded: boolean; percent: number; ok: boolean; can_miss: number; need: number }
+export type AttendanceSession = { date: string; type: string; room?: string; remarks?: string; topics?: string; hours: number; present: number; absent: number }
+export type AttendanceCourse = {
+  code: string; title: string; present: number; absent: number; recorded: boolean; percent: number; ok: boolean; can_miss: number; need: number
+  teacher?: string; class?: string; credit_hours?: string; sessions?: AttendanceSession[]
+}
 export type Attendance = { minimum: number; overall: number | null; courses: AttendanceCourse[] }
 export type TimetableSession = { day: string; start: string; end: string; course: string; abbr: string; teacher: string; initials: string }
 export type Standing = { semester: string; gpa: number | null; cgpa: number; semesters: number; series: { name: string; gpa: number | null; cgpa: number | null }[] }
-export type Exam = { title: string; date: string; start_time?: string; room?: string; exam_type?: string; session?: string }
+export type Exam = {
+  title: string; date: string; start_time?: string; room?: string; exam_type?: string; session?: string; row?: string; column?: string
+  scheduled?: boolean; status?: string; fee_defaulter?: boolean; surveys?: string; class?: string
+}
+export type LectureFile = { label: string; href: string; filename: string }
+export type Lecture = {
+  id: string; course: string; week: string | number; title: string; files: LectureFile[]; videos?: unknown[]; remarks?: string
+  first_seen?: string; kind?: 'misc'
+}
+export type Announcement = { id: string; course: string; title: string; text: string; posted: string; posted_at?: string; first_seen?: string; semester?: string }
+export type ResultCourse = { code: string; title: string; credits: number; grade: string; points: number | null; product: number | null }
+export type ResultSemester = { name: string; courses: ResultCourse[]; gpa: number | null; cgpa: number | null; complete: boolean }
+export type Results = { student?: Record<string, string>; semesters: ResultSemester[] } | null
 export type State = {
   version: string; now: string; meta: Meta; assignments: Assignment[]
-  attendance: Attendance; exams: Exam[]; timetable: { semester?: string; sessions?: TimetableSession[] }; standing: Standing | null
+  attendance: Attendance; exams: Exam[]; exams_all: Exam[]; announcements: Announcement[]; lectures: Lecture[]; results: Results
+  timetable: { semester?: string; sessions?: TimetableSession[] }; standing: Standing | null; paths: { lectures: string; data: string }
 }
-export type Job = { id: string; kind: string; status: 'running' | 'done'; step: string; result: { ok: boolean; message: string; deleted?: boolean } | null }
+export type Job = { id: string; kind: string; status: 'running' | 'done'; step: string; result: { ok: boolean; message: string; deleted?: boolean; folder?: string } | null }
 
 type EngineCfg = { base: string; token: string }
 const cfg: EngineCfg = (window as unknown as { __ENGINE__?: EngineCfg }).__ENGINE__ ?? { base: 'http://127.0.0.1:8765', token: 'dev' }
@@ -70,3 +87,10 @@ export function checkFile(f: File): string {
   if (f.size > MAX_BYTES) return `That file is ${(f.size / 1048576).toFixed(1)} MB; the portal's limit is 15 MB.`
   return ''
 }
+
+export type FileKind = 'brief' | 'submission' | 'returned' | 'solution' | 'all'
+export const downloadAssignmentFiles = (id: string, kind: FileKind = 'all') =>
+  call<{ job: string }>(`/api/assignments/download?id=${encodeURIComponent(id)}&kind=${kind}`, { method: 'POST' })
+export const downloadLectures = (ids: string[]) =>
+  call<{ job: string }>('/api/lectures/download', { method: 'POST', body: JSON.stringify({ ids }), headers: { 'Content-Type': 'application/json' } })
+export const openFolder = (kind: 'lectures' | 'data') => call<{ ok: boolean; folder: string }>(`/api/open-folder?kind=${kind}`, { method: 'POST' })

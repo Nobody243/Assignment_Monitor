@@ -22,7 +22,7 @@ PAST = dict(REC, id="SQA#1#Old", assign_no="1", title="Old one", action="Deadlin
 @pytest.fixture()
 def api(monkeypatch, tmp_path):
     monkeypatch.setattr(tracker, "DB_PATH", tmp_path / "a.json")
-    for name in ("ATTENDANCE_PATH", "EXAMS_PATH", "ANNOUNCEMENTS_PATH", "TIMETABLE_PATH", "RESULTS_PATH"):
+    for name in ("ATTENDANCE_PATH", "EXAMS_PATH", "ANNOUNCEMENTS_PATH", "TIMETABLE_PATH", "RESULTS_PATH", "LECTURES_PATH"):
         monkeypatch.setattr(tracker, name, tmp_path / f"{name}.json")
     tracker.save_assignments({REC["id"]: dict(REC), PAST["id"]: dict(PAST)})
     monkeypatch.setattr(engine, "JOBS", engine.Jobs())
@@ -163,3 +163,62 @@ def test_a_failing_job_reports_instead_of_crashing(api, monkeypatch):
     st, body, _h = call("POST", "/api/assignments/delete?id=" + REC["id"].replace("#", "%23"))
     job = wait_job(body["job"])
     assert job["result"] == {"ok": False, "message": "the portal fell over"}
+
+
+def test_state_carries_everything_the_pages_need(api):
+    call, _w, _b = api
+    tracker._save_json(tracker.LECTURES_PATH, [{"id": "L1", "course": "C", "week": "1", "title": "Intro", "files": []}])
+    _st, body, _h = call("GET", "/api/state")
+    assert body["lectures"][0]["id"] == "L1" and "exams_all" in body and "results" in body and "paths" in body
+    assert set(body["paths"]) == {"lectures", "data"}
+
+
+def test_attendance_keeps_class_by_class_detail(api):
+    call, _w, _b = api
+    sessions = [{"date": "Monday, 31 August 2026", "type": "Class", "hours": 1.5, "present": 1.5, "absent": 0.0}]
+    tracker._save_json(tracker.ATTENDANCE_PATH, {"X 1": {"title": "Course X", "present": 1.5, "absent": 0.0, "teacher": "T",
+                                                         "class": "BS-7", "sessions": sessions}})
+    _st, body, _h = call("GET", "/api/state")
+    c = body["attendance"]["courses"][0]
+    assert c["sessions"] == sessions and c["teacher"] == "T" and c["class"] == "BS-7"
+
+
+def test_assignment_files_download_as_a_job(api, monkeypatch):
+    call, wait_job, _b = api
+    rec = dict(REC, files={"brief": {"href": "Download.php?k=1", "label": "Assignment", "filename": "brief.pdf"}})
+    tracker.save_assignments({rec["id"]: rec})
+    seen = {}
+
+    def fake(selection, dest, progress=None, should_stop=None):
+        seen["kinds"] = [k for _a, k in selection]
+        progress("x", 1, 1)
+        return {"saved": ["a"], "skipped": 0, "failed": []}
+    monkeypatch.setattr(lms_scraper, "download_assignment_files", fake)
+    q = "/api/assignments/download?kind=all&id=" + rec["id"].replace("#", "%23")
+    st, body, _h = call("POST", q)
+    assert st == 202
+    job = wait_job(body["job"])
+    assert job["result"]["ok"] and "1 file saved" in job["result"]["message"] and seen["kinds"] == ["brief"]
+    assert call("POST", "/api/assignments/download?kind=solution&id=" + rec["id"].replace("#", "%23"))[0] == 404
+
+
+def test_lectures_download_needs_a_selection(api, monkeypatch):
+    call, wait_job, _b = api
+    tracker._save_json(tracker.LECTURES_PATH, [{"id": "L1", "course": "C", "week": "1", "title": "Intro", "files": []}])
+    monkeypatch.setattr(lms_scraper, "download_lectures", lambda sel, dest, progress=None, should_stop=None:
+                        {"saved": ["a", "b"], "skipped": 1, "failed": []})
+    assert call("POST", "/api/lectures/download", b'{"ids": ["nope"]}')[0] == 404
+    assert call("POST", "/api/lectures/download", b"not json")[0] == 400
+    st, body, _h = call("POST", "/api/lectures/download", b'{"ids": ["L1"]}')
+    assert st == 202
+    assert wait_job(body["job"])["result"]["message"] == "2 files saved, 1 already there"
+
+
+def test_open_folder_only_for_known_folders(api, monkeypatch, tmp_path):
+    call, _w, _b = api
+    opened = []
+    monkeypatch.setattr(engine.os, "startfile", lambda p: opened.append(p), raising=False)
+    monkeypatch.setitem(engine.OPENABLE, "data", lambda: tmp_path)
+    assert call("POST", "/api/open-folder?kind=../../Windows")[0] == 404
+    st, body, _h = call("POST", "/api/open-folder?kind=data")
+    assert st == 200 and opened == [str(tmp_path)]

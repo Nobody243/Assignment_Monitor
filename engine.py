@@ -33,7 +33,7 @@ from urllib.parse import parse_qs, urlparse
 import lms_scraper as scraper
 import tracker
 from campus import attendance_margin
-from config import APP_NAME, APP_VERSION, load_env, load_meta
+from config import APP_NAME, APP_VERSION, DATA_DIR, lectures_dir, load_env, load_meta
 from deadlines import classify, deadline_of, is_open_pending
 from jobs import collectors_for, process_sync
 
@@ -66,7 +66,8 @@ def attendance_view(minimum: int) -> dict:
         m = attendance_margin(p, p + a, minimum)
         present, total = present + p, total + p + a
         courses.append({"code": code, "title": c.get("title", ""), "credit_hours": c.get("credit_hours", ""),
-                        "present": p, "absent": a, "recorded": (p + a) > 0, **m})
+                        "present": p, "absent": a, "recorded": (p + a) > 0, "teacher": c.get("teacher", ""),
+                        "class": c.get("class", ""), "sessions": c.get("sessions") or [], **m})
     overall = round(100 * present / total, 1) if total else None
     return {"minimum": minimum, "overall": overall, "courses": courses}
 
@@ -91,9 +92,13 @@ def build_state() -> dict:
         "assignments": [assignment_view(a, now) for a in data.values()],
         "attendance": attendance_view(minimum),
         "exams": [e for e in tracker.load_exams() if e.get("date")],
+        "exams_all": tracker.load_exams(),
         "announcements": tracker.load_announcements(),
+        "lectures": tracker.load_lectures(),
         "timetable": tracker.load_timetable(),
+        "results": tracker.load_results(),
         "standing": standing(tracker.load_results()),
+        "paths": {"lectures": str(lectures_dir(load_env())), "data": str(DATA_DIR)},
     }
 
 
@@ -158,6 +163,35 @@ def job_upload(a: dict, path: str, replace: bool):
 
 def job_delete(a: dict):
     return lambda progress: _portal_result(scraper.delete_submission(a, progress=progress), a["id"])
+
+
+def _download_result(res: dict, folder) -> dict:
+    saved, skipped, failed = len(res["saved"]), res["skipped"], res["failed"]
+    bits = [f"{saved} file{'s' if saved != 1 else ''} saved"]
+    if skipped:
+        bits.append(f"{skipped} already there")
+    if failed:
+        bits.append(f"{len(failed)} failed: " + "; ".join(f"{n}: {why}" for n, why in failed[:3]))
+    return {"ok": not failed, "message": ", ".join(bits), "folder": str(folder)}
+
+
+def job_download_assignment_files(items: list):
+    def fn(progress):
+        dest = lectures_dir(load_env())
+        res = scraper.download_assignment_files(items, dest, progress=lambda msg, done, total: progress(f"{done}/{total} · {msg}"))
+        return _download_result(res, scraper.assignment_folder(dest, items[0][0]) if len({a["id"] for a, _k in items}) == 1 else dest)
+    return fn
+
+
+def job_download_lectures(selection: list):
+    def fn(progress):
+        dest = lectures_dir(load_env())
+        res = scraper.download_lectures(selection, dest, progress=lambda msg, done, total: progress(f"{done}/{total} · {msg}"))
+        return _download_result(res, dest)
+    return fn
+
+
+OPENABLE = {"lectures": lambda: lectures_dir(load_env()), "data": lambda: DATA_DIR}
 
 
 def job_sync():
@@ -255,6 +289,33 @@ class Handler(BaseHTTPRequestHandler):
             if not a:
                 return self._send(404, {"error": "no such assignment"})
             jid = JOBS.start("delete", job_delete(a))
+        elif url.path == "/api/assignments/download":
+            a = self._record(qs)
+            if not a:
+                return self._send(404, {"error": "no such assignment"})
+            kind = (qs.get("kind") or ["all"])[0]
+            kinds = [k for k, v in (a.get("files") or {}).items() if isinstance(v, dict) and v.get("href")]
+            wanted = kinds if kind == "all" else [k for k in kinds if k == kind]
+            if not wanted:
+                return self._send(404, {"error": "That file is not available on the portal."})
+            jid = JOBS.start("download", job_download_assignment_files([(a, k) for k in wanted]))
+        elif url.path == "/api/lectures/download":
+            try:
+                ids = set(json.loads(body or b"{}").get("ids") or [])
+            except ValueError:
+                return self._send(400, {"error": "bad request"})
+            chosen = [x for x in tracker.load_lectures() if x.get("id") in ids]
+            if not chosen:
+                return self._send(404, {"error": "nothing selected"})
+            jid = JOBS.start("download", job_download_lectures(chosen))
+        elif url.path == "/api/open-folder":
+            target = OPENABLE.get((qs.get("kind") or [""])[0])
+            if not target:
+                return self._send(404, {"error": "unknown folder"})
+            folder = target()
+            folder.mkdir(parents=True, exist_ok=True)
+            os.startfile(str(folder))                         # noqa: S606 - a fixed, known folder only
+            return self._send(200, {"ok": True, "folder": str(folder)})
         elif url.path == "/api/assignments/upload":
             a = self._record(qs)
             if not a:

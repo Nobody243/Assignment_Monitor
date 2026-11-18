@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { CircleCheck, FileText, Trash2, Upload } from 'lucide-react'
-import { ALLOWED, checkFile, type Assignment } from '@/api'
+import { CircleCheck, Download, FileText, Trash2, Upload } from 'lucide-react'
+import { ALLOWED, checkFile, type Assignment, type FileKind } from '@/api'
 import { StatusBadge } from '@/components/assignments-table'
 import { Alert } from '@/components/inline-alert'
+import { FILE_LABELS, fileKinds } from '@/pages/assignments-page'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
@@ -29,19 +30,20 @@ type Props = {
   onClose: () => void
   onUpload: (file: File, replace: boolean) => void
   onDelete: () => void
+  onDownload: (kind: FileKind) => void
 }
 
-export function AssignmentSheet({ a, now, demo, running, onClose, onUpload, onDelete }: Props) {
+export function AssignmentSheet({ a, now, demo, running, onClose, onUpload, onDelete, onDownload }: Props) {
   return (
     <Sheet open={!!a} onOpenChange={o => { if (!o && !(running && running.assignmentId === a?.id)) onClose() }}>
       <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
-        {a && <Body key={a.id} a={a} now={now} demo={demo} running={running} onUpload={onUpload} onDelete={onDelete} />}
+        {a && <Body key={a.id} a={a} now={now} demo={demo} running={running} onUpload={onUpload} onDelete={onDelete} onDownload={onDownload} />}
       </SheetContent>
     </Sheet>
   )
 }
 
-function Body({ a, now, demo, running, onUpload, onDelete }: Omit<Props, 'onClose' | 'a'> & { a: Assignment }) {
+function Body({ a, now, demo, running, onUpload, onDelete, onDownload }: Omit<Props, 'onClose' | 'a'> & { a: Assignment }) {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [over, setOver] = useState(false)
@@ -85,6 +87,26 @@ function Body({ a, now, demo, running, onUpload, onDelete }: Omit<Props, 'onClos
           <dd className="text-right">{a.is_submitted ? 'Uploaded' : 'Nothing yet'}</dd>
           {a.marks && !/not marked/i.test(a.marks) && (<><dt className="text-muted-foreground">Marks</dt><dd className="num text-right">{a.marks}</dd></>)}
         </dl>
+
+        <Separator />
+
+        {fileKinds(a).length > 0 && (
+          <section className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Files</h4>
+              {fileKinds(a).length > 1 && <Button variant="ghost" size="sm" disabled={!!running || demo} onClick={() => onDownload('all')}><Download />Download all</Button>}
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {fileKinds(a).map(k => (
+                <li key={k} className="flex items-center justify-between gap-3 rounded-lg border p-2.5 text-sm">
+                  <span className="flex min-w-0 items-center gap-2"><FileText className="text-muted-foreground size-4 shrink-0" /><span className="truncate">{FILE_LABELS[k]}</span></span>
+                  <Button variant="outline" size="sm" className="h-7" disabled={!!running || demo} onClick={() => onDownload(k)}><Download />Download</Button>
+                </li>
+              ))}
+            </ul>
+            <p className="text-muted-foreground text-xs">Saved in your Lectures folder, under the course and Assignments.</p>
+          </section>
+        )}
 
         <Separator />
 

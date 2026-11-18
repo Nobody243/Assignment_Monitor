@@ -1,28 +1,23 @@
-import { Award, BookOpen, Check, CalendarCheck, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Moon, Settings, Sun } from 'lucide-react'
+import { Award, BookOpen, CalendarCheck, Check, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Megaphone, Moon, Settings, Sun } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu,
   SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarRail,
 } from '@/components/ui/sidebar'
 import { initials } from '@/format'
+import { PAGE_TITLES, type Page } from '@/lib/router'
 
-const NAV = [
-  { key: 'home', label: 'Home', icon: House },
-  { key: 'assignments', label: 'Assignments', icon: ListChecks },
-  { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
-  { key: 'exams', label: 'Exams', icon: GraduationCap },
-  { key: 'lectures', label: 'Lectures', icon: BookOpen },
-  { key: 'results', label: 'Results', icon: Award },
+const GROUPS: { label: string; items: { key: Page; icon: typeof House }[] }[] = [
+  { label: 'Study', items: [{ key: 'home', icon: House }, { key: 'assignments', icon: ListChecks }, { key: 'attendance', icon: CalendarCheck }, { key: 'exams', icon: GraduationCap }, { key: 'results', icon: Award }] },
+  { label: 'Material', items: [{ key: 'lectures', icon: BookOpen }, { key: 'announcements', icon: Megaphone }] },
 ]
 
 export const PALETTES = [{ key: 'royal', label: 'Royal' }, { key: 'ink', label: 'Ink' }, { key: 'forest', label: 'Forest' }, { key: 'ember', label: 'Ember' }] as const
 
-export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page, onNavigate, palette, onPalette }: {
-  name?: string; semester?: string; dueSoon: number; dark: boolean; onToggleTheme: () => void
-  page: 'home' | 'assignments'; onNavigate: (p: 'home' | 'assignments') => void
-  palette: string; onPalette: (p: string) => void
+export function AppSidebar({ name, semester, badges, dark, onToggleTheme, page, onNavigate, palette, onPalette }: {
+  name?: string; semester?: string; badges: Partial<Record<Page, number>>; dark: boolean; onToggleTheme: () => void
+  page: Page; onNavigate: (p: Page) => void; palette: string; onPalette: (p: string) => void
 }) {
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -43,28 +38,24 @@ export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page,
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Study</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV.map(n => {
-                const live = n.key === 'home' || n.key === 'assignments'
-                return (
+        {GROUPS.map(g => (
+          <SidebarGroup key={g.label}>
+            <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {g.items.map(n => (
                   <SidebarMenuItem key={n.key}>
-                    <SidebarMenuButton tooltip={n.label} isActive={n.key === page} disabled={!live} className={live ? '' : 'opacity-50'}
-                      onClick={() => live && onNavigate(n.key as 'home' | 'assignments')}>
+                    <SidebarMenuButton tooltip={PAGE_TITLES[n.key]} isActive={n.key === page} onClick={() => onNavigate(n.key)}>
                       <n.icon />
-                      <span>{n.label}</span>
+                      <span>{PAGE_TITLES[n.key]}</span>
                     </SidebarMenuButton>
-                    {live
-                      ? n.key === 'assignments' && dueSoon > 0 && <SidebarMenuBadge>{dueSoon}</SidebarMenuBadge>
-                      : <SidebarMenuBadge><Badge variant="outline" className="h-4 px-1.5 text-[10px] font-normal">Soon</Badge></SidebarMenuBadge>}
+                    {(badges[n.key] ?? 0) > 0 && <SidebarMenuBadge>{badges[n.key]}</SidebarMenuBadge>}
                   </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
@@ -95,7 +86,7 @@ export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page,
                   <DropdownMenuItem key={p.key} onSelect={() => onPalette(p.key)}>{p.label}{palette === p.key && <Check className="ml-auto" />}</DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem disabled><Settings />Settings (soon)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onNavigate('settings')}><Settings />Settings</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
