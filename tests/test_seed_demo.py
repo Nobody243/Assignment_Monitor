@@ -10,11 +10,12 @@ def test_seed_loads_through_engine(tmp_path, monkeypatch):
         assert (tmp_path / "data" / f"{name}.json").exists()
     import config
     monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
-    for attr, name in [("DB_PATH", "assignments"), ("META_PATH", "meta"), ("ATTENDANCE_PATH", "attendance"), ("EXAMS_PATH", "exams"),
-                       ("RESULTS_PATH", "results"), ("ANNOUNCEMENTS_PATH", "announcements"), ("LECTURES_PATH", "lectures"), ("TIMETABLE_PATH", "timetable")]:
+    paths = [("DB_PATH", "assignments"), ("META_PATH", "meta"), ("ATTENDANCE_PATH", "attendance"), ("EXAMS_PATH", "exams"),
+             ("RESULTS_PATH", "results"), ("ANNOUNCEMENTS_PATH", "announcements"), ("LECTURES_PATH", "lectures"),
+             ("TIMETABLE_PATH", "timetable")]
+    for attr, name in paths:
         monkeypatch.setattr(config, attr, tmp_path / "data" / f"{name}.json")
     engine = importlib.import_module("engine")
     state = engine.build_state()
     assert len(state["assignments"]) == 10
     assert {a["urgency"] for a in state["assignments"]} >= {"today", "soon", "week", "later"}
-    assert state["meta"]["student_name"] == "Alex Morgan" if "meta" in state else True

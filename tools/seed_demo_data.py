@@ -69,13 +69,13 @@ def build(today: datetime | None = None) -> dict:
                      "present": float(present), "absent": float(absent), "total": float(total), "percent": pct, "detail_url": "AttendanceSummary.aspx?v=demo",
                      "sessions": sessions, "can_miss": 0.0, "need": 0.0}
     exams = []
-    for i, (code, title, *_rest) in enumerate(COURSES):
+    for i, (_code, title, *_rest) in enumerate(COURSES):
         d = now + timedelta(days=10 + i * 2) if i < 3 else None
         exams.append({"title": title, "class": CLASS, "date": d.strftime("%d/%m/%Y") if d else "", "session": "Session - I" if d else "", "start_time": "09:00 AM" if d else "",
                       "room": f"HL-{12 + i}" if d else "", "row": str(i + 1) if d else "", "column": str(i + 2) if d else "", "status": "", "fee_defaulter": False,
                       "surveys": "Completed" if i != 1 else "Pending", "exam_type": "Mid-Term", "id": f"Mid-Term#{title.replace(' ', '_')}", "scheduled": bool(d)})
     lectures = []
-    for i, (code, title, *_r) in enumerate(COURSES):
+    for i, (_code, title, *_r) in enumerate(COURSES):
         for wk in range(1, 5):
             lectures.append({"id": f"lec{i}{wk}", "course": title, "week": str(wk), "title": f"Week {wk}: {title.split()[0]} concepts",
                              "files": [{"label": "Download Lecture", "href": f"Download.php?k=lec{i}{wk}", "filename": f"week-{wk}.pdf"}], "videos": [], "remarks": "",
