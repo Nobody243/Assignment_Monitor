@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import secrets
+import sys
 import tempfile
 import threading
 import time
@@ -388,17 +389,43 @@ class Engine(ThreadingHTTPServer):
         self.allowed_origins = tuple(allowed_origins)
 
 
-def main():
+_ORIGIN = re.compile(r"^[a-z][a-z0-9+.\-]*://[^\s/*]+$")
+
+
+def parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--dev", action="store_true", help="fixed port and token for the interface's dev server")
     ap.add_argument("--port", type=int, default=0)
-    args = ap.parse_args()
+    ap.add_argument("--origin", action="append", default=[], help="a web origin allowed to call the engine (the desktop shell's)")
+    ap.add_argument("--exit-on-stdin-close", action="store_true", help="exit when the parent closes our stdin (the shell closed or died)")
+    args = ap.parse_args(argv)
+    for o in args.origin:
+        if not _ORIGIN.match(o):
+            ap.error(f"not a valid origin: {o}")
+    return args
+
+
+def _watch_stdin(eng: "Engine") -> None:
+    """Blocks until the parent process closes the pipe (it closed, or it died), then stops the engine, so the engine
+    never outlives the window that owns it."""
+    try:
+        sys.stdin.buffer.read()
+    except Exception:  # noqa: BLE001
+        pass
+    eng.shutdown()
+
+
+def main(argv=None):
+    args = parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    origins = tuple(args.origin)
     if args.dev:
-        eng = Engine(DEV_PORT, DEV_TOKEN, DEV_ORIGINS)
+        eng = Engine(DEV_PORT, DEV_TOKEN, DEV_ORIGINS + origins)
     else:
-        eng = Engine(args.port, secrets.token_urlsafe(24))
+        eng = Engine(args.port, secrets.token_urlsafe(24), origins)
     print(json.dumps({"port": eng.server_address[1], "token": eng.token}), flush=True)
+    if args.exit_on_stdin_close:
+        threading.Thread(target=_watch_stdin, args=(eng,), daemon=True).start()
     try:
         eng.serve_forever()
     except KeyboardInterrupt:

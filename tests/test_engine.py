@@ -241,3 +241,38 @@ def test_a_missing_log_is_an_empty_list(api, monkeypatch, tmp_path):
     call, _w, _b = api
     monkeypatch.setattr(engine, "LOG_PATH", tmp_path / "nope.log")
     assert call("GET", "/api/log")[1] == {"entries": []}
+
+
+def test_the_engine_accepts_only_the_shells_origin_and_exits_with_its_parent():
+    """The real thing as a subprocess, the way the desktop shell starts it: a random port and token on the first line,
+    CORS for the shell's origin and no other, and the process ends by itself when its stdin is closed."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    root = Path(engine.__file__).resolve().parent
+    proc = subprocess.Popen([sys.executable, str(root / "engine.py"), "--origin", "app://bundle", "--exit-on-stdin-close"],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, cwd=root)
+    try:
+        ready = json.loads(proc.stdout.readline())
+        assert ready["port"] > 0 and len(ready["token"]) >= 20
+        base = f"http://127.0.0.1:{ready['port']}"
+        ok = urllib.request.Request(base + "/api/state", method="OPTIONS", headers={"Origin": "app://bundle"})
+        with urllib.request.urlopen(ok, timeout=10) as r:
+            assert r.status == 204 and r.headers["Access-Control-Allow-Origin"] == "app://bundle"
+        bad = urllib.request.Request(base + "/api/state", method="OPTIONS", headers={"Origin": "http://localhost:5173"})
+        with pytest.raises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(bad, timeout=10)
+        assert e.value.code == 403
+        proc.stdin.close()                                    # the shell closed (or died)
+        assert proc.wait(timeout=15) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_a_malformed_origin_is_refused():
+    with pytest.raises(SystemExit):
+        engine.parse_args(["--origin", "*"])
+    with pytest.raises(SystemExit):
+        engine.parse_args(["--origin", "not an origin"])
+    assert engine.parse_args(["--origin", "app://bundle"]).origin == ["app://bundle"]
