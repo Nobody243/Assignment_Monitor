@@ -112,3 +112,13 @@ one Yes/No ConfirmDialog for every change (upload, replace, delete, unpair, auto
 "Saved: <setting>" feedback; a RunningPill and a top progress bar that name the running action and its step; skeletons per page;
 page transitions and staggered lists (transform/opacity only, off under reduced motion); an Activity page (my actions, from every
 success/error toast, plus the engine log); a "?" help dialog that says what each action does. Sample data is now an explicit choice.
+
+## Settings restructure (2026-11-18, sixth pass)
+Activity is no longer a page of its own: it is a tab inside Settings (an old #/activity link lands there). Settings is now a section list on the
+left and one focused tab on the right, each tab linkable (#/settings/<tab>): **Profile** (who you are as the portal sees you, plus the portal
+account), **Appearance** (theme, palette, animations), **Notifications** (alerts, email, phone, calendar), **Tracking**, **Background and cloud**
+(automatic checks, tray, start with Windows, updates, cloud checks), **Data and files** (downloads folder, app data, clear saved data),
+**Activity**, **About** (version, update check, licence, links, disclaimer).
+Checked against the desktop app's Settings so nothing is missing: added the Animations switch, the downloads folder (it lives on the Lectures
+page in the desktop app), the About block with the disclaimer and update check, and a profile summary. "Switch account" is the Portal account
+form itself.

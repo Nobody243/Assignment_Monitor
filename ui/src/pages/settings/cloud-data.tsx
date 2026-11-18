@@ -4,6 +4,7 @@ import { toast } from '@/lib/notify'
 import { cloudDisable, cloudPoll, cloudRun, cloudSetup, cloudStart, clearData, getCloudStatus, type CloudStatus, type SettingsView } from '@/api'
 import { Alert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import type { Outcome, Running } from '@/useEngine'
@@ -136,22 +137,42 @@ export function CloudSection({ view, run, running, busy, demo, reload }: { view:
   )
 }
 
-export function DataSection({ paths, demo, onOpenFolder, onCleared }: { paths: { lectures: string; data: string }; demo: boolean; onOpenFolder: (k: 'lectures' | 'data') => void; onCleared: () => void }) {
+export function DataSection({ view, save, paths, demo, onOpenFolder, onCleared }: {
+  view: SettingsView | null; save: (p: Record<string, unknown>) => Promise<boolean>
+  paths: { lectures: string; data: string }; demo: boolean; onOpenFolder: (k: 'lectures' | 'data') => void; onCleared: () => void
+}) {
   const [confirm, setConfirm] = useState(false)
+  const current = view?.background.lectures_dir ?? ''
+  const fallback = view?.background.downloads_default ?? paths.lectures
+  const [folder, setFolder] = useState(current)
+  useEffect(() => { setFolder(current) }, [current])
+  const dirty = folder.trim() !== current
   return (
-    <Section id="data" title="Your data" description="Everything the app keeps is on this PC. Nothing leaves it unless you turn on cloud checks.">
-      <Row label="Downloads" hint={<span className="num">{paths.lectures}</span>}><Button variant="outline" size="sm" disabled={demo} onClick={() => onOpenFolder('lectures')}><FolderOpen />Open</Button></Row>
-      <Row label="App data and activity log" hint={<span className="num">{paths.data}</span>}><Button variant="outline" size="sm" disabled={demo} onClick={() => onOpenFolder('data')}><FolderOpen />Open</Button></Row>
-      <Row label="Clear saved data" hint="Deletes the saved assignments, attendance, exams, announcements and lecture list. The next check rebuilds them. Your account and settings stay.">
-        <Button variant="outline" size="sm" className="text-destructive" disabled={demo} onClick={() => setConfirm(true)}><Trash2 />Clear</Button>
-      </Row>
-      <Dialog open={confirm} onOpenChange={setConfirm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Clear the saved data?</DialogTitle><DialogDescription>The saved assignments, attendance, exam plan, announcements and lecture list are deleted. The next check rebuilds them.</DialogDescription></DialogHeader>
-          <DialogFooter><Button variant="ghost" onClick={() => setConfirm(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => void clearData().then(() => { setConfirm(false); toast.success('Saved data cleared.'); onCleared() })}>Clear</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Section>
+    <>
+      <Section id="downloads" title="Downloads folder" description="Where lecture notes and assignment files are saved, one folder per course. Files already there are skipped.">
+        <Row label="Folder" hint={current ? 'A folder you chose' : <>Using the default: <span className="num">{fallback}</span></>}>
+          <Button variant="outline" size="sm" disabled={demo} onClick={() => onOpenFolder('lectures')}><FolderOpen />Open</Button>
+        </Row>
+        <div className="flex flex-wrap items-center gap-2 py-3">
+          <Input className="min-w-0 flex-1 basis-72" value={folder} onChange={e => setFolder(e.target.value)} placeholder={fallback} aria-label="Downloads folder path" disabled={demo || !view} />
+          <Button size="sm" disabled={demo || !view || !dirty} onClick={() => void save({ lectures_dir: folder.trim() }).then(ok => ok && toast.success('Downloads folder saved'))}>Save folder</Button>
+          <Button size="sm" variant="ghost" disabled={demo || !view || !current} onClick={() => void save({ lectures_dir: '' }).then(ok => ok && toast.success('Using the default folder'))}>Use the default</Button>
+        </div>
+        <p className="text-muted-foreground text-xs">Type or paste a full folder path, for example D:\University\Lectures. The folder is created the first time something is saved there.</p>
+      </Section>
+      <Section id="data" title="Your data" description="Everything the app keeps is on this PC. Nothing leaves it unless you turn on cloud checks.">
+        <Row label="App data and activity log" hint={<span className="num">{paths.data}</span>}><Button variant="outline" size="sm" disabled={demo} onClick={() => onOpenFolder('data')}><FolderOpen />Open</Button></Row>
+        <Row label="Clear saved data" hint="Deletes the saved assignments, attendance, exams, announcements and lecture list. The next check rebuilds them. Your account and settings stay.">
+          <Button variant="outline" size="sm" className="text-destructive" disabled={demo} onClick={() => setConfirm(true)}><Trash2 />Clear</Button>
+        </Row>
+        <Dialog open={confirm} onOpenChange={setConfirm}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Clear the saved data?</DialogTitle><DialogDescription>The saved assignments, attendance, exam plan, announcements and lecture list are deleted. The next check rebuilds them.</DialogDescription></DialogHeader>
+            <DialogFooter><Button variant="ghost" onClick={() => setConfirm(false)}>No, keep it</Button>
+              <Button variant="destructive" onClick={() => void clearData().then(() => { setConfirm(false); toast.success('Saved data cleared'); onCleared() })}>Yes, clear it</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </Section>
+    </>
   )
 }

@@ -18,8 +18,7 @@ import { ago, dueParts, sizeLabel } from '@/format'
 import { useActivity } from '@/lib/activity'
 import { courseColors } from '@/lib/courses'
 import { toast } from '@/lib/notify'
-import { PAGE_TITLES, usePage, type Page } from '@/lib/router'
-import { ActivityPage } from '@/pages/activity-page'
+import { PAGE_TITLES, SETTINGS_TABS, usePage, type Page } from '@/lib/router'
 import { AnnouncementsPage } from '@/pages/announcements-page'
 import { AssignmentsPage, type Filter } from '@/pages/assignments-page'
 import { AttendancePage } from '@/pages/attendance-page'
@@ -38,7 +37,7 @@ function useTheme() {
     document.documentElement.classList.toggle('dark', dark)
     try { localStorage.setItem('am-theme', dark ? 'dark' : 'light') } catch { /* private mode */ }
   }, [dark])
-  return [dark, () => setDark(d => !d)] as const
+  return [dark, () => setDark(d => !d), setDark] as const
 }
 
 function usePalette() {
@@ -50,14 +49,24 @@ function usePalette() {
   return [palette, setPalette] as const
 }
 
+function useMotion() {
+  const [on, setOn] = useState(() => { try { return localStorage.getItem('am-motion') !== 'off' } catch { return true } })
+  useEffect(() => {
+    document.documentElement.dataset.motion = on ? 'on' : 'off'
+    try { localStorage.setItem('am-motion', on ? 'on' : 'off') } catch { /* private mode */ }
+  }, [on])
+  return [on, setOn] as const
+}
+
 type PendingUpload = { a: Assignment; file: File; replace: boolean }
 
 export default function App() {
   const eng = useEngine()
   const { state, demo, running, run, now, refresh } = eng
-  const [dark, toggleTheme] = useTheme()
+  const [dark, toggleTheme, setDark] = useTheme()
+  const [motion, setMotion] = useMotion()
   const [palette, setPalette] = usePalette()
-  const [page, navigate, missing] = usePage()
+  const { page, sub, missing, go: navigate } = usePage()
   const [tab, setTab] = useState<Filter>('todo')
   const [course, setCourse] = useState('all')
   const [selId, setSelId] = useState<string | null>(null)
@@ -75,13 +84,13 @@ export default function App() {
 
   const badges = useMemo<Partial<Record<Page, number>>>(() => {
     const failed = activity.filter(e => !e.ok && now - e.at < 864e5).length
-    if (!state) return { activity: failed }
+    if (!state) return { settings: failed }
     return {
       assignments: all.filter(a => !a.is_submitted && (a.urgency === 'today' || a.urgency === 'soon')).length,
       attendance: state.attendance.courses.filter(c => c.recorded && !c.ok).length,
       lectures: state.lectures.filter(l => l.first_seen && now - new Date(l.first_seen).getTime() < 7 * 864e5).length,
       announcements: state.announcements.filter(a => a.posted_at && now - new Date(a.posted_at).getTime() < 7 * 864e5).length,
-      activity: failed,
+      settings: failed,
     }
   }, [state, all, now, activity])
 
@@ -148,7 +157,6 @@ export default function App() {
   const render = () => {
     if (import.meta.env.DEV && page === 'notfound' && missing === '__crash') throw new Error('Test crash: this route exists only in development to check the crash screen.')
     if (page === 'notfound') return <NotFoundPage path={missing} onHome={() => navigate('home')} onAssignments={() => navigate('assignments')} onSearch={() => setCmdOpen(true)} />
-    if (page === 'activity') return <ActivityPage now={now} demo={demo} />
     if (!state) {
       return eng.connection === 'connecting'
         ? <PageSkeleton kind={page === 'home' ? 'home' : page === 'attendance' || page === 'exams' ? 'cards' : 'list'} />
@@ -165,8 +173,9 @@ export default function App() {
         onDownload={ids => void doLectureDownload(ids)} onOpenFolder={() => openFolderSafe('lectures')} />
       case 'announcements': return <AnnouncementsPage items={state.announcements} colors={colors} now={now} />
       case 'results': return <ResultsPage results={state.results} />
-      case 'settings': return <SettingsPage dark={dark} onToggleTheme={toggleTheme} palette={palette} onPalette={setPalette} paths={state.paths} version={state.version} demo={demo}
-        onOpenFolder={openFolderSafe} run={run} running={running} onDataCleared={() => void refresh()} />
+      case 'settings': return <SettingsPage tab={sub ?? 'profile'} onTab={t => navigate('settings', t)} state={state} now={now} demo={demo}
+        dark={dark} onTheme={setDark} palette={palette} onPalette={setPalette} motion={motion} onMotion={setMotion}
+        onOpenFolder={openFolderSafe} onDataCleared={() => void refresh()} run={run} running={running} />
     }
   }
 
@@ -183,7 +192,7 @@ export default function App() {
               <BreadcrumbList>
                 <BreadcrumbItem className="max-sm:hidden">{meta?.semester ?? 'This semester'}</BreadcrumbItem>
                 <BreadcrumbSeparator className="max-sm:hidden" />
-                <BreadcrumbItem><BreadcrumbPage>{PAGE_TITLES[page]}</BreadcrumbPage></BreadcrumbItem>
+                {page === 'settings' ? (<><BreadcrumbItem className="max-sm:hidden">{PAGE_TITLES.settings}</BreadcrumbItem><BreadcrumbSeparator className="max-sm:hidden" /><BreadcrumbItem><BreadcrumbPage>{SETTINGS_TABS.find(t => t.key === (sub ?? 'profile'))?.label}</BreadcrumbPage></BreadcrumbItem></>) : <BreadcrumbItem><BreadcrumbPage>{PAGE_TITLES[page]}</BreadcrumbPage></BreadcrumbItem>}
               </BreadcrumbList>
             </Breadcrumb>
             <div className="ml-auto flex items-center gap-2">

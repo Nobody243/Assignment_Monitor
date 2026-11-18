@@ -24,7 +24,20 @@ import channels
 import cloud
 import config
 import tracker
-from config import APP_NAME, CAMPUS_NAME_BY_ID, CAMPUSES, GITHUB_CLIENT_ID, load_env, save_env
+import updater
+from config import (
+    APP_NAME,
+    APP_VERSION,
+    CAMPUS_NAME_BY_ID,
+    CAMPUSES,
+    FROZEN,
+    GITHUB_CLIENT_ID,
+    REPO_URL,
+    SITE_URL,
+    TAGLINE,
+    load_env,
+    save_env,
+)
 
 log = logging.getLogger("settings")
 
@@ -58,6 +71,7 @@ FIELDS: dict[str, tuple[str, str]] = {
     "calendar_enabled": ("CALENDAR_ENABLED", "bool"),
     "calendar_invites": ("CALENDAR_INVITES", "bool"),
     "lectures_dir": ("LECTURES_DIR", "path"),
+    "animations": ("ANIMATIONS", "bool"),
 }
 _ENROLLMENT = re.compile(r"^[A-Za-z0-9\-]{3,30}$")
 _HOST = re.compile(r"^[A-Za-z0-9.\-]{0,253}$")
@@ -127,6 +141,7 @@ def view() -> dict:
             "password_set": bool(env["PASSWORD"]),
         },
         "campuses": [{"id": cid, "name": name} for name, cid in CAMPUSES],
+        "appearance": {"animations": env["ANIMATIONS"]},
         "alerts": {
             "voice": env["ENABLE_VOICE"],
             "toast": env["ENABLE_WINDOWS_TOAST"],
@@ -149,6 +164,7 @@ def view() -> dict:
             "close_to_tray": env["CLOSE_TO_TRAY"],
             "check_updates": env["CHECK_UPDATES"],
             "lectures_dir": env["LECTURES_DIR"],
+            "downloads_default": str(config.lectures_dir({"LECTURES_DIR": ""})),
             "starts_with_windows": automation.starts_with_windows(),
             "automatic_checks": automation.is_enabled(),
             "owned_by_installed_app": bool(automation.installed_owner()),
@@ -164,6 +180,15 @@ def view() -> dict:
             "push_device": push_device,
             "calendar_enabled": env["CALENDAR_ENABLED"],
             "calendar_invites": env["CALENDAR_INVITES"],
+        },
+        "about": {
+            "version": APP_VERSION,
+            "tagline": TAGLINE,
+            "installed": bool(FROZEN),
+            "repo": REPO_URL,
+            "site": SITE_URL,
+            "author": "Nobody243",
+            "license": "MIT",
         },
         "cloud": {
             "available": bool(GITHUB_CLIENT_ID),
@@ -457,6 +482,14 @@ def cloud_status(qs=None, body=None):
     return 200, out
 
 
+def update_check(qs=None, body=None):
+    """Asks GitHub for the latest release. {"version", "newer", "page"} or {"error"} when it cannot be reached."""
+    info = updater.check_latest()
+    if not info:
+        return 200, {"error": "GitHub could not be reached."}
+    return 200, {"version": info["version"], "newer": bool(info["newer"]), "page": info["page"], "current": APP_VERSION}
+
+
 def clear_data(qs, body):
     tracker.clear_stored_assignments()
     return 200, {"ok": True}
@@ -477,7 +510,12 @@ def update(qs, body):
 
 # ---------------------------------------------------------------------------- route tables (engine.py dispatches on these)
 Route = Callable[[dict, bytes], object]
-GET: dict[str, Route] = {"/api/settings": lambda qs, body: (200, view()), "/api/voices": voices, "/api/cloud/status": cloud_status}
+GET: dict[str, Route] = {
+    "/api/settings": lambda qs, body: (200, view()),
+    "/api/voices": voices,
+    "/api/cloud/status": cloud_status,
+    "/api/update": update_check,
+}
 POST: dict[str, tuple[str, Route]] = {
     "/api/settings": ("settings", update),
     "/api/account/verify": ("verify", account_verify),

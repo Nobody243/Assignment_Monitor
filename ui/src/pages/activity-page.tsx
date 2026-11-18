@@ -3,7 +3,7 @@ import { CircleCheck, CircleX, RefreshCw, Trash2 } from 'lucide-react'
 import { getLog, type LogEntry } from '@/api'
 import { ConfirmDialog, LoadingButton, Reveal } from '@/components/feedback'
 import { Alert } from '@/components/inline-alert'
-import { PageHeader, Stat } from '@/components/page-header'
+import { Stat } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -93,15 +93,19 @@ function EngineLog({ demo }: { demo: boolean }) {
   )
 }
 
-export function ActivityPage({ now, demo }: { now: number; demo: boolean }) {
+/** The history of actions and the engine log, shown inside Settings. */
+export function ActivityPanel({ now, demo }: { now: number; demo: boolean }) {
   const [tab, setTab] = useState<'mine' | 'engine'>('mine')
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title="Activity" description="Every action you took in this app and how it ended, and what the engine behind it logged. Nothing here is sent anywhere." />
+    <section className="flex flex-col gap-4" id="activity" aria-label="Activity">
+      <div>
+        <h2 className="font-semibold">Activity</h2>
+        <p className="text-muted-foreground mt-1 text-sm">Every action you took in this app and how it ended, and what the engine behind it logged. Nothing here is sent anywhere.</p>
+      </div>
       <Tabs value={tab} onValueChange={v => setTab(v as typeof tab)}>
         <TabsList><TabsTrigger value="mine">My actions</TabsTrigger><TabsTrigger value="engine">Engine log</TabsTrigger></TabsList>
       </Tabs>
       {tab === 'mine' ? <Actions now={now} /> : <EngineLog demo={demo} />}
-    </div>
+    </section>
   )
 }

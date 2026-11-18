@@ -141,8 +141,8 @@ const ACTIONS: [string, string][] = [
   ['Upload / Replace', 'Sends your file through the portal\'s own Submit form, after you confirm. Replace deletes your current submission first.'],
   ['Delete submission', 'Removes your uploaded file from the portal (allowed until the deadline), after you confirm.'],
   ['Download (file icons)', 'Saves the brief, your submission, returned work or the solution into your Lectures folder.'],
-  ['Settings', 'Changes are saved the moment you make them and appear in Activity.'],
-  ['Activity', 'Every action and its result, plus the engine\'s log, so nothing that happened is lost.'],
+  ['Settings', 'Profile, appearance, alerts, tracking, background and cloud checks, and your data. Changes are saved the moment you make them.'],
+  ['Settings › Activity', 'Every action and its result, plus the engine\'s log, so nothing that happened is lost.'],
 ]
 
 export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {

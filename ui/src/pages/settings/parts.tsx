@@ -35,7 +35,7 @@ export function SwitchRow({ label, hint, checked, onChange, disabled }: { label:
   )
 }
 
-const SECTIONS = ['account', 'alerts', 'tracking', 'background', 'channels'] as const
+const SECTIONS = ['account', 'appearance', 'alerts', 'tracking', 'background', 'channels'] as const
 function merge(v: SettingsView, patch: Record<string, unknown>): SettingsView {
   const next = { ...v } as SettingsView
   for (const s of SECTIONS) {

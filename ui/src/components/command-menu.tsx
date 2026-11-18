@@ -2,11 +2,11 @@ import { ArrowRight, CircleHelp, CornerDownRight, Moon, RefreshCw } from 'lucide
 import type { Assignment } from '@/api'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { dueParts } from '@/format'
-import { PAGES, PAGE_TITLES, type Page } from '@/lib/router'
+import { PAGES, PAGE_TITLES, SETTINGS_TABS, type Page, type SettingsTab } from '@/lib/router'
 
 export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onSync, onToggleTheme, onNavigate, onHelp }: {
   open: boolean; onOpenChange: (o: boolean) => void; assignments: Assignment[]; dark: boolean
-  onPick: (id: string) => void; onSync: () => void; onToggleTheme: () => void; onNavigate: (p: Page) => void; onHelp: () => void
+  onPick: (id: string) => void; onSync: () => void; onToggleTheme: () => void; onNavigate: (p: Page, sub?: SettingsTab) => void; onHelp: () => void
 }) {
   const run = (fn: () => void) => () => { onOpenChange(false); fn() }
   return (
@@ -16,6 +16,7 @@ export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onS
         <CommandEmpty>Nothing matches.</CommandEmpty>
         <CommandGroup heading="Go to">
           {PAGES.map(p => <CommandItem key={p} value={`go ${PAGE_TITLES[p]}`} onSelect={run(() => onNavigate(p))}><CornerDownRight />{PAGE_TITLES[p]}</CommandItem>)}
+          {SETTINGS_TABS.map(t => <CommandItem key={t.key} value={`go settings ${t.label}`} onSelect={run(() => onNavigate('settings', t.key))}><CornerDownRight />Settings: {t.label}</CommandItem>)}
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Commands">

@@ -283,3 +283,9 @@
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
   .top-progress::after { animation: none; width: 100%; opacity: 0.6; }
 }
+
+/* the Animations switch in Settings: everything stops moving (the app still works the same) */
+:root[data-motion='off'] *, :root[data-motion='off'] *::before, :root[data-motion='off'] *::after {
+  animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important;
+}
+:root[data-motion='off'] .top-progress::after { animation: none; width: 100%; opacity: 0.6; }

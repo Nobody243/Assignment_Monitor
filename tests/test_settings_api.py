@@ -14,6 +14,7 @@ import channels
 import cloud
 import engine
 import settings_api
+import updater
 import config
 from config import load_env
 
@@ -217,3 +218,36 @@ def test_clearing_data_empties_the_stored_files(srv):
     tracker.save_assignments({"k": {"id": "k"}})
     assert call("POST", "/api/data/clear")[0] == 200
     assert tracker.load_stored_assignments() == {}
+
+
+def test_animations_and_the_downloads_folder_are_settings(srv, tmp_path):
+    call, _j = srv
+    view = call("GET", "/api/settings")[1]
+    assert view["appearance"]["animations"] is True and view["background"]["downloads_default"].endswith("Lectures")
+    folder = str(tmp_path / "my downloads")
+    st, body = call("POST", "/api/settings", {"animations": False, "lectures_dir": folder})
+    assert st == 200
+    after = body["settings"]
+    assert after["appearance"]["animations"] is False and after["background"]["lectures_dir"] == folder
+    assert call("POST", "/api/settings", {"lectures_dir": ""})[1]["settings"]["background"]["lectures_dir"] == ""  # back to the default
+
+
+def test_the_about_details_are_served(srv):
+    call, _j = srv
+    about = call("GET", "/api/settings")[1]["about"]
+    assert about["version"] and about["repo"].startswith("https://github.com/") and about["license"] == "MIT"
+
+
+def test_the_update_check_reports_newer_or_unreachable(srv, monkeypatch):
+    call, _j = srv
+    monkeypatch.setattr(
+        updater, "check_latest", lambda: {"version": "9.9.9", "newer": True, "page": "https://example/releases/9.9.9", "setup_url": "x"}
+    )
+    assert call("GET", "/api/update")[1] == {
+        "version": "9.9.9",
+        "newer": True,
+        "page": "https://example/releases/9.9.9",
+        "current": settings_api.APP_VERSION,
+    }
+    monkeypatch.setattr(updater, "check_latest", lambda: None)
+    assert "could not be reached" in call("GET", "/api/update")[1]["error"]

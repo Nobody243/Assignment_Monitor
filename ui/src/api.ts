@@ -101,13 +101,15 @@ export const openFolder = (kind: 'lectures' | 'data') => call<{ ok: boolean; fol
 // ------------------------------------------------------------------------------------------------ settings
 export type SettingsView = {
   account: { enrollment: string; institute_id: string; campus: string; password_set: boolean }
+  appearance: { animations: boolean }
+  about: { version: string; tagline: string; installed: boolean; repo: string; site: string; author: string; license: string }
   campuses: { id: string; name: string }[]
   alerts: { voice: boolean; toast: boolean; notify_days_ahead: number; voice_name: string; voice_volume: number; voice_rate: number }
   tracking: {
     track_attendance: boolean; track_exams: boolean; track_announcements: boolean; track_lectures: boolean; track_timetable: boolean; track_results: boolean
     attendance_min: number; exam_remind_days: number
   }
-  background: { close_to_tray: boolean; check_updates: boolean; lectures_dir: string; starts_with_windows: boolean; automatic_checks: boolean; owned_by_installed_app: boolean }
+  background: { close_to_tray: boolean; check_updates: boolean; lectures_dir: string; downloads_default: string; starts_with_windows: boolean; automatic_checks: boolean; owned_by_installed_app: boolean }
   channels: {
     email_enabled: boolean; email_to: string; email_pass_set: boolean; email_host: string; email_port: number
     push_enabled: boolean; push_paired: boolean; push_device: string; calendar_enabled: boolean; calendar_invites: boolean
@@ -143,3 +145,6 @@ export const clearData = () => post<{ ok: boolean }>('/api/data/clear')
 
 export type LogEntry = { time: string; level: string; text: string }
 export const getLog = (lines = 300) => call<{ entries: LogEntry[] }>(`/api/log?lines=${lines}`)
+
+export type UpdateInfo = { version?: string; newer?: boolean; page?: string; current?: string; error?: string }
+export const getUpdate = () => call<UpdateInfo>('/api/update')
