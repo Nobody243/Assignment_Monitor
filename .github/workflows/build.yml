@@ -118,7 +118,7 @@ jobs:
 
       - name: Publish numbered release (version tags)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/AssignmentMonitor-Setup.exe
