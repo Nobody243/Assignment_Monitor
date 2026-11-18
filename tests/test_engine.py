@@ -8,6 +8,7 @@ import urllib.request
 
 import pytest
 
+import config
 import engine
 import lms_scraper
 import tracker
@@ -307,3 +308,21 @@ def test_wrong_keys_are_throttled(api):
         assert call("GET", "/api/state", token="nope")[0] == 401
     assert call("GET", "/api/state", token="nope")[0] == 429
     assert call("GET", "/api/state")[0] == 200          # the real key is never locked out
+
+
+def test_headless_flags_do_the_job_and_exit(monkeypatch, capsys):
+    import cli
+    import jobs
+    calls = []
+    monkeypatch.setattr(jobs, "run_check", lambda quiet=False, headless=None: calls.append(("check", quiet, headless)) or 0)
+    monkeypatch.setattr(jobs, "run_reminder", lambda test=False: calls.append(("remind", test)) or 0)
+    assert cli.run(engine.parse_args(["--check", "--quiet", "--visible"])) == 0
+    assert cli.run(engine.parse_args(["--remind", "--test"])) == 0
+    assert calls == [("check", True, False), ("remind", True)]
+    assert cli.run(engine.parse_args([])) is None            # no job asked for: run as the service
+    assert not cli.wanted(engine.parse_args(["--dev"]))
+
+
+def test_tasks_and_shortcuts_start_the_shell_when_one_owns_the_engine(monkeypatch):
+    monkeypatch.setenv("AM_SHELL_EXE", r"C:\Apps\AssignmentMonitor.exe")
+    assert config.app_command("--check") == [r"C:\Apps\AssignmentMonitor.exe", "--check"]

@@ -2,7 +2,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
-const { parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen } = require('../lib/helpers.cjs')
+const { hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen } = require('../lib/helpers.cjs')
 
 test('the engine ready line is parsed, and anything else is ignored', () => {
   assert.deepEqual(parseReadyLine('{"port": 51234, "token": "abc123"}\n'), { port: 51234, token: 'abc123' })
@@ -49,4 +49,23 @@ test('a saved window position is used only while it is still on a screen', () =>
   assert.equal(boundsOnScreen({ x: -4000, y: 0, width: 1200, height: 800 }, displays), false)
   assert.equal(boundsOnScreen(null, displays), false)
   assert.equal(boundsOnScreen({ x: NaN, y: 0, width: 10, height: 10 }, displays), false)
+})
+
+test('the old command line still means what it did', () => {
+  assert.deepEqual(parseCli(['--check', '--quiet', '--junk']), { headless: true, passthrough: ['--check', '--quiet'], quit: false, tray: false, setup: false, view: null })
+  assert.equal(parseCli(['--remind', '--test']).passthrough.join(' '), '--remind --test')
+  assert.equal(parseCli(['--enable-automation']).headless, true)
+  const gui = parseCli(['--tray', '--view', 'attendance'])
+  assert.deepEqual([gui.headless, gui.tray, gui.view], [false, true, 'attendance'])
+  assert.equal(parseCli(['--view', 'not-a-page']).view, null)
+  assert.equal(parseCli(['--setup']).view, 'settings')
+  assert.equal(parseCli(['--quit']).quit, true)
+  assert.equal(parseCli([]).headless, false)
+})
+
+test('--view names map to the interface pages', () => {
+  assert.equal(hashForView('assignments'), '#/assignments')
+  assert.equal(hashForView('dashboard'), '')
+  assert.equal(hashForView('activity'), '#/settings/activity')
+  assert.equal(hashForView(null, true), '#/settings/profile')
 })

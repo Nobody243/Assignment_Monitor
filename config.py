@@ -191,6 +191,9 @@ _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE
 
 def app_command(*args: str) -> list:
     """The command line that runs this app in background mode (used for scheduled tasks)."""
+    shell = os.environ.get("AM_SHELL_EXE")          # the desktop shell that owns this engine: tasks and shortcuts start IT
+    if shell:
+        return [shell, *args]
     if FROZEN:
         return [sys.executable, *args]
     pythonw = Path(sys.executable).with_name("pythonw.exe")

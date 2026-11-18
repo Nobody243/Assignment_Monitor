@@ -19,12 +19,12 @@ function engineCommand({ root, resourcesPath, packaged }) {
  * Starts the engine with the shell's origin allowed and "exit when my stdin closes", so it can never outlive the shell.
  * Resolves with { port, token, proc, stop() } once the engine has printed its ready line.
  */
-function startEngine({ command, origins, onExit, timeoutMs = 30000 }) {
+function startEngine({ command, origins, onExit, env = {}, timeoutMs = 30000 }) {
   return new Promise((resolve, reject) => {
     const args = [...command.args, ...origins.flatMap(o => ['--origin', o]), '--exit-on-stdin-close']
     let proc
     try {
-      proc = spawn(command.cmd, args, { cwd: command.cwd, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+      proc = spawn(command.cmd, args, { cwd: command.cwd, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: { ...process.env, ...env } })
     } catch (e) { return reject(new Error(`Could not start ${command.cmd}: ${e.message}`)) }
     let done = false
     let out = ''
@@ -61,4 +61,14 @@ function startEngine({ command, origins, onExit, timeoutMs = 30000 }) {
   })
 }
 
-module.exports = { engineCommand, startEngine }
+/** Runs a background job (--check, --remind, ...) through the engine and resolves with its exit code. No window, no service. */
+function runJob({ command, args, env = {} }) {
+  return new Promise(resolve => {
+    let proc
+    try { proc = spawn(command.cmd, [...command.args, ...args], { cwd: command.cwd, stdio: 'inherit', windowsHide: true, env: { ...process.env, ...env } }) } catch { return resolve(1) }
+    proc.on('error', () => resolve(1))
+    proc.on('exit', code => resolve(code ?? 1))
+  })
+}
+
+module.exports = { engineCommand, runJob, startEngine }

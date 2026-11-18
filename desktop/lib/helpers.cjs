@@ -56,4 +56,33 @@ function boundsOnScreen(b, displays) {
   })
 }
 
-module.exports = { parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen }
+const HEADLESS_FLAGS = ['--check', '--remind', '--status', '--test-alert', '--enable-automation', '--disable-automation', '--disable-cloud']
+const HEADLESS_MODIFIERS = ['--test', '--quiet', '-q', '--visible']
+const VIEWS = ['dashboard', 'assignments', 'attendance', 'exams', 'results', 'timetable', 'announcements', 'lectures', 'settings', 'activity']
+
+/**
+ * The command line the app has always understood (scheduled tasks and shortcuts use it). A background job
+ * (--check, --remind, ...) is handed to the engine and never opens a window; the rest steer the window.
+ */
+function parseCli(argv) {
+  const has = f => argv.includes(f)
+  const headless = HEADLESS_FLAGS.some(has)
+  const i = argv.indexOf('--view')
+  const view = i >= 0 && VIEWS.includes(argv[i + 1]) ? argv[i + 1] : null
+  return {
+    headless,
+    passthrough: headless ? argv.filter(a => HEADLESS_FLAGS.includes(a) || HEADLESS_MODIFIERS.includes(a)) : [],
+    quit: has('--quit'), tray: has('--tray'), setup: has('--setup'),
+    view: has('--setup') ? 'settings' : view,
+  }
+}
+
+/** The page hash for a --view name; names that are not pages of their own land on Home. */
+function hashForView(view, setup) {
+  if (setup) return '#/settings/profile'
+  if (view === 'activity') return '#/settings/activity'
+  if (!view || view === 'dashboard' || view === 'timetable') return ''
+  return `#/${view}`
+}
+
+module.exports = { hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen }

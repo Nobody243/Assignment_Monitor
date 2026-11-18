@@ -3,9 +3,10 @@ const path = require('node:path')
 const fs = require('node:fs')
 const { pathToFileURL } = require('node:url')
 const { app, BrowserWindow, Menu, Tray, dialog, nativeImage, net, protocol, screen, session, shell } = require('electron')
-const { CSP, boundsOnScreen, isSafeExternalUrl, mimeFor, resolveAppPath } = require('./lib/helpers.cjs')
-const { engineCommand, startEngine } = require('./lib/engine.cjs')
+const { CSP, boundsOnScreen, hashForView, isSafeExternalUrl, mimeFor, parseCli, resolveAppPath } = require('./lib/helpers.cjs')
+const { engineCommand, runJob, startEngine } = require('./lib/engine.cjs')
 
+const CLI = parseCli(process.argv.slice(app.isPackaged ? 1 : 2))      // the command line the app has always understood
 const SMOKE = process.argv.includes('--smoke')
 const DEV = process.argv.includes('--dev')
 const DEV_URL = process.env.AM_DEV_URL || 'http://localhost:5173'
@@ -24,6 +25,9 @@ let quitting = false
 let closeToTray = true             // refreshed from the engine's settings
 let restarts = []
 let settingsTimer = null
+
+// Scheduled tasks and shortcuts must start THIS program, so the engine is told which one it is (an installed build only)
+const engineEnv = () => (app.isPackaged ? { AM_SHELL_EXE: process.execPath } : {})
 
 const pageOrigin = () => (DEV ? new URL(DEV_URL).origin : APP_ORIGIN)
 
@@ -62,7 +66,7 @@ async function ensureEngine() {
       const origins = [pageOrigin()]
       engine = await startEngine({
         command: engineCommand({ root: ROOT, resourcesPath: process.resourcesPath, packaged: app.isPackaged }),
-        origins,
+        origins, env: engineEnv(),
         onExit: (code, signal) => { if (!quitting) void onEngineGone(code, signal) },
       })
       return
@@ -121,7 +125,7 @@ function createWindow() {
     },
   })
   if (saved?.maximized) win.maximize()
-  if (!SMOKE) win.once('ready-to-show', () => win.show())
+  if (!SMOKE && !CLI.tray) win.once('ready-to-show', () => win.show())
 
   // links: https opens in the browser; the window itself never leaves the interface
   const wc = win.webContents
@@ -154,7 +158,7 @@ function createWindow() {
   win.on('resize', saveState)
   win.on('move', saveState)
 
-  void win.loadURL(DEV ? DEV_URL : `${APP_ORIGIN}/`)
+  void win.loadURL((DEV ? DEV_URL : `${APP_ORIGIN}/`) + hashForView(CLI.view, CLI.setup))
   if (DEV) wc.openDevTools({ mode: 'detach' })
   return win
 }
@@ -207,10 +211,23 @@ async function smoke() {
 }
 
 // ------------------------------------------------------------------------------------------------ start
-if (!app.requestSingleInstanceLock()) {
-  app.quit()
+if (CLI.headless) {
+  // a scheduled task or a shortcut asked for a background job: the engine does it, no window, no tray, no single-instance lock
+  void app.whenReady().then(async () => {
+    const code = await runJob({ command: engineCommand({ root: ROOT, resourcesPath: process.resourcesPath, packaged: app.isPackaged }), args: CLI.passthrough, env: engineEnv() })
+    app.exit(code)
+  })
+} else if (!app.requestSingleInstanceLock()) {
+  app.quit()            // the running instance hears our command line (--quit, --view ...) through its 'second-instance' event
+} else if (CLI.quit) {
+  app.exit(1)           // asked to quit a running instance, but none is running
 } else {
-  app.on('second-instance', () => showWindow())
+  app.on('second-instance', (_e, argv) => {
+    const cmd = parseCli(argv.slice(app.isPackaged ? 1 : 2))
+    if (cmd.quit) { quitting = true; app.quit(); return }
+    showWindow()
+    if (win && (cmd.view || cmd.setup)) void win.webContents.executeJavaScript(`location.hash = ${JSON.stringify(hashForView(cmd.view, cmd.setup))}`)
+  })
   app.setAppUserModelId('com.nobody243.assignmentmonitor')
 
   app.whenReady().then(async () => {

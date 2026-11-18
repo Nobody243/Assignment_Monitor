@@ -32,6 +32,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+import cli
 import config
 import lms_scraper as scraper
 import settings_api
@@ -432,6 +433,7 @@ def parse_args(argv=None):
     ap.add_argument("--dev", action="store_true", help="fixed port and token for the interface's dev server")
     ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--origin", action="append", default=[], help="a web origin allowed to call the engine (the desktop shell's)")
+    cli.add_arguments(ap)
     ap.add_argument("--exit-on-stdin-close", action="store_true", help="exit when the parent closes our stdin (the shell closed or died)")
     args = ap.parse_args(argv)
     for o in args.origin:
@@ -453,6 +455,9 @@ def _watch_stdin(eng: "Engine") -> None:
 def main(argv=None):
     args = parse_args(argv)
     config.setup_logging(to_console=args.dev)
+    if cli.wanted(args):                       # a scheduled task or a shortcut: do the job and leave, no service
+        code = cli.run(args)
+        sys.exit(1 if code is None else code)
     origins = tuple(args.origin)
     if args.dev:
         eng = Engine(DEV_PORT, DEV_TOKEN, DEV_ORIGINS + origins)
