@@ -1,7 +1,10 @@
 import type { Assignment } from '@/api'
 
 // A course keeps one colour everywhere it appears. The colour identifies the course only: status never uses it.
-export const COURSE_COLORS = ['#3b6cf0', '#e2562a', '#0e9f87', '#9b51e0', '#d4a017', '#0f87c9', '#c2417a', '#5f7c3b', '#6b7280']
+export const COURSE_COLORS = [
+  'oklch(0.62 0.17 262)', 'oklch(0.68 0.17 45)', 'oklch(0.64 0.13 178)', 'oklch(0.62 0.18 305)', 'oklch(0.74 0.15 90)',
+  'oklch(0.64 0.14 232)', 'oklch(0.62 0.18 8)', 'oklch(0.66 0.14 140)', 'oklch(0.58 0.04 262)',
+]
 
 export function courseColors(all: Assignment[]): Record<string, string> {
   const names = [...new Set(all.map(a => a.course))].sort()

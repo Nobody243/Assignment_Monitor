@@ -144,3 +144,68 @@
     @apply font-sans;
     }
 }
+/* ------------------------------------------------------------------------------------------------
+   Palettes. Every neutral shares the palette's hue (a tint, not a grey), the banner is a rich colour with a
+   second stop for depth, and one lime carries every primary action. Pick with data-palette on <html>.
+   ------------------------------------------------------------------------------------------------ */
+:root { --banner-2: oklch(0.4 0.12 275); }
+
+/* Royal: tinted blue neutrals, a saturated royal-blue banner (the Campus reference) */
+:root[data-palette='royal'] {
+  --background: oklch(0.993 0.003 262); --card: oklch(1 0 0); --sidebar: oklch(0.94 0.016 262);
+  --foreground: oklch(0.2 0.035 265); --card-foreground: oklch(0.2 0.035 265); --popover: oklch(1 0 0); --popover-foreground: oklch(0.2 0.035 265);
+  --muted: oklch(0.962 0.01 262); --accent: oklch(0.955 0.014 262); --secondary: oklch(0.962 0.01 262);
+  --muted-foreground: oklch(0.5 0.035 262); --border: oklch(0.91 0.016 262); --input: oklch(0.91 0.016 262);
+  --sidebar-accent: oklch(1 0 0 / 80%); --sidebar-border: oklch(0.89 0.018 262); --sidebar-foreground: oklch(0.25 0.035 265);
+  --primary: oklch(0.9 0.2 122); --primary-foreground: oklch(0.2 0.035 265);
+  --banner: oklch(0.5 0.19 262); --banner-2: oklch(0.38 0.16 280);
+}
+:root.dark[data-palette='royal'] {
+  --background: oklch(0.2 0.024 265); --card: oklch(0.245 0.03 265); --sidebar: oklch(0.15 0.022 265);
+  --foreground: oklch(0.97 0.006 262); --card-foreground: oklch(0.97 0.006 262); --popover: oklch(0.26 0.03 265); --popover-foreground: oklch(0.97 0.006 262);
+  --muted: oklch(0.29 0.03 265); --accent: oklch(0.3 0.032 265); --secondary: oklch(0.29 0.03 265);
+  --muted-foreground: oklch(0.72 0.025 262); --border: oklch(0.7 0.04 262 / 14%); --input: oklch(0.7 0.04 262 / 18%);
+  --sidebar-accent: oklch(0.25 0.03 265); --sidebar-border: oklch(0.7 0.04 262 / 12%); --sidebar-foreground: oklch(0.95 0.008 262);
+  --primary: oklch(0.88 0.19 122); --primary-foreground: oklch(0.2 0.035 265);
+  --banner: oklch(0.42 0.17 265); --banner-2: oklch(0.3 0.13 285);
+}
+
+/* Ink: warm paper neutrals, a near-black banner (the Ronas reference) */
+:root[data-palette='ink'] {
+  --background: oklch(0.99 0.004 90); --card: oklch(1 0 0); --sidebar: oklch(0.945 0.012 85);
+  --foreground: oklch(0.18 0.012 80); --card-foreground: oklch(0.18 0.012 80); --popover: oklch(1 0 0); --popover-foreground: oklch(0.18 0.012 80);
+  --muted: oklch(0.96 0.008 90); --accent: oklch(0.955 0.01 90); --secondary: oklch(0.96 0.008 90);
+  --muted-foreground: oklch(0.5 0.02 80); --border: oklch(0.912 0.012 88); --input: oklch(0.912 0.012 88);
+  --sidebar-accent: oklch(1 0 0 / 80%); --sidebar-border: oklch(0.89 0.014 86); --sidebar-foreground: oklch(0.22 0.012 80);
+  --primary: oklch(0.9 0.2 122); --primary-foreground: oklch(0.18 0.012 80);
+  --banner: oklch(0.22 0.012 270); --banner-2: oklch(0.32 0.04 280);
+}
+:root.dark[data-palette='ink'] {
+  --background: oklch(0.17 0.006 85); --card: oklch(0.215 0.008 85); --sidebar: oklch(0.125 0.005 85);
+  --foreground: oklch(0.97 0.006 90); --card-foreground: oklch(0.97 0.006 90); --popover: oklch(0.23 0.008 85); --popover-foreground: oklch(0.97 0.006 90);
+  --muted: oklch(0.265 0.009 85); --accent: oklch(0.28 0.01 85); --secondary: oklch(0.265 0.009 85);
+  --muted-foreground: oklch(0.72 0.012 85); --border: oklch(0.8 0.02 85 / 12%); --input: oklch(0.8 0.02 85 / 16%);
+  --sidebar-accent: oklch(0.23 0.008 85); --sidebar-border: oklch(0.8 0.02 85 / 10%); --sidebar-foreground: oklch(0.95 0.006 90);
+  --primary: oklch(0.88 0.19 122); --primary-foreground: oklch(0.18 0.012 80);
+  --banner: oklch(0.29 0.02 280); --banner-2: oklch(0.2 0.01 270);
+}
+
+/* Forest: cream and sage neutrals, a deep green banner that the lime belongs to */
+:root[data-palette='forest'] {
+  --background: oklch(0.99 0.01 105); --card: oklch(1 0.003 105); --sidebar: oklch(0.94 0.024 125);
+  --foreground: oklch(0.22 0.04 155); --card-foreground: oklch(0.22 0.04 155); --popover: oklch(1 0.003 105); --popover-foreground: oklch(0.22 0.04 155);
+  --muted: oklch(0.962 0.016 115); --accent: oklch(0.955 0.02 120); --secondary: oklch(0.962 0.016 115);
+  --muted-foreground: oklch(0.5 0.04 150); --border: oklch(0.91 0.02 120); --input: oklch(0.91 0.02 120);
+  --sidebar-accent: oklch(1 0.003 105 / 80%); --sidebar-border: oklch(0.89 0.024 122); --sidebar-foreground: oklch(0.26 0.04 155);
+  --primary: oklch(0.9 0.2 122); --primary-foreground: oklch(0.22 0.04 155);
+  --banner: oklch(0.4 0.09 160); --banner-2: oklch(0.3 0.07 175);
+}
+:root.dark[data-palette='forest'] {
+  --background: oklch(0.19 0.022 160); --card: oklch(0.235 0.028 160); --sidebar: oklch(0.145 0.02 160);
+  --foreground: oklch(0.97 0.01 110); --card-foreground: oklch(0.97 0.01 110); --popover: oklch(0.25 0.03 160); --popover-foreground: oklch(0.97 0.01 110);
+  --muted: oklch(0.28 0.03 160); --accent: oklch(0.295 0.032 160); --secondary: oklch(0.28 0.03 160);
+  --muted-foreground: oklch(0.72 0.03 150); --border: oklch(0.8 0.05 150 / 13%); --input: oklch(0.8 0.05 150 / 17%);
+  --sidebar-accent: oklch(0.24 0.03 160); --sidebar-border: oklch(0.8 0.05 150 / 11%); --sidebar-foreground: oklch(0.95 0.012 110);
+  --primary: oklch(0.88 0.19 122); --primary-foreground: oklch(0.22 0.04 155);
+  --banner: oklch(0.36 0.085 165); --banner-2: oklch(0.26 0.06 180);
+}

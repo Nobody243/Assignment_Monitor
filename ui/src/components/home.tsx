@@ -50,11 +50,11 @@ function Banner({ state, now, next }: { state: State; now: number; next?: Assign
     { label: 'Overdue', value: String(overdue), sub: overdue ? 'not submitted' : 'nothing missed' },
   ]
   return (
-    <section className="bg-banner grid gap-6 rounded-3xl p-6 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center" aria-label="Summary">
+    <section className="grid gap-6 bg-[linear-gradient(120deg,var(--banner),var(--banner-2))] shadow-[0_18px_40px_-24px_var(--banner)] rounded-3xl p-6 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center" aria-label="Summary">
       <div className="min-w-0">
-        <p className="text-xs tracking-wide text-white/65 uppercase">{new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p>
+        <p className="text-xs tracking-wide text-white/80 uppercase">{new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{hello}{first ? `, ${first}` : ''}.</h1>
-        <p className="mt-1.5 max-w-xl text-sm text-white/80">
+        <p className="mt-1.5 max-w-xl text-sm text-white/90">
           {next
             ? <>Next up: <span className="font-medium text-white">{next.title}</span> in <span className="num text-white">{countdown(next.due_at, now).big}</span>.</>
             : 'You are all caught up. Nothing is waiting for you.'}
@@ -66,14 +66,14 @@ function Banner({ state, now, next }: { state: State; now: number; next?: Assign
             <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" stroke="rgba(255,255,255,0.18)" />
             <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="var(--primary)" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
           </svg>
-          <div className="absolute inset-0 grid place-items-center text-center leading-none"><div><div className="num text-lg font-medium">{pct}%</div><div className="mt-0.5 text-[10px] text-white/65">submitted</div></div></div>
+          <div className="absolute inset-0 grid place-items-center text-center leading-none"><div><div className="num text-lg font-medium">{pct}%</div><div className="mt-0.5 text-[10px] text-white/80">submitted</div></div></div>
         </div>
         <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
           {kpis.map(k => (
             <div key={k.label}>
-              <dt className="text-xs text-white/65">{k.label}</dt>
+              <dt className="text-xs text-white/80">{k.label}</dt>
               <dd className="num text-xl font-medium">{k.value}</dd>
-              <dd className="text-[11px] text-white/55">{k.sub}</dd>
+              <dd className="text-[11px] text-white/75">{k.sub}</dd>
             </div>
           ))}
         </dl>

@@ -66,3 +66,12 @@ A generic LMS kit (CC BY 4.0). Its Assignments page is a plain table: title, cou
 Campus gives the **home layout and the calm light theme**; Helio gives the **dark theme and "Needs attention"**; Ronas gives the
 **lime action colour and big radii** (used for buttons and the Up next tile only). Course colour appears as a small dot or progress bar,
 never as a full card and never as status.
+
+## Colour (decided 2026-11-18)
+Why the first pass felt flat: grey neutrals with no hue, a dull steel banner next to a lone acid-lime, and random course colours.
+Fix, applied to three switchable palettes (user menu, bottom of the sidebar; default Royal):
+- every neutral carries the palette hue (a tint, not a grey);
+- the banner is a rich colour with a second stop for depth, and lime is the only primary action colour;
+- course colours are OKLCH at near-equal lightness and chroma, so no course shouts;
+- contrast checked numerically: body, muted text and lime-button text are all at least 5.7:1 in all six themes.
+**Royal** (royal blue + lilac-tinted neutrals), **Ink** (warm paper + near-black banner), **Forest** (cream and sage + deep green).

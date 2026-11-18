@@ -38,9 +38,19 @@ function useTheme() {
   return [dark, () => setDark(d => !d)] as const
 }
 
+function usePalette() {
+  const [palette, setPalette] = useState(() => { try { return localStorage.getItem('am-palette') || 'royal' } catch { return 'royal' } })
+  useEffect(() => {
+    document.documentElement.dataset.palette = palette
+    try { localStorage.setItem('am-palette', palette) } catch { /* private mode */ }
+  }, [palette])
+  return [palette, setPalette] as const
+}
+
 export default function App() {
   const { state, demo, running, run, now } = useEngine()
   const [dark, toggleTheme] = useTheme()
+  const [palette, setPalette] = usePalette()
   const [page, setPage] = useState<'home' | 'assignments'>('home')
   const [tab, setTab] = useState<Filter>('todo')
   const [course, setCourse] = useState('all')
@@ -105,7 +115,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar name={meta?.student_name} semester={meta?.semester} dueSoon={dueSoon} dark={dark} onToggleTheme={toggleTheme} page={page} onNavigate={setPage} />
+        <AppSidebar name={meta?.student_name} semester={meta?.semester} dueSoon={dueSoon} dark={dark} onToggleTheme={toggleTheme} page={page} onNavigate={setPage} palette={palette} onPalette={setPalette} />
         <SidebarInset>
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />

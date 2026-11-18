@@ -1,4 +1,4 @@
-import { Award, BookOpen, CalendarCheck, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Moon, Settings, Sun } from 'lucide-react'
+import { Award, BookOpen, Check, CalendarCheck, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Moon, Settings, Sun } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -17,9 +17,12 @@ const NAV = [
   { key: 'results', label: 'Results', icon: Award },
 ]
 
-export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page, onNavigate }: {
+export const PALETTES = [{ key: 'royal', label: 'Royal' }, { key: 'ink', label: 'Ink' }, { key: 'forest', label: 'Forest' }] as const
+
+export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page, onNavigate, palette, onPalette }: {
   name?: string; semester?: string; dueSoon: number; dark: boolean; onToggleTheme: () => void
   page: 'home' | 'assignments'; onNavigate: (p: 'home' | 'assignments') => void
+  palette: string; onPalette: (p: string) => void
 }) {
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -86,6 +89,12 @@ export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page,
                 <DropdownMenuItem onSelect={onToggleTheme}>
                   {dark ? <Sun /> : <Moon />}{dark ? 'Light theme' : 'Dark theme'}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">Palette</DropdownMenuLabel>
+                {PALETTES.map(p => (
+                  <DropdownMenuItem key={p.key} onSelect={() => onPalette(p.key)}>{p.label}{palette === p.key && <Check className="ml-auto" />}</DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem disabled><Settings />Settings (soon)</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
