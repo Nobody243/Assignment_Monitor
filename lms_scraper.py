@@ -617,20 +617,24 @@ def submission_upload_name(path) -> str:
     return stem + ext.lower()
 
 
+def check_submission_file_bytes(name: str, size: int) -> str:
+    """'' when a file of this name and size can be sent, else the reason it cannot."""
+    if os.path.splitext(name)[1].lower() not in SUBMIT_EXTENSIONS:
+        return "The portal accepts only " + ", ".join(SUBMIT_EXTENSIONS) + " files."
+    if size == 0:
+        return "That file is empty."
+    if size > SUBMIT_MAX_BYTES:
+        return f"That file is {size / 1048576:.1f} MB; the portal's limit is 15 MB."
+    return ""
+
+
 def check_submission_file(path) -> str:
     """'' when the file can be sent, else the reason it cannot (checked before anything is touched on the portal)."""
     from pathlib import Path
     f = Path(path)
     if not f.is_file():
         return "That file does not exist."
-    if f.suffix.lower() not in SUBMIT_EXTENSIONS:
-        return "The portal accepts only " + ", ".join(SUBMIT_EXTENSIONS) + " files."
-    size = f.stat().st_size
-    if size == 0:
-        return "That file is empty."
-    if size > SUBMIT_MAX_BYTES:
-        return f"That file is {size / 1048576:.1f} MB; the portal's limit is 15 MB."
-    return ""
+    return check_submission_file_bytes(f.name, f.stat().st_size)
 
 
 def submission_actions(action_text: str) -> tuple:
