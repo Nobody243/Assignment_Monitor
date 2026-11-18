@@ -1,0 +1,20 @@
+{
+  "name": "assignment-monitor-desktop",
+  "version": "1.8.0",
+  "private": true,
+  "description": "Desktop shell for Assignment Monitor: a secure window around the interface, with the Python engine running behind it.",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "smoke": "electron . --smoke",
+    "test": "node --test",
+    "package": "node scripts/package.cjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/fuses": "^2.1.3",
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.3.4"
+  }
+}

@@ -10,3 +10,6 @@ exclude = ["build", "dist", "chrome_profile"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "B"]
 ignore = ["E402", "E731", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tools/seed_demo_data.py" = ["E501"]

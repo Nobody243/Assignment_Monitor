@@ -36,6 +36,8 @@ jobs:
           pip install bandit
           bandit -q -r . -x ./tests,./website,./build,./dist -ll
       - name: Unit tests
+        env:
+          AM_GUI_TESTS: "1"
         run: pytest
       - name: Dependency audit (advisory)
         continue-on-error: true
@@ -57,12 +59,20 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Build app, portable zip and installer
-        run: python build.py
+      - name: Build interface, engine, desktop shell, portable zip and installer
+        run: python build_desktop.py
+      - name: The packaged app starts and serves fictional data
+        shell: bash
+        run: |
+          python tools/seed_demo_data.py "$RUNNER_TEMP/home"
+          ASSIGNMENT_MONITOR_HOME="$RUNNER_TEMP/home" dist/shell/AssignmentMonitor/AssignmentMonitor.exe --smoke | tee smoke.txt
+          grep -q '"ok":true' smoke.txt
 
       - name: Upload unsigned build artifacts
         id: upload
@@ -71,6 +81,7 @@ jobs:
           name: AssignmentMonitor-windows-${{ github.sha }}
           path: |
             dist/AssignmentMonitor-Setup.exe
+            dist/AssignmentMonitor-Setup.exe.sha256
             dist/AssignmentMonitor-portable.zip
 
       # ---- code signing: numbered releases only, and only when SignPath is configured
@@ -92,6 +103,8 @@ jobs:
           ls -R dist/signed
           cp -f dist/signed/AssignmentMonitor-Setup.exe dist/AssignmentMonitor-Setup.exe
           cp -f dist/signed/AssignmentMonitor-portable.zip dist/AssignmentMonitor-portable.zip
+          # signing changes the installer's bytes: the checksum the updater verifies must describe the signed file
+          (cd dist && sha256sum AssignmentMonitor-Setup.exe > AssignmentMonitor-Setup.exe.sha256)
           echo "SIGNED_NOTE=Signed with a SignPath Foundation certificate (see CODE_SIGNING_POLICY.md)." >> "$GITHUB_ENV"
 
       - name: Release notes from CHANGELOG.md (version tags)
@@ -109,6 +122,7 @@ jobs:
         with:
           files: |
             dist/AssignmentMonitor-Setup.exe
+            dist/AssignmentMonitor-Setup.exe.sha256
             dist/AssignmentMonitor-portable.zip
           body_path: dist/notes.md
           append_body: true
@@ -159,6 +173,6 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest \
-            dist/AssignmentMonitor-Setup.exe dist/AssignmentMonitor-portable.zip \
+            dist/AssignmentMonitor-Setup.exe dist/AssignmentMonitor-Setup.exe.sha256 dist/AssignmentMonitor-portable.zip \
             --prerelease --title "Latest build (main)" \
             --notes "Automatic, unsigned build of commit ${GITHUB_SHA::7}. For the stable version use the newest numbered release. The app's update check only looks at numbered releases."

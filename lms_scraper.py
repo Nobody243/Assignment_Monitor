@@ -617,20 +617,24 @@ def submission_upload_name(path) -> str:
     return stem + ext.lower()
 
 
+def check_submission_file_bytes(name: str, size: int) -> str:
+    """'' when a file of this name and size can be sent, else the reason it cannot."""
+    if os.path.splitext(name)[1].lower() not in SUBMIT_EXTENSIONS:
+        return "The portal accepts only " + ", ".join(SUBMIT_EXTENSIONS) + " files."
+    if size == 0:
+        return "That file is empty."
+    if size > SUBMIT_MAX_BYTES:
+        return f"That file is {size / 1048576:.1f} MB; the portal's limit is 15 MB."
+    return ""
+
+
 def check_submission_file(path) -> str:
     """'' when the file can be sent, else the reason it cannot (checked before anything is touched on the portal)."""
     from pathlib import Path
     f = Path(path)
     if not f.is_file():
         return "That file does not exist."
-    if f.suffix.lower() not in SUBMIT_EXTENSIONS:
-        return "The portal accepts only " + ", ".join(SUBMIT_EXTENSIONS) + " files."
-    size = f.stat().st_size
-    if size == 0:
-        return "That file is empty."
-    if size > SUBMIT_MAX_BYTES:
-        return f"That file is {size / 1048576:.1f} MB; the portal's limit is 15 MB."
-    return ""
+    return check_submission_file_bytes(f.name, f.stat().st_size)
 
 
 def submission_actions(action_text: str) -> tuple:
@@ -899,6 +903,29 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
     finally:
         _release_lock()
     return result
+
+
+def verify_login() -> dict:
+    """Signs in once with the saved account and nothing else: the quick check that a changed enrollment, password or
+    campus works. Raises LoginError (with the portal's own message) when it is rejected."""
+    env = load_env()
+    enrollment, password = env.get("ENROLLMENT", "").strip(), env.get("PASSWORD", "").strip()
+    institute_id = str(env.get("INSTITUTE_ID", "1")).strip()
+    if not enrollment or not password:
+        raise LoginError("Enrollment number and password are not configured yet.")
+    _acquire_lock()
+    try:
+        with sync_playwright() as p:
+            context = _launch_browser(p, True)
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                page.set_default_timeout(45000)
+                PortalSession(page, enrollment, password, institute_id).sign_in()
+            finally:
+                context.close()
+    finally:
+        _release_lock()
+    return {"ok": True, "message": "Sign-in verified."}
 
 
 def run_lms_check(headless: bool = True, interactive: bool = False) -> List[dict]:

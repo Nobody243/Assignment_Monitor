@@ -7,6 +7,7 @@ The check does not need the GitHub API: github.com/<repo>/releases/latest answer
 tag, and that works without a token and without the API's 60-requests-an-hour limit per address (which a shared
 network, or a few other tools on the same PC, can use up). The API is only the fallback.
 """
+import hashlib
 import json
 import logging
 import os
@@ -134,7 +135,31 @@ def _safe_url(url: str) -> bool:
         return False
 
 
-def download_installer(setup_url: str, progress=None, timeout: int = 30) -> Path:
+def fetch_checksum(setup_url: str, timeout: int = 15) -> str | None:
+    """The SHA-256 the release publishes next to the installer (AssignmentMonitor-Setup.exe.sha256), or None when the release
+    has none (older releases). The file holds the hash, optionally followed by the file name."""
+    url = setup_url + ".sha256"
+    if not _safe_url(url):
+        return None
+    try:
+        req = urllib.request.Request(_https(url), headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310 - https only
+            m = re.match(r"\s*([0-9a-fA-F]{64})", r.read(512).decode("ascii", "ignore"))
+    except Exception as e:  # noqa: BLE001
+        log.info("No checksum published for the installer: %s", str(e).splitlines()[0][:100])
+        return None
+    return m.group(1).lower() if m else None
+
+
+def sha256_of(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def download_installer(setup_url: str, progress=None, timeout: int = 30, expected_sha256: str | None = None) -> Path:
     """Downloads the Setup.exe to the temp folder. `progress(done_bytes, total_bytes)` is optional."""
     if not _safe_url(setup_url):
         raise ValueError("Refusing to download from an unexpected host")
@@ -153,6 +178,9 @@ def download_installer(setup_url: str, progress=None, timeout: int = 30) -> Path
                 progress(done, total)
     if target.stat().st_size < 1_000_000:
         raise ValueError("Downloaded installer looks incomplete")
+    if expected_sha256 and sha256_of(target) != expected_sha256.lower():
+        target.unlink(missing_ok=True)
+        raise ValueError("The downloaded installer does not match its published checksum, so it was discarded.")
     return target
 
 

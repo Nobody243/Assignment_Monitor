@@ -14,7 +14,7 @@ from pathlib import Path
 APP_NAME = "Assignment Monitor"
 TAGLINE = "for Bahria University LMS"
 APP_ID = "Nobody243.AssignmentMonitor"       # Windows AppUserModelID (taskbar grouping / toasts)
-APP_VERSION = "1.7.0"
+APP_VERSION = "1.8.0"
 REPO_URL = "https://github.com/Nobody243/Assignment_Monitor"
 RELEASES_URL = REPO_URL + "/releases/latest"
 SITE_URL = "https://assignment-monitor.saaddev.top"
@@ -191,6 +191,9 @@ _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE
 
 def app_command(*args: str) -> list:
     """The command line that runs this app in background mode (used for scheduled tasks)."""
+    shell = os.environ.get("AM_SHELL_EXE")          # the desktop shell that owns this engine: tasks and shortcuts start IT
+    if shell:
+        return [shell, *args]
     if FROZEN:
         return [sys.executable, *args]
     pythonw = Path(sys.executable).with_name("pythonw.exe")

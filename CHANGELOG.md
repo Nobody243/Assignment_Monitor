@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.0 - 2026-11-18
+
+- A new desktop interface (not a browser tab): a native window with the Home, Assignments, Attendance, Exams, Lectures, Announcements, Results and Settings pages, four colour palettes, light and dark, animations you can switch off, Yes/No confirmations, a not-found page, an engine-offline screen and an Activity log inside Settings.
+- Background checks, reminders, shortcuts and the installer keep working: the command line (--check, --remind, --status, --test-alert, --enable-automation, --disable-automation, --disable-cloud, --quit, --tray, --view, --setup) is understood by the new app exactly as before.
+- Install updates from Settings, About: the app downloads the new installer, checks it against the SHA-256 published with the release, and refuses it if it does not match.
+- Security: the local engine needs a random key per launch and answers only the app's own window; requests are size-limited, wrong keys are slowed down, and responses carry no-sniff and no-referrer headers. The window runs sandboxed with a strict content policy, no web views, locked navigation, and Electron features the app never uses switched off.
+- Checks in CI: types, lint, tests, build, dependency audit with signature verification, CodeQL, secret scan and dependency review.
+
 ## 1.7.0 - 2026-11-18
 
 - Upload your work from the app. On the Assignments page a row the portal lets you submit gets **Upload**; a row with a submission gets **Replace** and **Delete**; a row past its deadline gets neither, because the portal decides (including deadlines extended only for those who missed). You choose the file, confirm what will happen, and the app fills in the portal's own Submit form, then reads the portal back to confirm. Replace checks the file, the course and the form first and only then deletes the old submission; if the upload fails after that, it tells you plainly. Files are checked before anything is touched: .pdf .doc .docx .xls .xlsx .zip, up to 15 MB; special symbols in the name are removed, as the portal asks. Manual only: never in the background and never in a cloud check.

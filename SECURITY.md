@@ -23,6 +23,13 @@ Running from source, the same files live in the project folder and are git-ignor
 - Update check: when the app starts (and when you click "Check for updates") it asks `api.github.com` for the newest release number, and downloads the installer from GitHub only if you click Install. Nothing about you is sent beyond the request itself. Switch it off in Settings → Running in the background.
 - Otherwise the app does not phone home, has no telemetry, and sends nothing anywhere else.
 
+## The desktop interface
+
+- The window is Electron, sandboxed, with context isolation, no Node in the page, a strict Content-Security-Policy (only its own scripts, and the local engine), no web views, no pop-ups, and navigation locked to the app's own address. Only `https` links are handed to your browser. Electron features the app never uses (run-as-node, the inspector, loading code outside the signed archive) are switched off in the shipped build.
+- The Python engine runs on `127.0.0.1` on a random port, needs a random key generated at every launch (shared only with the window), accepts only the window's own origin and a loopback `Host`, limits request sizes, slows down wrong keys, and exits by itself when the window closes or dies. It never returns saved passwords or keys.
+- Updates: the installer is downloaded over HTTPS from GitHub only, and its SHA-256 is compared with the checksum published next to it in the release before it is started. A mismatch deletes the download.
+- Quality gates in CI: type check, lint, unit tests, a real start of the packaged app on fictional data, `npm audit` for what ships, `npm audit signatures`, `pip-audit`, Bandit, CodeQL, a secret scan, and dependency review on pull requests.
+
 ## Design choices
 
 - No server, no accounts of ours: nothing of yours is stored outside your PC unless you turn on cloud checks, and then it is stored in your own GitHub account, after a consent screen that says exactly what goes there.
