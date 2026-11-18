@@ -10,6 +10,7 @@ Outputs in dist/ (the same names the update check and the website already use):
     AssignmentMonitor-Setup.exe.sha256       the checksum the in-app updater verifies before it runs the installer
 """
 import hashlib
+import os
 import shutil
 import subprocess
 import sys
@@ -30,11 +31,17 @@ def run(cmd, cwd=ROOT):
     subprocess.run([str(c) for c in cmd], cwd=cwd, check=True)
 
 
+def install(folder: Path):
+    """A clean `npm ci` on CI; locally an existing node_modules is reused (a running dev server would lock it)."""
+    if os.environ.get("CI") or not (folder / "node_modules").exists():
+        run([NPM, "ci"], folder)
+
+
 def main():
-    run([NPM, "ci"], ROOT / "ui")
+    install(ROOT / "ui")
     run([NPM, "run", "build"], ROOT / "ui")
     run([sys.executable, "build_engine.py"])
-    run([NPM, "ci"], ROOT / "desktop")
+    install(ROOT / "desktop")
     run([NPM, "run", "package"], ROOT / "desktop")
 
     app_dir = DIST / "shell" / NAME

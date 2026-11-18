@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.8.0 - 2026-11-18
 
 - A new desktop interface (not a browser tab): a native window with the Home, Assignments, Attendance, Exams, Lectures, Announcements, Results and Settings pages, four colour palettes, light and dark, animations you can switch off, Yes/No confirmations, a not-found page, an engine-offline screen and an Activity log inside Settings.
 - Background checks, reminders, shortcuts and the installer keep working: the command line (--check, --remind, --status, --test-alert, --enable-automation, --disable-automation, --disable-cloud, --quit, --tray, --view, --setup) is understood by the new app exactly as before.
