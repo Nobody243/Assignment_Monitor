@@ -84,7 +84,7 @@ jobs:
           $bmp.Save("$env:GITHUB_WORKSPACE\first-run.png")
           "screen: $($b.Width)x$($b.Height); app still running: $(-not $p.HasExited)"
           Get-Process AssignmentMonitor -ErrorAction SilentlyContinue | Stop-Process -Force
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         continue-on-error: true
         with:
