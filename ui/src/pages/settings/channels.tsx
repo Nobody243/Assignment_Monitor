@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Copy, Mail, Smartphone } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/lib/notify'
 import { pairCancel, pairPoll, pairStart, testEmail, testPush, unpair, type SettingsView } from '@/api'
+import { ConfirmDialog } from '@/components/feedback'
 import { Alert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -72,6 +73,7 @@ export function ChannelsSection({ view, save, run, busy, demo, reload }: { view:
   const [host, setHost] = useState(c.email_host)
   const [port, setPort] = useState(String(c.email_port))
   const [pairOpen, setPairOpen] = useState(false)
+  const [confirmUnpair, setConfirmUnpair] = useState(false)
   useEffect(() => { setEmail(c.email_to); setHost(c.email_host); setPort(String(c.email_port)) }, [c.email_to, c.email_host, c.email_port])
   const emailDirty = email !== c.email_to || pass !== ''
 
@@ -119,7 +121,7 @@ export function ChannelsSection({ view, save, run, busy, demo, reload }: { view:
       <Row label={c.push_paired ? `Paired: ${c.push_device || 'your phone'}` : 'No phone paired yet'} hint="Alerts arrive as phone notifications, even when this PC is off">
         <Button size="sm" variant="outline" onClick={() => setPairOpen(true)} disabled={demo}>{c.push_paired ? 'Pair another' : 'Pair a phone'}</Button>
         {c.push_paired && <Button size="sm" variant="outline" onClick={() => void sendPushTest()} disabled={busy}>Test</Button>}
-        {c.push_paired && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => void unpair().then(reload)}>Unpair</Button>}
+        {c.push_paired && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setConfirmUnpair(true)}>Unpair</Button>}
       </Row>
       <SwitchRow label="Send alerts to the phone" checked={c.push_enabled} onChange={v => void save({ push_enabled: v })} disabled={!c.push_paired} />
 
@@ -127,6 +129,8 @@ export function ChannelsSection({ view, save, run, busy, demo, reload }: { view:
       <SwitchRow label="Keep a calendar file up to date" hint="Deadlines and exams in a file your calendar app can subscribe to" checked={c.calendar_enabled} onChange={v => void save({ calendar_enabled: v })} />
       <SwitchRow label="Email calendar invites" hint="Sends each deadline as an invite so it lands in your calendar" checked={c.calendar_invites} onChange={v => void save({ calendar_invites: v })} disabled={!c.email_enabled} />
 
+      <ConfirmDialog open={confirmUnpair} onOpenChange={setConfirmUnpair} danger title="Unpair this phone?" description="Alerts will stop arriving on it. You can pair it again at any time."
+        yes="Yes, unpair" no="No, keep it paired" onYes={() => void unpair().then(() => { toast.success('Phone unpaired'); return reload() })} />
       <PairDialog open={pairOpen} onClose={() => setPairOpen(false)} onPaired={() => void reload()} />
     </Section>
   )

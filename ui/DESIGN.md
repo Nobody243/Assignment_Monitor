@@ -102,3 +102,13 @@ The Settings page now manages what the desktop app's does: portal account (saved
 calendar, cloud checks (GitHub device sign-in with the same consent text) and clearing saved data. Rules kept in the engine
 (settings_api.py): a secret is never returned (only "set"), an empty secret field means "keep", updates are validated against an allow-list
 (types, bounds, single-line), and a source run never turns the installed app's background tasks on or off.
+
+## Behaviour pass (2026-11-18, fifth pass)
+Audit result and fixes. Gaps found: unknown URLs showed Home silently; a lost engine quietly swapped in sample data (even over real data);
+a render crash gave a blank window; confirmations were inconsistent (none for upload, replace, unpair, automatic checks); settings saved
+silently; nothing recorded what had happened; nothing animated.
+Now: a real 404; "Can't reach the app engine" with automatic retry (and an offline banner over last-known data); a crash screen;
+one Yes/No ConfirmDialog for every change (upload, replace, delete, unpair, automatic checks, clear data, cloud off, clear history);
+"Saved: <setting>" feedback; a RunningPill and a top progress bar that name the running action and its step; skeletons per page;
+page transitions and staggered lists (transform/opacity only, off under reduced motion); an Activity page (my actions, from every
+success/error toast, plus the engine log); a "?" help dialog that says what each action does. Sample data is now an explicit choice.

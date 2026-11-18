@@ -1,12 +1,12 @@
-import { ArrowRight, CornerDownRight, Moon, RefreshCw } from 'lucide-react'
+import { ArrowRight, CircleHelp, CornerDownRight, Moon, RefreshCw } from 'lucide-react'
 import type { Assignment } from '@/api'
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { dueParts } from '@/format'
 import { PAGES, PAGE_TITLES, type Page } from '@/lib/router'
 
-export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onSync, onToggleTheme, onNavigate }: {
+export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onSync, onToggleTheme, onNavigate, onHelp }: {
   open: boolean; onOpenChange: (o: boolean) => void; assignments: Assignment[]; dark: boolean
-  onPick: (id: string) => void; onSync: () => void; onToggleTheme: () => void; onNavigate: (p: Page) => void
+  onPick: (id: string) => void; onSync: () => void; onToggleTheme: () => void; onNavigate: (p: Page) => void; onHelp: () => void
 }) {
   const run = (fn: () => void) => () => { onOpenChange(false); fn() }
   return (
@@ -20,6 +20,7 @@ export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onS
         <CommandSeparator />
         <CommandGroup heading="Commands">
           <CommandItem onSelect={run(onSync)}><RefreshCw />Check the portal now</CommandItem>
+          <CommandItem onSelect={run(onHelp)}><CircleHelp />Show shortcuts and what each action does</CommandItem>
           <CommandItem onSelect={run(onToggleTheme)}><Moon />{dark ? 'Switch to the light theme' : 'Switch to the dark theme'}</CommandItem>
         </CommandGroup>
         <CommandSeparator />

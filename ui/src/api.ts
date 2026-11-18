@@ -140,3 +140,6 @@ export const cloudDisable = () => post<{ job: string }>('/api/cloud/disable')
 export const cloudRun = () => post<{ ok: boolean }>('/api/cloud/run')
 export const getCloudStatus = () => call<CloudStatus>('/api/cloud/status')
 export const clearData = () => post<{ ok: boolean }>('/api/data/clear')
+
+export type LogEntry = { time: string; level: string; text: string }
+export const getLog = (lines = 300) => call<{ entries: LogEntry[] }>(`/api/log?lines=${lines}`)

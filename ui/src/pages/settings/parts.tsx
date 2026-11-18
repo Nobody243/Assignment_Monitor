@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/lib/notify'
 import { getSettings, patchSettings, type SettingsView } from '@/api'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
@@ -57,8 +57,14 @@ export function useSettings(demo: boolean) {
   useEffect(() => { if (!demo) void load() }, [demo, load])
   const save = useCallback(async (patch: Record<string, unknown>): Promise<boolean> => {
     setView(v => (v ? merge(v, patch) : v))
-    try { const r = await patchSettings(patch); setView(r.settings); return true } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'The change was not saved.')
+    try {
+      const r = await patchSettings(patch)
+      setView(r.settings)
+      const names = Object.keys(patch).map(k => k.replace(/_/g, ' ')).join(', ')
+      toast.success(`Saved: ${names}`, { id: 'settings-saved', duration: 2000 })
+      return true
+    } catch (e) {
+      toast.error('That setting was not saved', { description: e instanceof Error ? e.message : undefined })
       await load()
       return false
     }

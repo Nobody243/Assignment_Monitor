@@ -271,3 +271,15 @@
 }
 .panel-lift { box-shadow: 0 1px 0 color-mix(in oklch, var(--border) 70%, transparent), 0 18px 34px -26px var(--lift); }
 :root.dark .panel-lift { box-shadow: 0 1px 0 oklch(1 0 0 / 4%) inset, 0 18px 34px -26px oklch(0 0 0 / 70%); }
+
+/* ------------------------------------------------------------------------------------------------
+   Motion and loaders. Everything animates with transform and opacity only, and stops for people who ask for less motion.
+   ------------------------------------------------------------------------------------------------ */
+.top-progress { position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 80; overflow: hidden; background: color-mix(in oklch, var(--primary) 18%, transparent); }
+.top-progress::after { content: ''; position: absolute; inset: 0; width: 32%; border-radius: 999px; background: var(--primary); animation: top-slide 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+@keyframes top-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(320%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  .top-progress::after { animation: none; width: 100%; opacity: 0.6; }
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ExternalLink, FolderOpen, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/lib/notify'
 import { cloudDisable, cloudPoll, cloudRun, cloudSetup, cloudStart, clearData, getCloudStatus, type CloudStatus, type SettingsView } from '@/api'
 import { Alert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'

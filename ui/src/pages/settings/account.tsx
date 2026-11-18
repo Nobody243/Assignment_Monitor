@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { CircleCheck, ShieldCheck } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/lib/notify'
 import { verifyAccount, type SettingsView } from '@/api'
 import { Alert } from '@/components/inline-alert'
-import { Button } from '@/components/ui/button'
+import { LoadingButton } from '@/components/feedback'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -57,7 +57,7 @@ export function AccountSection({ view, save, run, busy }: {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button onClick={() => void submit()} disabled={busy || (!dirty && a.password_set)}>Save and verify</Button>
+        <LoadingButton onClick={() => void submit()} loading={busy} disabled={!dirty && a.password_set}>Save and verify</LoadingButton>
         {!dirty && a.password_set && !status && <span className="text-muted-foreground flex items-center gap-1.5 text-xs"><CircleCheck className="text-success size-4" />Signed in as {a.enrollment}</span>}
         {status && <span className={status.ok ? 'text-muted-foreground text-sm' : 'text-destructive text-sm'} role="status">{status.text}</span>}
       </div>

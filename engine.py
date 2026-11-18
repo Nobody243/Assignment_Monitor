@@ -21,6 +21,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import secrets
 import tempfile
 import threading
@@ -34,7 +35,7 @@ import lms_scraper as scraper
 import settings_api
 import tracker
 from campus import attendance_margin
-from config import APP_NAME, APP_VERSION, DATA_DIR, lectures_dir, load_env, load_meta
+from config import APP_NAME, APP_VERSION, DATA_DIR, LOG_PATH, lectures_dir, load_env, load_meta
 from deadlines import classify, deadline_of, is_open_pending
 from jobs import collectors_for, process_sync
 
@@ -101,6 +102,28 @@ def build_state() -> dict:
         "standing": standing(tracker.load_results()),
         "paths": {"lectures": str(lectures_dir(load_env())), "data": str(DATA_DIR)},
     }
+
+
+_LOG_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+([A-Z]+)\s+(.*)$")
+
+
+def log_tail(lines: int = 300) -> list[dict]:
+    """The last lines of the app log as {time, level, text}. A line that does not start with a timestamp (a traceback,
+    a multi-line message) is attached to the entry before it."""
+    try:
+        with open(LOG_PATH, encoding="utf-8", errors="replace") as fh:
+            raw = fh.readlines()[-max(1, min(lines, 2000)) * 3:]
+    except OSError:
+        return []
+    out: list[dict] = []
+    for line in raw:
+        line = line.rstrip("\n")
+        m = _LOG_LINE.match(line)
+        if m:
+            out.append({"time": m.group(1), "level": m.group(2), "text": m.group(3)[:600]})
+        elif out and line.strip():
+            out[-1]["text"] = (out[-1]["text"] + "\n" + line)[:1200]
+    return out[-lines:]
 
 
 # ---------------------------------------------------------------------------- one action at a time
@@ -264,6 +287,9 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/state":
             return self._send(200, build_state())
+        if url.path == "/api/log":
+            n = int((parse_qs(url.query).get("lines") or ["300"])[0] or 300)
+            return self._send(200, {"entries": log_tail(n)})
         route = settings_api.GET.get(url.path)
         if route:
             status, obj = route(parse_qs(url.query), b"")

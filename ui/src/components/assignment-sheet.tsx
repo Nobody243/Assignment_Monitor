@@ -47,7 +47,6 @@ function Body({ a, now, demo, running, onUpload, onDelete, onDownload }: Omit<Pr
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [over, setOver] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const input = useRef<HTMLInputElement>(null)
   const due = dueParts(a.due_at)
   const left = countdown(a.due_at, now)
@@ -155,7 +154,7 @@ function Body({ a, now, demo, running, onUpload, onDelete, onDownload }: Omit<Pr
               onChange={e => { choose(e.target.files?.[0]); e.target.value = '' }} />
           </section>
         ) : a.is_submitted ? (
-          <div className="flex items-center gap-3 rounded-lg border p-3 text-sm">
+          <div className="animate-in fade-in zoom-in-95 flex items-center gap-3 rounded-lg border p-3 text-sm duration-500">
             <CircleCheck className="text-success size-5" />
             <div><div className="font-medium">Submitted</div><div className="text-muted-foreground text-xs">The portal is no longer accepting changes.</div></div>
           </div>
@@ -164,21 +163,9 @@ function Body({ a, now, demo, running, onUpload, onDelete, onDownload }: Omit<Pr
         )}
 
         {replace && !mine && !demo && (
-          confirmDelete ? (
-            <Alert tone="danger">
-              <div className="flex flex-col gap-2">
-                <span>Delete your submission? You can upload again until the deadline.</span>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="destructive" disabled={otherBusy} onClick={() => { setConfirmDelete(false); onDelete() }}><Trash2 />Delete</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-                </div>
-              </div>
-            </Alert>
-          ) : (
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive self-start" disabled={otherBusy} onClick={() => setConfirmDelete(true)}>
-              <Trash2 />Delete submission
-            </Button>
-          )
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive self-start" disabled={otherBusy} onClick={onDelete}>
+            <Trash2 />Delete submission
+          </Button>
         )}
       </div>
     </>

@@ -103,8 +103,8 @@ export function AssignmentsPage({ all, colors, tab, setTab, course, setCourse, s
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-4">Assignment</TableHead>
                 <TableHead className="hidden w-48 md:table-cell">Due</TableHead>
-                <TableHead className="hidden w-28 lg:table-cell">Files</TableHead>
-                <TableHead className="hidden w-24 lg:table-cell">Marks</TableHead>
+                <TableHead className="hidden w-28 xl:table-cell">Files</TableHead>
+                <TableHead className="hidden w-24 xl:table-cell">Marks</TableHead>
                 <TableHead className="w-36">Status</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
@@ -133,7 +133,7 @@ export function AssignmentsPage({ all, colors, tab, setTab, course, setCourse, s
                           <div className="num text-sm">{d.day}{d.time && <span className="text-muted-foreground ml-2 text-xs">{d.time}</span>}</div>
                           {a.is_extended && a.original_due_date && <div className="text-warning text-[11px]">extended from {a.original_due_date.split(/[ -]/).slice(0, 3).join(' ')}</div>}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
+                        <TableCell className="hidden xl:table-cell">
                           <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                             {fileKinds(a).length === 0 && <span className="text-muted-foreground text-xs">none</span>}
                             {fileKinds(a).map(k => {
@@ -149,7 +149,7 @@ export function AssignmentsPage({ all, colors, tab, setTab, course, setCourse, s
                             })}
                           </div>
                         </TableCell>
-                        <TableCell className="num hidden text-sm lg:table-cell">{hasMarks(a) ? a.marks : <span className="text-muted-foreground">–</span>}</TableCell>
+                        <TableCell className="num hidden text-sm xl:table-cell">{hasMarks(a) ? a.marks : <span className="text-muted-foreground">–</span>}</TableCell>
                         <TableCell><StatusBadge a={a} /></TableCell>
                         <TableCell className="text-right">
                           {(a.can_upload || a.can_replace) && (

@@ -222,3 +222,22 @@ def test_open_folder_only_for_known_folders(api, monkeypatch, tmp_path):
     assert call("POST", "/api/open-folder?kind=../../Windows")[0] == 404
     st, body, _h = call("POST", "/api/open-folder?kind=data")
     assert st == 200 and opened == [str(tmp_path)]
+
+
+def test_the_log_comes_back_parsed_with_tracebacks_attached(api, monkeypatch, tmp_path):
+    call, _w, _b = api
+    log = tmp_path / "app.log"
+    log.write_text("2026-11-18 09:00:01  INFO    Sync started\n2026-11-18 09:00:05  ERROR   Reading assignments failed: Timeout\n"
+                   "Call log:\n  - waiting for locator\n2026-11-18 09:01:00  INFO    Hourly check: nothing due today.\n", encoding="utf-8")
+    monkeypatch.setattr(engine, "LOG_PATH", log)
+    st, body, _h = call("GET", "/api/log?lines=10")
+    entries = body["entries"]
+    assert st == 200 and [e["level"] for e in entries] == ["INFO", "ERROR", "INFO"]
+    assert "Call log:" in entries[1]["text"] and entries[1]["time"] == "2026-11-18 09:00:05"
+    assert call("GET", "/api/log?lines=1")[1]["entries"][0]["text"].startswith("Hourly check")
+
+
+def test_a_missing_log_is_an_empty_list(api, monkeypatch, tmp_path):
+    call, _w, _b = api
+    monkeypatch.setattr(engine, "LOG_PATH", tmp_path / "nope.log")
+    assert call("GET", "/api/log")[1] == {"entries": []}

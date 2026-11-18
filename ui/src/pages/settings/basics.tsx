@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Bell, Volume2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/lib/notify'
 import { getVoices, previewVoice, setAutomation, setStartup, testAlert, type SettingsView } from '@/api'
+import { ConfirmDialog } from '@/components/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -88,8 +89,9 @@ export function BackgroundSection({ view, save, run, busy, demo, reload }: {
   run: (kind: string, begin: () => Promise<{ job: string }>) => Promise<Outcome>
 }) {
   const b = view.background
+  const [confirmAuto, setConfirmAuto] = useState(false)
   const toggleStartup = async (on: boolean) => {
-    try { const r = await setStartup(on); if (on && !r.ok) toast.error('Could not turn on start with Windows.'); await reload() } catch (e) { toast.error(String((e as Error).message)) }
+    try { const r = await setStartup(on); if (on && !r.ok) toast.error('Could not turn on start with Windows'); else toast.success(`Start with Windows turned ${on ? 'on' : 'off'}`); await reload() } catch (e) { toast.error(String((e as Error).message)) }
   }
   const toggleAuto = async () => {
     const r = await run('automation', () => setAutomation(!b.automatic_checks))
@@ -100,11 +102,15 @@ export function BackgroundSection({ view, save, run, busy, demo, reload }: {
     <Section id="background" title="Running in the background" description="Windows runs a check each evening and shortly after you sign in, plus an hourly reminder while something is due today. These work even when the app is closed.">
       <Row label="Automatic checks" hint={b.owned_by_installed_app ? 'These tasks belong to the installed app, so they are managed there.' : 'A daily check at 7 PM, one two minutes after sign-in, and the hourly reminder'}>
         <Badge variant="outline" className={b.automatic_checks ? 'border-success/30 bg-success/10 text-success' : 'border-warning/40 bg-warning/10 text-warning'}>{b.automatic_checks ? 'On' : 'Off'}</Badge>
-        <Button variant="outline" size="sm" onClick={() => void toggleAuto()} disabled={busy || demo || (b.owned_by_installed_app && b.automatic_checks)}>{b.automatic_checks ? 'Turn off' : 'Turn on'}</Button>
+        <Button variant="outline" size="sm" onClick={() => setConfirmAuto(true)} disabled={busy || demo || (b.owned_by_installed_app && b.automatic_checks)}>{b.automatic_checks ? 'Turn off' : 'Turn on'}</Button>
       </Row>
       <SwitchRow label="Start with Windows" hint="Opens the app minimised to the tray when you sign in" checked={b.starts_with_windows} onChange={v => void toggleStartup(v)} disabled={demo} />
       <SwitchRow label="Keep running in the tray when closed" hint="Closing the window leaves the app running; right-click the tray icon to quit" checked={b.close_to_tray} onChange={v => void save({ close_to_tray: v })} />
       <SwitchRow label="Check for app updates" hint="Looks for a newer version now and then" checked={b.check_updates} onChange={v => void save({ check_updates: v })} />
+      <ConfirmDialog open={confirmAuto} onOpenChange={setConfirmAuto} danger={b.automatic_checks}
+        title={b.automatic_checks ? 'Turn off automatic checks?' : 'Turn on automatic checks?'}
+        description={b.automatic_checks ? 'Windows will stop checking for you. You will only see new work when you open the app and press Check now.' : 'Windows will check every evening and shortly after you sign in, and remind you hourly while something is due today.'}
+        yes={b.automatic_checks ? 'Yes, turn off' : 'Yes, turn on'} no="No, leave it" onYes={() => void toggleAuto()} />
     </Section>
   )
 }

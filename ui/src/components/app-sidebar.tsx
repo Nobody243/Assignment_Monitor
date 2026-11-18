@@ -1,4 +1,4 @@
-import { Award, BookOpen, CalendarCheck, Check, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Megaphone, Moon, Settings, Sun } from 'lucide-react'
+import { Activity, Award, BookOpen, CalendarCheck, Check, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Megaphone, Moon, Settings, Sun } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import {
@@ -11,6 +11,7 @@ import { PAGE_TITLES, type Page } from '@/lib/router'
 const GROUPS: { label: string; items: { key: Page; icon: typeof House }[] }[] = [
   { label: 'Study', items: [{ key: 'home', icon: House }, { key: 'assignments', icon: ListChecks }, { key: 'attendance', icon: CalendarCheck }, { key: 'exams', icon: GraduationCap }, { key: 'results', icon: Award }] },
   { label: 'Material', items: [{ key: 'lectures', icon: BookOpen }, { key: 'announcements', icon: Megaphone }] },
+  { label: 'App', items: [{ key: 'activity', icon: Activity }, { key: 'settings', icon: Settings }] },
 ]
 
 export const PALETTES = [{ key: 'royal', label: 'Royal' }, { key: 'ink', label: 'Ink' }, { key: 'forest', label: 'Forest' }, { key: 'ember', label: 'Ember' }] as const
