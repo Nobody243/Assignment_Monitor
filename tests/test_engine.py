@@ -104,7 +104,9 @@ def test_attendance_and_standing_are_derived_from_stored_data(api, monkeypatch):
     by = {c["code"]: c for c in att["courses"]}
     assert by["X 1"]["percent"] == 75.0 and by["X 1"]["ok"] is True and by["Y 2"]["percent"] == 90.0
     assert by["X 1"]["recorded"] is True
-    assert body["standing"] == {"semester": "Spring-2026", "gpa": 3.5, "cgpa": 3.25, "semesters": 2}
+    assert body["standing"] == {"semester": "Spring-2026", "gpa": 3.5, "cgpa": 3.25, "semesters": 2,
+                                "series": [{"name": "Fall-2025", "gpa": 3.0, "cgpa": 3.0},
+                                           {"name": "Spring-2026", "gpa": 3.5, "cgpa": 3.25}]}
 
 
 def test_upload_is_checked_before_it_becomes_a_job(api):

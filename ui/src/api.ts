@@ -27,10 +27,11 @@ export type Meta = { student_name?: string; semester?: string; courses?: string[
 export type AttendanceCourse = { code: string; title: string; present: number; absent: number; recorded: boolean; percent: number; ok: boolean; can_miss: number; need: number }
 export type Attendance = { minimum: number; overall: number | null; courses: AttendanceCourse[] }
 export type TimetableSession = { day: string; start: string; end: string; course: string; abbr: string; teacher: string; initials: string }
-export type Standing = { semester: string; gpa: number | null; cgpa: number; semesters: number }
+export type Standing = { semester: string; gpa: number | null; cgpa: number; semesters: number; series: { name: string; gpa: number | null; cgpa: number | null }[] }
+export type Exam = { title: string; date: string; start_time?: string; room?: string; exam_type?: string; session?: string }
 export type State = {
   version: string; now: string; meta: Meta; assignments: Assignment[]
-  attendance: Attendance; timetable: { semester?: string; sessions?: TimetableSession[] }; standing: Standing | null
+  attendance: Attendance; exams: Exam[]; timetable: { semester?: string; sessions?: TimetableSession[] }; standing: Standing | null
 }
 export type Job = { id: string; kind: string; status: 'running' | 'done'; step: string; result: { ok: boolean; message: string; deleted?: boolean } | null }
 

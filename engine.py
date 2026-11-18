@@ -77,7 +77,8 @@ def standing(results: dict | None) -> dict | None:
     if not done:
         return None
     last = done[-1]
-    return {"semester": last.get("name"), "gpa": last.get("gpa"), "cgpa": last.get("cgpa"), "semesters": len(done)}
+    series = [{"name": x.get("name"), "gpa": x.get("gpa"), "cgpa": x.get("cgpa")} for x in done]
+    return {"semester": last.get("name"), "gpa": last.get("gpa"), "cgpa": last.get("cgpa"), "semesters": len(done), "series": series}
 
 
 def build_state() -> dict:

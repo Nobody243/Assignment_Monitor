@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import { ArrowRight, CalendarClock, CheckCheck, CircleAlert, Flag, TriangleAlert, Upload } from 'lucide-react'
+import { ArrowRight, CalendarClock, CheckCheck, CircleAlert, Flag, GraduationCap, TriangleAlert, Upload } from 'lucide-react'
 import type { Assignment, State } from '@/api'
 import { Alert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { byDue, countdown, dueParts } from '@/format'
-import { courseColors, courseProgress } from '@/lib/courses'
+import { attendanceFor, courseColors, courseRows } from '@/lib/courses'
 import { cn } from '@/lib/utils'
 
 export type Go = (page: 'assignments', opts?: { tab?: 'todo' | 'overdue' | 'submitted' | 'all'; course?: string }) => void
@@ -43,41 +43,45 @@ function Banner({ state, now, next }: { state: State; now: number; next?: Assign
   const week = all.filter(a => a.open && !a.is_submitted && a.due_at && new Date(a.due_at).getTime() - now < 7 * 864e5).length
   const overdue = all.filter(a => !a.is_submitted && a.urgency === 'missed').length
   const r = 34, c = 2 * Math.PI * r
+  const recorded = state.attendance.courses.filter(c => c.recorded)
+  const lowest = recorded.length ? Math.min(...recorded.map(c => c.percent)) : null
+  const st = state.standing
   const kpis: { label: string; value: string; sub: string }[] = [
-    { label: 'Attendance', value: state.attendance.overall != null ? `${Math.round(state.attendance.overall)}%` : '–', sub: `minimum ${state.attendance.minimum}%` },
-    { label: 'CGPA', value: state.standing ? state.standing.cgpa.toFixed(2) : '–', sub: state.standing ? `after ${state.standing.semester}` : 'no results yet' },
-    { label: 'Due this week', value: String(week), sub: week === 1 ? 'assignment' : 'assignments' },
+    { label: 'Attendance', value: state.attendance.overall != null ? `${Math.round(state.attendance.overall)}%` : '–',
+      sub: lowest != null ? `lowest ${Math.round(lowest)}% · minimum ${state.attendance.minimum}%` : `minimum ${state.attendance.minimum}%` },
+    { label: 'CGPA', value: st ? st.cgpa.toFixed(2) : '–', sub: st ? `GPA ${st.gpa?.toFixed(2) ?? '–'} in ${st.semester}` : 'no results yet' },
+    { label: 'Due this week', value: String(week), sub: week === 1 ? 'assignment still open' : 'assignments still open' },
     { label: 'Overdue', value: String(overdue), sub: overdue ? 'not submitted' : 'nothing missed' },
   ]
   return (
-    <section className="grid gap-6 bg-[radial-gradient(120%_140%_at_100%_0%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_55%),linear-gradient(120deg,var(--banner),var(--banner-2))] shadow-[0_18px_40px_-24px_var(--banner)] rounded-3xl p-6 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center" aria-label="Summary">
-      <div className="min-w-0">
-        <p className="text-xs tracking-wide text-white/80 uppercase">{new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{hello}{first ? `, ${first}` : ''}.</h1>
-        <p className="mt-1.5 max-w-xl text-sm text-white/90">
-          {next
-            ? <>Next up: <span className="font-medium text-white">{next.title}</span> in <span className="num text-white">{countdown(next.due_at, now).big}</span>.</>
-            : 'You are all caught up. Nothing is waiting for you.'}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+    <section className="flex flex-col gap-5 rounded-3xl bg-[radial-gradient(120%_140%_at_100%_0%,color-mix(in_oklch,var(--glow)_24%,transparent),transparent_55%),linear-gradient(120deg,var(--banner),var(--banner-2))] p-6 text-white shadow-[0_18px_40px_-24px_var(--banner)]" aria-label="Summary">
+      <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+        <div className="min-w-0 flex-1 basis-72">
+          <p className="text-xs tracking-wide text-white/80 uppercase">{new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">{hello}{first ? `, ${first}` : ''}.</h1>
+          <p className="mt-1.5 max-w-xl text-sm text-white/90">
+            {next
+              ? <>Next up: <span className="font-medium text-white">{next.title}</span> in <span className="num text-white">{countdown(next.due_at, now).big}</span>.</>
+              : 'You are all caught up. Nothing is waiting for you.'}
+          </p>
+        </div>
         <div className="relative size-20 shrink-0" role="img" aria-label={`${pct}% of this semester's assignments submitted`}>
           <svg viewBox="0 0 80 80" className="size-full -rotate-90">
             <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" stroke="rgba(255,255,255,0.18)" />
-            <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="var(--primary)" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
+            <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="var(--glow)" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center leading-none"><div><div className="num text-lg font-medium">{pct}%</div><div className="mt-0.5 text-[10px] text-white/80">submitted</div></div></div>
         </div>
-        <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
-          {kpis.map(k => (
-            <div key={k.label}>
-              <dt className="text-xs text-white/80">{k.label}</dt>
-              <dd className="num text-xl font-medium">{k.value}</dd>
-              <dd className="text-[11px] text-white/75">{k.sub}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-white/15 pt-4 sm:grid-cols-4">
+        {kpis.map(k => (
+          <div key={k.label} className="min-w-0">
+            <dt className="text-xs text-white/80">{k.label}</dt>
+            <dd className="num text-2xl font-medium">{k.value}</dd>
+            <dd className="text-[11px] leading-snug text-white/75">{k.sub}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   )
 }
@@ -108,7 +112,7 @@ function UpNext({ a, now, onOpen }: { a?: Assignment; now: number; onOpen: (id: 
         <h2 className="text-xl leading-snug font-semibold tracking-tight text-balance">{a.title}</h2>
         <p className="mt-1 text-sm opacity-75">{a.course} · {d.day}{d.time && ` at ${d.time}`}</p>
       </div>
-      <Button size="lg" className="w-full bg-black text-white hover:bg-black/85" onClick={() => onOpen(a.id)}>
+      <Button size="lg" className="w-full bg-[var(--tile-btn)] text-[var(--tile-btn-fg)] hover:bg-[var(--tile-btn)]/85" onClick={() => onOpen(a.id)}>
         <Upload />{a.can_upload ? 'Upload your work' : 'Open'}
       </Button>
     </div>
@@ -166,7 +170,7 @@ function Deadlines({ all, colors, onOpen, onGo }: { all: Assignment[]; colors: R
               <li key={a.id}>
                 <button type="button" onClick={() => onOpen(a.id)} className="hover:bg-muted/60 flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors">
                   <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[a.course] }} aria-hidden />
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{a.title}</span><span className="text-muted-foreground block truncate text-xs">{a.course}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{a.title}</span><span className="text-muted-foreground block truncate text-xs">{a.course}</span><span className="num text-muted-foreground block text-[11px]">{dueParts(a.due_at).day} · {dueParts(a.due_at).time}</span></span>
                   <span className={cn('num shrink-0 rounded-full border px-2 py-0.5 text-xs', a.urgency === 'today' ? 'border-destructive/30 bg-destructive/10 text-destructive' : a.urgency === 'soon' ? 'border-warning/40 bg-warning/10 text-warning' : 'text-muted-foreground')}>{chip}</span>
                 </button>
               </li>
@@ -178,22 +182,97 @@ function Deadlines({ all, colors, onOpen, onGo }: { all: Assignment[]; colors: R
   )
 }
 
-function CourseProgressPanel({ all, onGo }: { all: Assignment[]; onGo: Go }) {
-  const rows = courseProgress(all)
+function CoursesPanel({ state, onGo }: { state: State; onGo: Go }) {
+  const rows = courseRows(state.assignments)
   return (
-    <Panel title="Course progress" action={<span className="text-muted-foreground text-xs">submitted</span>}>
-      <ul className="flex flex-col gap-3">
-        {rows.map(c => (
-          <li key={c.name}>
-            <button type="button" onClick={() => onGo('assignments', { tab: 'all', course: c.name })} className="group block w-full text-left">
-              <div className="mb-1 flex items-baseline justify-between gap-3 text-sm"><span className="truncate">{c.name}</span><span className="num text-muted-foreground shrink-0 text-xs">{c.submitted}/{c.total}</span></div>
-              <div className="bg-muted h-1.5 overflow-hidden rounded-full" role="progressbar" aria-valuenow={c.total ? Math.round((100 * c.submitted) / c.total) : 0} aria-valuemin={0} aria-valuemax={100} aria-label={`${c.name} submitted`}>
-                <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${c.total ? (100 * c.submitted) / c.total : 0}%`, backgroundColor: c.color }} />
-              </div>
-            </button>
-          </li>
-        ))}
+    <Panel title="Courses" action={<span className="text-muted-foreground text-xs">submitted · next due · attendance</span>}>
+      <ul className="flex flex-col gap-1">
+        {rows.map(c => {
+          const pct = c.total ? Math.round((100 * c.submitted) / c.total) : 0
+          const done = c.total > 0 && c.submitted === c.total
+          const att = attendanceFor(c.name, state.attendance.courses)
+          const d = c.next ? dueParts(c.next.due_at) : null
+          return (
+            <li key={c.name}>
+              <button type="button" onClick={() => onGo('assignments', { tab: 'all', course: c.name })} className="hover:bg-muted/60 block w-full rounded-xl p-2.5 text-left transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{c.name}</span>
+                  <span className="num text-sm">{c.submitted}<span className="text-muted-foreground">/{c.total}</span></span>
+                  <span className={cn('num w-10 text-right text-xs', done ? 'text-success' : 'text-muted-foreground')}>{pct}%</span>
+                </div>
+                <div className="bg-muted mt-2 h-1.5 overflow-hidden rounded-full" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${c.name}: ${c.submitted} of ${c.total} submitted`}>
+                  <div className={cn('h-full rounded-full transition-[width] duration-500', done ? 'bg-success' : 'bg-banner dark:bg-foreground/70')} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="text-muted-foreground mt-1.5 flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0 truncate">{c.next && d ? <>Next: <span className="text-foreground">{c.next.title}</span> · <span className="num">{d.day}</span></> : done ? 'Everything submitted' : c.overdue ? <span className="text-destructive">{c.overdue} overdue, not submitted</span> : 'Nothing due'}</span>
+                  {att
+                    ? <span className={cn('num shrink-0', att.ok ? (att.can_miss < 2 ? 'text-warning' : 'text-muted-foreground') : 'text-destructive')}>{Math.round(att.percent)}% attendance</span>
+                    : <span className="shrink-0">no attendance yet</span>}
+                </div>
+              </button>
+            </li>
+          )
+        })}
       </ul>
+    </Panel>
+  )
+}
+
+const parseExamDate = (s: string): Date | null => {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((s ?? '').trim())
+  return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null
+}
+
+function ExamsPanel({ state, now }: { state: State; now: number }) {
+  const today = startOfDay(new Date(now))
+  const upcoming = (state.exams ?? [])
+    .map(e => ({ e, d: parseExamDate(e.date) }))
+    .filter((x): x is { e: State['exams'][number]; d: Date } => !!x.d && x.d >= today)
+    .sort((a, b) => a.d.getTime() - b.d.getTime())
+    .slice(0, 4)
+  return (
+    <Panel title="Exams" action={<GraduationCap className="text-muted-foreground size-4" />}>
+      {upcoming.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No upcoming exams. Dates appear here as soon as the portal posts them.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {upcoming.map(({ e, d }) => {
+            const days = Math.round((d.getTime() - today.getTime()) / 864e5)
+            return (
+              <li key={e.title + e.date} className="flex items-start gap-3 text-sm">
+                <div className="bg-muted grid size-11 shrink-0 place-items-center rounded-xl text-center leading-none"><div><div className="num text-base font-medium">{d.getDate()}</div><div className="text-muted-foreground text-[10px] uppercase">{new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(d)}</div></div></div>
+                <div className="min-w-0 flex-1"><div className="truncate font-medium">{e.title}</div>
+                  <div className="text-muted-foreground text-xs">{[e.exam_type, e.start_time, e.room].filter(Boolean).join(' · ')}</div></div>
+                <span className={cn('num shrink-0 rounded-full border px-2 py-0.5 text-xs', days <= 3 ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'text-muted-foreground')}>{days === 0 ? 'Today' : `${days}d`}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
+function ResultsPanel({ state }: { state: State }) {
+  const st = state.standing
+  if (!st) return <Panel title="Results"><p className="text-muted-foreground text-sm">No results read yet.</p></Panel>
+  const series = st.series.filter(x => x.gpa != null)
+  return (
+    <Panel title="Results" action={<span className="text-muted-foreground text-xs">GPA per semester</span>}>
+      <div className="mb-4 flex items-baseline gap-3">
+        <div className="num text-3xl font-medium">{st.cgpa.toFixed(2)}</div>
+        <div className="text-muted-foreground text-xs">CGPA after {st.semester}<br />semester GPA {st.gpa?.toFixed(2) ?? '–'}</div>
+      </div>
+      <div className="flex h-20 items-end gap-2" role="img" aria-label={`GPA by semester, latest ${st.gpa?.toFixed(2) ?? ''}`}>
+        {series.map((x, i) => (
+          <div key={x.name} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`${x.name}: GPA ${x.gpa?.toFixed(2)}, CGPA ${x.cgpa?.toFixed(2)}`}>
+            <span className="num text-muted-foreground text-[10px]">{x.gpa?.toFixed(1)}</span>
+            <div className={cn('w-full rounded-md', i === series.length - 1 ? 'bg-primary' : 'bg-banner/70 dark:bg-foreground/50')} style={{ height: `${Math.max(8, ((x.gpa ?? 0) / 4) * 100)}%` }} />
+            <span className="text-muted-foreground text-[10px]">{x.name.replace(/^(Fall|Spring|Summer)-(\d{2})(\d{2})$/, (_m, t: string, _c: string, y: string) => `${t[0]}${y}`)}</span>
+          </div>
+        ))}
+      </div>
     </Panel>
   )
 }
@@ -259,7 +338,7 @@ function Load({ all, now }: { all: Assignment[]; now: number }) {
           {days.map((d, i) => (
             <div key={i} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={counts[i].map(a => a.title).join('\n') || 'Nothing due'}>
               <span className="num text-muted-foreground text-[10px]">{counts[i].length || ''}</span>
-              <div className={cn('w-full rounded-md', counts[i].length ? (i === 0 ? 'bg-primary' : 'bg-banner dark:bg-foreground/75') : 'bg-muted')} style={{ height: counts[i].length ? `${Math.max(14, (counts[i].length / max) * 62)}%` : '6%' }} />
+              <div className={cn('w-full rounded-md', counts[i].length ? (i === 0 ? 'bg-primary' : 'bg-banner/70 dark:bg-foreground/50') : 'bg-muted')} style={{ height: counts[i].length ? `${Math.max(14, (counts[i].length / max) * 62)}%` : '6%' }} />
               <span className={cn('num text-[10px]', i === 0 ? 'text-foreground font-semibold' : 'text-muted-foreground')}>{d.getDate()}</span>
             </div>
           ))}
@@ -280,12 +359,14 @@ export function Home({ state, now, onOpen, onGo }: { state: State; now: number; 
       <div className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
         <Week state={state} now={now} colors={colors} onOpen={onOpen} />
         <Load all={all} now={now} />
-        <CourseProgressPanel all={all} onGo={onGo} />
+        <CoursesPanel state={state} onGo={onGo} />
       </div>
       <div className="order-1 flex min-w-0 flex-col gap-4 xl:order-2">
         <UpNext a={next} now={now} onOpen={onOpen} />
         <NeedsAttention state={state} now={now} onOpen={onOpen} onGo={onGo} />
         <Deadlines all={all} colors={colors} onOpen={onOpen} onGo={onGo} />
+        <ExamsPanel state={state} now={now} />
+        <ResultsPanel state={state} />
       </div>
     </div>
   )

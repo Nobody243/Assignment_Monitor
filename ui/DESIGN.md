@@ -78,3 +78,13 @@ Fix, applied to three switchable palettes (user menu, bottom of the sidebar; def
 **Ember** (from the website: warm near-black and the #fd693d orange; orange is the primary action here, and its warning colour is
 shifted to yellow so it never reads as the action colour). Shared polish: palette-tinted shadows, a primary-coloured marker on the
 active sidebar item, a soft highlight in the banner and on the Up next tile, chart bars tied to the banner colour.
+
+## Update 2026-11-18 (second pass)
+- Each palette now has its own action colour, so no two look alike: **Royal** aqua, **Ink** monochrome (black in light, cream in dark),
+  **Forest** lime, **Ember** orange (the website's). Banner ring, glow and the Up next tile button follow the palette (`--glow`, `--tile-btn`).
+- Course colours are an analogous family around the palette hue (`--course-h`); they identify courses only.
+- Progress bars use one calm colour (the banner tone) and turn green when a course is fully submitted.
+- Home carries complete information: banner figures with context (lowest attendance, last GPA), a per-course panel (submitted, percent,
+  next due or "n overdue, not submitted", attendance), deadlines with date and time, an Exams panel, a Results trend. The banner is a
+  greeting row plus a KPI row, so it holds at any width (a one-row layout broke at about 1180 px).
+- Contrast: lowest measured pair across all eight themes is 5.9:1.

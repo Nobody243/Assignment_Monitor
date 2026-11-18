@@ -148,17 +148,21 @@
    Palettes. Every neutral shares the palette's hue (a tint, not a grey), the banner is a rich colour with a
    second stop for depth, and one lime carries every primary action. Pick with data-palette on <html>.
    ------------------------------------------------------------------------------------------------ */
-:root { --banner-2: oklch(0.4 0.12 275); }
+:root { --banner-2: oklch(0.4 0.12 275); --course-h: 262; --glow: oklch(0.9 0.2 122); --tile-btn: oklch(0.14 0.01 265); --tile-btn-fg: oklch(0.98 0 0); }
 
 /* Royal: tinted blue neutrals, a saturated royal-blue banner (the Campus reference) */
 :root[data-palette='royal'] {
+  --course-h: 262;
   --background: oklch(0.993 0.003 262); --card: oklch(1 0 0); --sidebar: oklch(0.94 0.016 262);
   --foreground: oklch(0.2 0.035 265); --card-foreground: oklch(0.2 0.035 265); --popover: oklch(1 0 0); --popover-foreground: oklch(0.2 0.035 265);
   --muted: oklch(0.962 0.01 262); --accent: oklch(0.955 0.014 262); --secondary: oklch(0.962 0.01 262);
   --muted-foreground: oklch(0.5 0.035 262); --border: oklch(0.91 0.016 262); --input: oklch(0.91 0.016 262);
   --sidebar-accent: oklch(1 0 0 / 80%); --sidebar-border: oklch(0.89 0.018 262); --sidebar-foreground: oklch(0.25 0.035 265);
-  --primary: oklch(0.9 0.2 122); --primary-foreground: oklch(0.2 0.035 265);
+  --primary: oklch(0.85 0.13 205); --primary-foreground: oklch(0.2 0.035 265);
   --banner: oklch(0.5 0.19 262); --banner-2: oklch(0.38 0.16 280);
+  --glow: oklch(0.86 0.13 205);
+  --tile-btn: oklch(0.2 0.05 265);
+  --tile-btn-fg: oklch(0.98 0.01 205);
 }
 :root.dark[data-palette='royal'] {
   --background: oklch(0.2 0.024 265); --card: oklch(0.245 0.03 265); --sidebar: oklch(0.15 0.022 265);
@@ -166,19 +170,26 @@
   --muted: oklch(0.29 0.03 265); --accent: oklch(0.3 0.032 265); --secondary: oklch(0.29 0.03 265);
   --muted-foreground: oklch(0.72 0.025 262); --border: oklch(0.7 0.04 262 / 14%); --input: oklch(0.7 0.04 262 / 18%);
   --sidebar-accent: oklch(0.25 0.03 265); --sidebar-border: oklch(0.7 0.04 262 / 12%); --sidebar-foreground: oklch(0.95 0.008 262);
-  --primary: oklch(0.88 0.19 122); --primary-foreground: oklch(0.2 0.035 265);
+  --primary: oklch(0.83 0.13 205); --primary-foreground: oklch(0.2 0.035 265);
   --banner: oklch(0.42 0.17 265); --banner-2: oklch(0.3 0.13 285);
+  --glow: oklch(0.84 0.13 205);
+  --tile-btn: oklch(0.2 0.05 265);
+  --tile-btn-fg: oklch(0.98 0.01 205);
 }
 
 /* Ink: warm paper neutrals, a near-black banner (the Ronas reference) */
 :root[data-palette='ink'] {
+  --course-h: 250;
   --background: oklch(0.99 0.004 90); --card: oklch(1 0 0); --sidebar: oklch(0.945 0.012 85);
   --foreground: oklch(0.18 0.012 80); --card-foreground: oklch(0.18 0.012 80); --popover: oklch(1 0 0); --popover-foreground: oklch(0.18 0.012 80);
   --muted: oklch(0.96 0.008 90); --accent: oklch(0.955 0.01 90); --secondary: oklch(0.96 0.008 90);
   --muted-foreground: oklch(0.5 0.02 80); --border: oklch(0.912 0.012 88); --input: oklch(0.912 0.012 88);
   --sidebar-accent: oklch(1 0 0 / 80%); --sidebar-border: oklch(0.89 0.014 86); --sidebar-foreground: oklch(0.22 0.012 80);
-  --primary: oklch(0.9 0.2 122); --primary-foreground: oklch(0.18 0.012 80);
+  --primary: oklch(0.2 0.012 80); --primary-foreground: oklch(0.985 0.005 90);
   --banner: oklch(0.22 0.012 270); --banner-2: oklch(0.32 0.04 280);
+  --glow: oklch(0.97 0.01 90);
+  --tile-btn: oklch(0.985 0.005 90);
+  --tile-btn-fg: oklch(0.18 0.012 80);
 }
 :root.dark[data-palette='ink'] {
   --background: oklch(0.17 0.006 85); --card: oklch(0.215 0.008 85); --sidebar: oklch(0.125 0.005 85);
@@ -186,12 +197,16 @@
   --muted: oklch(0.265 0.009 85); --accent: oklch(0.28 0.01 85); --secondary: oklch(0.265 0.009 85);
   --muted-foreground: oklch(0.72 0.012 85); --border: oklch(0.8 0.02 85 / 12%); --input: oklch(0.8 0.02 85 / 16%);
   --sidebar-accent: oklch(0.23 0.008 85); --sidebar-border: oklch(0.8 0.02 85 / 10%); --sidebar-foreground: oklch(0.95 0.006 90);
-  --primary: oklch(0.88 0.19 122); --primary-foreground: oklch(0.18 0.012 80);
+  --primary: oklch(0.95 0.012 90); --primary-foreground: oklch(0.17 0.006 85);
   --banner: oklch(0.29 0.02 280); --banner-2: oklch(0.2 0.01 270);
+  --glow: oklch(0.97 0.01 90);
+  --tile-btn: oklch(0.17 0.006 85);
+  --tile-btn-fg: oklch(0.96 0.008 90);
 }
 
 /* Forest: cream and sage neutrals, a deep green banner that the lime belongs to */
 :root[data-palette='forest'] {
+  --course-h: 155;
   --background: oklch(0.99 0.01 105); --card: oklch(1 0.003 105); --sidebar: oklch(0.94 0.024 125);
   --foreground: oklch(0.22 0.04 155); --card-foreground: oklch(0.22 0.04 155); --popover: oklch(1 0.003 105); --popover-foreground: oklch(0.22 0.04 155);
   --muted: oklch(0.962 0.016 115); --accent: oklch(0.955 0.02 120); --secondary: oklch(0.962 0.016 115);
@@ -199,6 +214,9 @@
   --sidebar-accent: oklch(1 0.003 105 / 80%); --sidebar-border: oklch(0.89 0.024 122); --sidebar-foreground: oklch(0.26 0.04 155);
   --primary: oklch(0.9 0.2 122); --primary-foreground: oklch(0.22 0.04 155);
   --banner: oklch(0.4 0.09 160); --banner-2: oklch(0.3 0.07 175);
+  --glow: oklch(0.9 0.2 122);
+  --tile-btn: oklch(0.18 0.04 155);
+  --tile-btn-fg: oklch(0.98 0.01 110);
 }
 :root.dark[data-palette='forest'] {
   --background: oklch(0.19 0.022 160); --card: oklch(0.235 0.028 160); --sidebar: oklch(0.145 0.02 160);
@@ -208,10 +226,14 @@
   --sidebar-accent: oklch(0.24 0.03 160); --sidebar-border: oklch(0.8 0.05 150 / 11%); --sidebar-foreground: oklch(0.95 0.012 110);
   --primary: oklch(0.88 0.19 122); --primary-foreground: oklch(0.22 0.04 155);
   --banner: oklch(0.36 0.085 165); --banner-2: oklch(0.26 0.06 180);
+  --glow: oklch(0.88 0.19 122);
+  --tile-btn: oklch(0.15 0.03 160);
+  --tile-btn-fg: oklch(0.97 0.01 110);
 }
 
 /* Ember: from the website (warm near-black and the #fd693d orange). Orange carries the primary action here. */
 :root[data-palette='ember'] {
+  --course-h: 40;
   --background: oklch(0.99 0.007 75); --card: oklch(1 0.002 75); --sidebar: oklch(0.945 0.02 68);
   --foreground: oklch(0.2 0.022 50); --card-foreground: oklch(0.2 0.022 50); --popover: oklch(1 0.002 75); --popover-foreground: oklch(0.2 0.022 50);
   --muted: oklch(0.963 0.012 72); --accent: oklch(0.955 0.018 70); --secondary: oklch(0.963 0.012 72);
@@ -220,6 +242,9 @@
   --primary: oklch(0.7 0.19 38); --primary-foreground: oklch(0.16 0.02 45);
   --banner: oklch(0.47 0.15 38); --banner-2: oklch(0.34 0.11 25);
   --ring: oklch(0.65 0.17 40); --warning: oklch(0.72 0.15 88);
+  --glow: oklch(0.75 0.19 45);
+  --tile-btn: oklch(0.17 0.02 45);
+  --tile-btn-fg: oklch(0.98 0.01 70);
 }
 :root.dark[data-palette='ember'] {
   --background: oklch(0.17 0.012 275); --card: oklch(0.21 0.014 275); --sidebar: oklch(0.125 0.01 275);
@@ -230,6 +255,9 @@
   --primary: oklch(0.72 0.19 40); --primary-foreground: oklch(0.16 0.02 45);
   --banner: oklch(0.38 0.12 38); --banner-2: oklch(0.25 0.07 28);
   --ring: oklch(0.72 0.17 40); --warning: oklch(0.82 0.15 90);
+  --glow: oklch(0.76 0.19 45);
+  --tile-btn: oklch(0.15 0.015 45);
+  --tile-btn-fg: oklch(0.97 0.01 70);
 }
 
 /* ------------------------------------------------------------------------------------------------

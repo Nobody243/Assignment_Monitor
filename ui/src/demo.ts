@@ -55,5 +55,6 @@ export const DEMO: State = {
       { day: 'Thu', start: '14:00', end: '15:30', course: 'Software Engineering', abbr: 'SE', teacher: 'Sample Teacher', initials: 'ST' },
     ],
   },
-  standing: { semester: 'Spring-2026', gpa: 3.4, cgpa: 3.3, semesters: 4 },
+  standing: { semester: 'Spring-2026', gpa: 3.4, cgpa: 3.3, semesters: 4, series: [{ name: 'Fall-2024', gpa: 3.1, cgpa: 3.1 }, { name: 'Spring-2025', gpa: 3.4, cgpa: 3.25 }, { name: 'Fall-2025', gpa: 3.2, cgpa: 3.23 }, { name: 'Spring-2026', gpa: 3.4, cgpa: 3.3 }] },
+  exams: [],
 }
