@@ -3,7 +3,7 @@ import { getJob, getState, type Job, type State } from './api'
 import { DEMO } from './demo'
 
 export type Running = { kind: string; assignmentId?: string; step: string }
-export type Outcome = { ok: boolean; message: string; deleted?: boolean; folder?: string }
+export type Outcome = { ok: boolean; message: string; deleted?: boolean; folder?: string; url?: string; repo?: string }
 
 /** Loads the engine's state, falls back to labelled demo data when it cannot be reached, and runs one action at a time
  *  (the engine enforces that too), polling its progress. */

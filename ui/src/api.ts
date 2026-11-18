@@ -50,7 +50,7 @@ export type State = {
   attendance: Attendance; exams: Exam[]; exams_all: Exam[]; announcements: Announcement[]; lectures: Lecture[]; results: Results
   timetable: { semester?: string; sessions?: TimetableSession[] }; standing: Standing | null; paths: { lectures: string; data: string }
 }
-export type Job = { id: string; kind: string; status: 'running' | 'done'; step: string; result: { ok: boolean; message: string; deleted?: boolean; folder?: string } | null }
+export type Job = { id: string; kind: string; status: 'running' | 'done'; step: string; result: { ok: boolean; message: string; deleted?: boolean; folder?: string; url?: string; repo?: string } | null }
 
 type EngineCfg = { base: string; token: string }
 const cfg: EngineCfg = (window as unknown as { __ENGINE__?: EngineCfg }).__ENGINE__ ?? { base: 'http://127.0.0.1:8765', token: 'dev' }
@@ -61,7 +61,10 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { Authorization: `Bearer ${cfg.token}`, ...(init.headers ?? {}) },
   })
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`)
+  if (!res.ok) {
+    const b = body as { error?: string; errors?: Record<string, string> }
+    throw new Error(b.error ?? (b.errors ? Object.values(b.errors).join('; ') : `Request failed (${res.status})`))
+  }
   return body as T
 }
 
@@ -94,3 +97,46 @@ export const downloadAssignmentFiles = (id: string, kind: FileKind = 'all') =>
 export const downloadLectures = (ids: string[]) =>
   call<{ job: string }>('/api/lectures/download', { method: 'POST', body: JSON.stringify({ ids }), headers: { 'Content-Type': 'application/json' } })
 export const openFolder = (kind: 'lectures' | 'data') => call<{ ok: boolean; folder: string }>(`/api/open-folder?kind=${kind}`, { method: 'POST' })
+
+// ------------------------------------------------------------------------------------------------ settings
+export type SettingsView = {
+  account: { enrollment: string; institute_id: string; campus: string; password_set: boolean }
+  campuses: { id: string; name: string }[]
+  alerts: { voice: boolean; toast: boolean; notify_days_ahead: number; voice_name: string; voice_volume: number; voice_rate: number }
+  tracking: {
+    track_attendance: boolean; track_exams: boolean; track_announcements: boolean; track_lectures: boolean; track_timetable: boolean; track_results: boolean
+    attendance_min: number; exam_remind_days: number
+  }
+  background: { close_to_tray: boolean; check_updates: boolean; lectures_dir: string; starts_with_windows: boolean; automatic_checks: boolean; owned_by_installed_app: boolean }
+  channels: {
+    email_enabled: boolean; email_to: string; email_pass_set: boolean; email_host: string; email_port: number
+    push_enabled: boolean; push_paired: boolean; push_device: string; calendar_enabled: boolean; calendar_invites: boolean
+  }
+  cloud: { available: boolean; enabled: boolean; repo: string; login: string }
+}
+export type CloudStatus = { enabled: boolean; login?: string; repo?: string; last?: { when: string; status: string; conclusion: string | null; url: string }; error?: string }
+
+const post = <T,>(path: string, body?: unknown) =>
+  call<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body), headers: body === undefined ? undefined : { 'Content-Type': 'application/json' } })
+
+export const getSettings = () => call<SettingsView>('/api/settings')
+export const patchSettings = (patch: Record<string, unknown>) => post<{ changed: string[]; settings: SettingsView }>('/api/settings', patch)
+export const verifyAccount = () => post<{ job: string }>('/api/account/verify')
+export const setAutomation = (on: boolean) => post<{ job: string }>(`/api/automation?enable=${on ? 1 : 0}`)
+export const setStartup = (on: boolean) => post<{ ok: boolean; starts_with_windows: boolean }>(`/api/startup?enable=${on ? 1 : 0}`)
+export const testAlert = () => post<{ ok: boolean }>('/api/test/alert')
+export const testEmail = () => post<{ job: string }>('/api/test/email')
+export const testPush = () => post<{ job: string }>('/api/test/push')
+export const getVoices = () => call<{ voices: string[] }>('/api/voices')
+export const previewVoice = (v: { voice_name: string; voice_volume: number; voice_rate: number }) => post<{ ok: boolean }>('/api/voice/preview', v)
+export const pairStart = () => post<{ url: string; code: string; qr: string }>('/api/pair/start')
+export const pairPoll = () => post<{ status: 'waiting' | 'opened' | 'paired'; device?: string }>('/api/pair/poll')
+export const pairCancel = () => post<{ ok: boolean }>('/api/pair/cancel')
+export const unpair = () => post<{ ok: boolean }>('/api/unpair')
+export const cloudStart = () => post<{ user_code: string; verification_uri: string; interval: number; expires_in: number }>('/api/cloud/start')
+export const cloudPoll = () => post<{ status: 'pending' | 'ready'; interval?: number }>('/api/cloud/poll')
+export const cloudSetup = () => post<{ job: string }>('/api/cloud/setup')
+export const cloudDisable = () => post<{ job: string }>('/api/cloud/disable')
+export const cloudRun = () => post<{ ok: boolean }>('/api/cloud/run')
+export const getCloudStatus = () => call<CloudStatus>('/api/cloud/status')
+export const clearData = () => post<{ ok: boolean }>('/api/data/clear')

@@ -95,3 +95,10 @@ extension notes, the upload/replace/delete sheet), Attendance (ring per course, 
 date/time/room/seat, survey and fee flags), Lectures (select and download, New badges, open folder), Announcements, Results (semester
 tabs, trend, what-if per course, same-grade scenarios), Settings (theme, palettes, folders, about). Routing is the URL hash, so back and
 forward work. The Settings page does not yet manage sign-in, alerts, automatic checks or cloud checks: those stay in the desktop app.
+
+## Account settings (2026-11-18, fourth pass)
+The Settings page now manages what the desktop app's does: portal account (saved and verified through a sign-in), appearance, notifications
+(with voice, volume and test alert), campus tracking, automatic checks, start with Windows, tray and updates, email, phone pairing (QR),
+calendar, cloud checks (GitHub device sign-in with the same consent text) and clearing saved data. Rules kept in the engine
+(settings_api.py): a secret is never returned (only "set"), an empty secret field means "keep", updates are validated against an allow-list
+(types, bounds, single-line), and a source run never turns the installed app's background tasks on or off.

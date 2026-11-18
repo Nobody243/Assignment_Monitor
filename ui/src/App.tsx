@@ -49,7 +49,7 @@ function usePalette() {
 }
 
 export default function App() {
-  const { state, demo, running, run, now } = useEngine()
+  const { state, demo, running, run, now, refresh } = useEngine()
   const [dark, toggleTheme] = useTheme()
   const [palette, setPalette] = usePalette()
   const [page, navigate] = usePage()
@@ -148,7 +148,7 @@ export default function App() {
       case 'announcements': return <AnnouncementsPage items={state.announcements} colors={colors} now={now} />
       case 'results': return <ResultsPage results={state.results} />
       case 'settings': return <SettingsPage dark={dark} onToggleTheme={toggleTheme} palette={palette} onPalette={setPalette} paths={state.paths} version={state.version} demo={demo}
-        onOpenFolder={k => void openFolder(k)} />
+        onOpenFolder={k => void openFolder(k)} run={run} running={running} onDataCleared={() => void refresh()} />
     }
   }
 

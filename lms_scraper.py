@@ -905,6 +905,29 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
     return result
 
 
+def verify_login() -> dict:
+    """Signs in once with the saved account and nothing else: the quick check that a changed enrollment, password or
+    campus works. Raises LoginError (with the portal's own message) when it is rejected."""
+    env = load_env()
+    enrollment, password = env.get("ENROLLMENT", "").strip(), env.get("PASSWORD", "").strip()
+    institute_id = str(env.get("INSTITUTE_ID", "1")).strip()
+    if not enrollment or not password:
+        raise LoginError("Enrollment number and password are not configured yet.")
+    _acquire_lock()
+    try:
+        with sync_playwright() as p:
+            context = _launch_browser(p, True)
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                page.set_default_timeout(45000)
+                PortalSession(page, enrollment, password, institute_id).sign_in()
+            finally:
+                context.close()
+    finally:
+        _release_lock()
+    return {"ok": True, "message": "Sign-in verified."}
+
+
 def run_lms_check(headless: bool = True, interactive: bool = False) -> List[dict]:
     """Assignments only (kept for callers that just verify the sign-in)."""
     return run_sync(headless=headless, interactive=interactive, collect=("assignments",))["assignments"]

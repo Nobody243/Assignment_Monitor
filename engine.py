@@ -31,6 +31,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import lms_scraper as scraper
+import settings_api
 import tracker
 from campus import attendance_margin
 from config import APP_NAME, APP_VERSION, DATA_DIR, lectures_dir, load_env, load_meta
@@ -263,6 +264,10 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/state":
             return self._send(200, build_state())
+        route = settings_api.GET.get(url.path)
+        if route:
+            status, obj = route(parse_qs(url.query), b"")
+            return self._send(status, obj)
         if url.path.startswith("/api/jobs/"):
             job = JOBS.get(url.path.rsplit("/", 1)[-1])
             return self._send(200, job) if job else self._send(404, {"error": "no such job"})
@@ -282,6 +287,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(413, {"error": "That file is over the portal's 15 MB limit."})
         body = self.rfile.read(length) if length else b""
 
+        entry = settings_api.POST.get(url.path)
+        if entry:
+            kind, route = entry
+            res = route(qs, body)
+            if callable(res):
+                jid = JOBS.start(kind, res)
+                return self._send(202, {"job": jid}) if jid else self._send(409, {"error": "Another action is still running."})
+            return self._send(res[0], res[1])
         if url.path == "/api/sync":
             jid = JOBS.start("sync", job_sync())
         elif url.path == "/api/assignments/delete":
