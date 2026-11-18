@@ -148,3 +148,4 @@ export const getLog = (lines = 300) => call<{ entries: LogEntry[] }>(`/api/log?l
 
 export type UpdateInfo = { version?: string; newer?: boolean; page?: string; current?: string; error?: string }
 export const getUpdate = () => call<UpdateInfo>('/api/update')
+export const installUpdate = () => post<{ job: string }>('/api/update/install')

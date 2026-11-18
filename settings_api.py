@@ -490,6 +490,32 @@ def update_check(qs=None, body=None):
     return 200, {"version": info["version"], "newer": bool(info["newer"]), "page": info["page"], "current": APP_VERSION}
 
 
+def update_install(qs, body):
+    """Downloads the newest installer, checks it against the checksum the release publishes, and starts it. The installer
+    closes this app, replaces it and starts it again."""
+    if not FROZEN:
+        return 409, {"error": "Updates install into the installed app. This copy runs from source."}
+
+    def job(progress):
+        progress("Looking for the newest version…")
+        info = updater.check_latest()
+        if not info:
+            return {"ok": False, "message": "GitHub could not be reached."}
+        if not info["newer"] or not info.get("setup_url"):
+            return {"ok": True, "message": "You already have the latest version."}
+        progress(f"Downloading version {info['version']}…")
+        want = updater.fetch_checksum(info["setup_url"])
+
+        def pct(done, total):
+            progress(f"Downloading version {info['version']}… {int(done * 100 / total)}%" if total else "Downloading…")
+        path = updater.download_installer(info["setup_url"], pct, expected_sha256=want)
+        progress("Starting the installer…")
+        updater.run_installer(path)
+        return {"ok": True, "message": f"Installing version {info['version']}. The app restarts by itself.", "restarting": True}
+
+    return job
+
+
 def clear_data(qs, body):
     tracker.clear_stored_assignments()
     return 200, {"ok": True}
@@ -518,6 +544,7 @@ GET: dict[str, Route] = {
 }
 POST: dict[str, tuple[str, Route]] = {
     "/api/settings": ("settings", update),
+    "/api/update/install": ("update", update_install),
     "/api/account/verify": ("verify", account_verify),
     "/api/automation": ("automation", automation_set),
     "/api/startup": ("startup", startup_set),

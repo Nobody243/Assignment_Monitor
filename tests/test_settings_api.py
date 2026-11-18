@@ -251,3 +251,29 @@ def test_the_update_check_reports_newer_or_unreachable(srv, monkeypatch):
     }
     monkeypatch.setattr(updater, "check_latest", lambda: None)
     assert "could not be reached" in call("GET", "/api/update")[1]["error"]
+
+
+def test_update_install_refuses_source_runs_and_checks_the_checksum(monkeypatch, tmp_path):
+    import updater
+    monkeypatch.setattr(settings_api, "FROZEN", False)
+    assert settings_api.update_install({}, b"")[0] == 409
+    # a download that does not match its published checksum is discarded
+    monkeypatch.setattr(updater.tempfile, "gettempdir", lambda: str(tmp_path))
+
+    class Resp:
+        headers = {"Content-Length": "1100000"}
+        def __init__(self): self.left = 1100000
+        def read(self, n):
+            n = min(n, self.left)
+            self.left -= n
+            return b"x" * n
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(updater.urllib.request, "urlopen", lambda *a, **k: Resp())
+    import pytest
+    with pytest.raises(ValueError, match="checksum"):
+        updater.download_installer("https://github.com/o/r/releases/download/v9/AssignmentMonitor-Setup.exe", expected_sha256="0" * 64)
+    assert not (tmp_path / updater.SETUP_NAME).exists()
+    good = updater.download_installer("https://github.com/o/r/releases/download/v9/AssignmentMonitor-Setup.exe",
+                                      expected_sha256=__import__("hashlib").sha256(b"x" * 1100000).hexdigest())
+    assert good.exists()

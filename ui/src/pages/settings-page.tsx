@@ -60,7 +60,7 @@ export function SettingsPage(p: Props) {
       <CloudSection view={view} run={p.run} running={p.running} busy={busy} demo={p.demo} reload={load} /></>) : loading ? wait : null,
     data: <DataSection view={view} save={save} paths={p.state.paths} demo={p.demo} onOpenFolder={p.onOpenFolder} onCleared={p.onDataCleared} />,
     activity: <ActivityPanel now={p.now} demo={p.demo} />,
-    about: <AboutSection view={view} version={p.state.version} demo={p.demo} />,
+    about: <AboutSection view={view} version={p.state.version} demo={p.demo} run={p.run} busy={busy} />,
   }
 
   return (
