@@ -8,10 +8,13 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "smoke": "electron . --smoke",
-    "test": "node --test"
+    "test": "node --test",
+    "package": "node scripts/package.cjs"
   },
   "license": "MIT",
   "devDependencies": {
+    "@electron/fuses": "^2.1.3",
+    "@electron/packager": "^20.3.0",
     "electron": "^45.3.4"
   }
 }

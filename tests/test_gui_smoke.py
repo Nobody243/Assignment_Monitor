@@ -2,11 +2,14 @@
 a Tk error. The lecture download used to raise "window ... isn't packed" the moment Download was pressed, which no
 unit test could see. One window per module, driven inside its own main loop (worker threads call `after`, which
 needs the loop to be running). Skipped where no display is available."""
+import os
 import time
 
 import pytest
 
 tk = pytest.importorskip("tkinter")
+if not os.environ.get("AM_GUI_TESTS"):    # the old Tk window pops up on screen; opt in (CI sets it)
+    pytest.skip("old Tk window tests are opt-in: set AM_GUI_TESTS=1", allow_module_level=True)
 
 LECTURES = [
     {"id": "Cybe1", "course": "Cyber Security", "week": "1", "title": "Cyber Security Concepts",

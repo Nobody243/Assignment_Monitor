@@ -47,6 +47,10 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "S
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[InstallDelete]
+; the previous (Tk) build kept its libraries here; the new app does not, so an update must not leave them behind
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
@@ -87,6 +91,7 @@ begin
     Sleep(2000);
     Ok := Exec(ExpandConstant('{cmd}'), '/C taskkill /IM {#MyAppExe} /F /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Log(Format('PrepareToInstall: taskkill exec=%d code=%d', [Integer(Ok), ResultCode]));
+    Exec(ExpandConstant('{cmd}'), '/C taskkill /IM AssignmentEngine.exe /F /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Sleep(1500);
   end;
   Result := '';
@@ -104,6 +109,7 @@ begin
   Exec(ExpandConstant('{app}\{#MyAppExe}'), '--quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(1500);
   Exec(ExpandConstant('{cmd}'), '/C taskkill /IM {#MyAppExe} /F /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(ExpandConstant('{cmd}'), '/C taskkill /IM AssignmentEngine.exe /F /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(800);
 end;
 
