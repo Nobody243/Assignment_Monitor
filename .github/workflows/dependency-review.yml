@@ -8,6 +8,9 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    # Needs "Dependency graph" switched on in Settings > Advanced Security. Until it is, the action cannot run at all
+    # ("Dependency review is not supported on this repository"), which says nothing about the pull request itself.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/dependency-review-action@v4
