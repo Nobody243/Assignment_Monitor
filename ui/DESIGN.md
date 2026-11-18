@@ -74,4 +74,7 @@ Fix, applied to three switchable palettes (user menu, bottom of the sidebar; def
 - the banner is a rich colour with a second stop for depth, and lime is the only primary action colour;
 - course colours are OKLCH at near-equal lightness and chroma, so no course shouts;
 - contrast checked numerically: body, muted text and lime-button text are all at least 5.7:1 in all six themes.
-**Royal** (royal blue + lilac-tinted neutrals), **Ink** (warm paper + near-black banner), **Forest** (cream and sage + deep green).
+**Royal** (royal blue + lilac-tinted neutrals), **Ink** (warm paper + near-black banner), **Forest** (cream and sage + deep green),
+**Ember** (from the website: warm near-black and the #fd693d orange; orange is the primary action here, and its warning colour is
+shifted to yellow so it never reads as the action colour). Shared polish: palette-tinted shadows, a primary-coloured marker on the
+active sidebar item, a soft highlight in the banner and on the Up next tile, chart bars tied to the banner colour.

@@ -16,7 +16,7 @@ const hhmm = (t: string) => t.slice(0, 5)
 
 function Panel({ title, action, children, className }: { title: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn('bg-card rounded-3xl border p-5', className)} aria-label={title}>
+    <section className={cn('bg-card panel-lift rounded-3xl border p-5', className)} aria-label={title}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         {action}
@@ -50,7 +50,7 @@ function Banner({ state, now, next }: { state: State; now: number; next?: Assign
     { label: 'Overdue', value: String(overdue), sub: overdue ? 'not submitted' : 'nothing missed' },
   ]
   return (
-    <section className="grid gap-6 bg-[linear-gradient(120deg,var(--banner),var(--banner-2))] shadow-[0_18px_40px_-24px_var(--banner)] rounded-3xl p-6 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center" aria-label="Summary">
+    <section className="grid gap-6 bg-[radial-gradient(120%_140%_at_100%_0%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_55%),linear-gradient(120deg,var(--banner),var(--banner-2))] shadow-[0_18px_40px_-24px_var(--banner)] rounded-3xl p-6 text-white lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center" aria-label="Summary">
       <div className="min-w-0">
         <p className="text-xs tracking-wide text-white/80 uppercase">{new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">{hello}{first ? `, ${first}` : ''}.</h1>
@@ -96,7 +96,7 @@ function UpNext({ a, now, onOpen }: { a?: Assignment; now: number; onOpen: (id: 
   const d = dueParts(a.due_at)
   const left = countdown(a.due_at, now)
   return (
-    <div className="bg-primary text-primary-foreground flex min-h-48 flex-col justify-between gap-5 rounded-3xl p-6">
+    <div className="text-primary-foreground flex min-h-48 flex-col justify-between gap-5 rounded-3xl bg-[linear-gradient(160deg,color-mix(in_oklch,var(--primary),white_14%),var(--primary))] p-6 shadow-[0_18px_36px_-24px_var(--primary)]">
       <div className="flex items-start justify-between gap-3">
         <span className="rounded-full bg-black/10 px-2.5 py-1 text-xs font-medium">{a.urgency === 'today' ? 'Due today' : 'Up next'}</span>
         <div className="text-right" aria-label={`${left.big} left`}>
@@ -259,7 +259,7 @@ function Load({ all, now }: { all: Assignment[]; now: number }) {
           {days.map((d, i) => (
             <div key={i} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={counts[i].map(a => a.title).join('\n') || 'Nothing due'}>
               <span className="num text-muted-foreground text-[10px]">{counts[i].length || ''}</span>
-              <div className={cn('w-full rounded-md', counts[i].length ? (i === 0 ? 'bg-primary' : 'bg-foreground/80') : 'bg-muted')} style={{ height: counts[i].length ? `${Math.max(14, (counts[i].length / max) * 62)}%` : '6%' }} />
+              <div className={cn('w-full rounded-md', counts[i].length ? (i === 0 ? 'bg-primary' : 'bg-banner dark:bg-foreground/75') : 'bg-muted')} style={{ height: counts[i].length ? `${Math.max(14, (counts[i].length / max) * 62)}%` : '6%' }} />
               <span className={cn('num text-[10px]', i === 0 ? 'text-foreground font-semibold' : 'text-muted-foreground')}>{d.getDate()}</span>
             </div>
           ))}

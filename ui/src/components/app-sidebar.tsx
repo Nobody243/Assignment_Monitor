@@ -17,7 +17,7 @@ const NAV = [
   { key: 'results', label: 'Results', icon: Award },
 ]
 
-export const PALETTES = [{ key: 'royal', label: 'Royal' }, { key: 'ink', label: 'Ink' }, { key: 'forest', label: 'Forest' }] as const
+export const PALETTES = [{ key: 'royal', label: 'Royal' }, { key: 'ink', label: 'Ink' }, { key: 'forest', label: 'Forest' }, { key: 'ember', label: 'Ember' }] as const
 
 export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page, onNavigate, palette, onPalette }: {
   name?: string; semester?: string; dueSoon: number; dark: boolean; onToggleTheme: () => void
