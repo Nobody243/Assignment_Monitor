@@ -276,3 +276,34 @@ def test_a_malformed_origin_is_refused():
     with pytest.raises(SystemExit):
         engine.parse_args(["--origin", "not an origin"])
     assert engine.parse_args(["--origin", "app://bundle"]).origin == ["app://bundle"]
+
+
+def test_responses_carry_security_headers(api):
+    call, _w, _b = api
+    _st, _body, h = call("GET", "/api/state")
+    assert h["X-Content-Type-Options"] == "nosniff"
+    assert h["Referrer-Policy"] == "no-referrer"
+    assert "default-src 'none'" in h["Content-Security-Policy"]
+
+
+def test_oversized_and_malformed_requests_are_refused(api):
+    call, _w, _b = api
+    assert call("POST", "/api/sync", body=b"x" * (engine.MAX_BODY + 1))[0] == 413
+    assert call("POST", "/api/sync", headers={"Content-Length": "abc"})[0] == 400
+
+
+def test_a_very_long_filename_is_cut_before_use(api, monkeypatch):
+    call, wait, _b = api
+    seen = {}
+    monkeypatch.setattr(lms_scraper, "check_submission_file_bytes", lambda name, size: seen.setdefault("name", name) and "stop")
+    url = "/api/assignments/upload?id=" + REC["id"].replace("#", "%23")
+    st, _body, _h = call("POST", url, body=b"%PDF", headers={"X-Filename": "a" * 900 + ".pdf"})
+    assert st == 422 and len(seen["name"]) <= engine.MAX_FILENAME
+
+
+def test_wrong_keys_are_throttled(api):
+    call, _w, _b = api
+    for _ in range(engine.FAIL_LIMIT):
+        assert call("GET", "/api/state", token="nope")[0] == 401
+    assert call("GET", "/api/state", token="nope")[0] == 429
+    assert call("GET", "/api/state")[0] == 200          # the real key is never locked out

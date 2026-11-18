@@ -32,6 +32,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+import config
 import lms_scraper as scraper
 import settings_api
 import tracker
@@ -40,8 +41,12 @@ from config import APP_NAME, APP_VERSION, DATA_DIR, LOG_PATH, lectures_dir, load
 from deadlines import classify, deadline_of, is_open_pending
 from jobs import collectors_for, process_sync
 
-log = logging.getLogger("engine")
+log = logging.getLogger("bahria.engine")          # under "bahria" so it lands in the app log the Activity page reads
 
+MAX_BODY = 1024 * 1024                  # every request except an upload is small JSON
+MAX_FILENAME = 200
+REQUEST_TIMEOUT = 60                   # seconds a client may stall on the socket before it is dropped
+FAIL_LIMIT, FAIL_WINDOW = 20, 60.0     # wrong keys allowed per window before the engine answers 429
 MAX_UPLOAD = 16 * 1024 * 1024          # the portal's limit is 15 MB; a little room for the check to say so itself
 DEV_PORT, DEV_TOKEN = 8765, "dev"
 DEV_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
@@ -236,6 +241,7 @@ def job_sync():
 class Handler(BaseHTTPRequestHandler):
     server_version = "AssignmentMonitorEngine"
     protocol_version = "HTTP/1.1"
+    timeout = REQUEST_TIMEOUT
 
     def log_message(self, fmt, *args):          # the app log is enough; no per-request noise on the console
         log.debug("%s " + fmt, self.address_string(), *args)
@@ -252,6 +258,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
         origin = self._origin_ok()
         if origin:
             self.send_header("Access-Control-Allow-Origin", origin)
@@ -266,7 +275,12 @@ class Handler(BaseHTTPRequestHandler):
             return False
         supplied = (self.headers.get("Authorization") or "")
         if not secrets.compare_digest(supplied.encode(), f"Bearer {self.server.token}".encode()):
-            self._send(401, {"error": "unauthorized"})
+            if self.server.throttled():                # something is guessing: slow it down; the real key is never locked out
+                time.sleep(1.0)
+                self._send(429, {"error": "too many wrong keys"})
+            else:
+                self.server.note_failure()
+                self._send(401, {"error": "unauthorized"})
             return False
         return True
 
@@ -309,9 +323,17 @@ class Handler(BaseHTTPRequestHandler):
             return
         url = urlparse(self.path)
         qs = parse_qs(url.query)
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_UPLOAD:
-            return self._send(413, {"error": "That file is over the portal's 15 MB limit."})
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if length < 0:
+            self.close_connection = True
+            return self._send(400, {"error": "bad length"})
+        uploading = url.path == "/api/assignments/upload"
+        if length > (MAX_UPLOAD if uploading else MAX_BODY):
+            self.close_connection = True              # the unread body is never consumed
+            return self._send(413, {"error": "That file is over the portal's 15 MB limit." if uploading else "Request too large."})
         body = self.rfile.read(length) if length else b""
 
         entry = settings_api.POST.get(url.path)
@@ -360,7 +382,7 @@ class Handler(BaseHTTPRequestHandler):
             a = self._record(qs)
             if not a:
                 return self._send(404, {"error": "no such assignment"})
-            name = os.path.basename(self.headers.get("X-Filename") or "upload.pdf")
+            name = os.path.basename((self.headers.get("X-Filename") or "upload.pdf")[:MAX_FILENAME])
             reason = scraper.check_submission_file_bytes(name, len(body))
             if reason:
                 return self._send(422, {"error": reason})
@@ -387,6 +409,19 @@ class Engine(ThreadingHTTPServer):
         super().__init__(("127.0.0.1", port), Handler)
         self.token = token
         self.allowed_origins = tuple(allowed_origins)
+        self._failures: list[float] = []
+        self._fail_lock = threading.Lock()
+
+    def note_failure(self) -> None:
+        with self._fail_lock:
+            self._failures.append(time.monotonic())
+
+    def throttled(self) -> bool:
+        """True while too many wrong keys arrived in the last minute (something is guessing at the engine)."""
+        cutoff = time.monotonic() - FAIL_WINDOW
+        with self._fail_lock:
+            self._failures = [t for t in self._failures if t > cutoff]
+            return len(self._failures) >= FAIL_LIMIT
 
 
 _ORIGIN = re.compile(r"^[a-z][a-z0-9+.\-]*://[^\s/*]+$")
@@ -417,7 +452,7 @@ def _watch_stdin(eng: "Engine") -> None:
 
 def main(argv=None):
     args = parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    config.setup_logging(to_console=args.dev)
     origins = tuple(args.origin)
     if args.dev:
         eng = Engine(DEV_PORT, DEV_TOKEN, DEV_ORIGINS + origins)

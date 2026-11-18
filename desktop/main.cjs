@@ -140,6 +140,12 @@ function createWindow() {
     if (choice === 1) e.preventDefault()          // preventing the prevention lets the window close
   })
 
+  // the page process died (crash, out of memory): load the interface again instead of leaving a blank window
+  wc.on('render-process-gone', (_e, details) => {
+    if (details.reason === 'clean-exit' || quitting || SMOKE) return
+    setTimeout(() => { if (win && !win.isDestroyed()) void win.loadURL(DEV ? DEV_URL : `${APP_ORIGIN}/`) }, 500)
+  })
+
   win.on('close', e => {
     saveState()
     if (!quitting && closeToTray && tray) { e.preventDefault(); win.hide() }
@@ -210,12 +216,24 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(DEV ? Menu.buildFromTemplate([{ label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { role: 'quit' }] }]) : null)
     session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === 'clipboard-sanitized-write'))
+    session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'clipboard-sanitized-write')
     if (!DEV) registerAppProtocol()
     try { await ensureEngine() } catch (e) { if (SMOKE) { process.stdout.write(`SMOKE_RESULT ${JSON.stringify({ ok: false, error: e.message, stderr: e.stderr })}\n`); app.exit(1) } return }
     createWindow()
     if (SMOKE) return void smoke()
     createTray()
     pollSettings()
+  })
+
+  // every web contents, present or future: no <webview>, no popups, no navigation away from the app's own origin
+  app.on('web-contents-created', (_e, contents) => {
+    contents.on('will-attach-webview', e => e.preventDefault())
+    contents.setWindowOpenHandler(({ url }) => { if (isSafeExternalUrl(url)) void shell.openExternal(url); return { action: 'deny' } })
+    contents.on('will-navigate', (e, url) => {
+      let same = false
+      try { same = new URL(url).origin === pageOrigin() } catch { /* not a URL */ }
+      if (!same) e.preventDefault()
+    })
   })
 
   app.on('before-quit', () => { quitting = true })
