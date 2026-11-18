@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2 - 2026-11-18
+
+- Fixed: checks failing with "Timeout 45000ms exceeded ... waiting for locator("#courseId")" ("Checks are failing"). The LMS now re-issues the course list with fresh one-time values every time a course is opened, so the values read at the start were stale by the second course and the check waited out its timeout. The app now picks each course by name from the list as it is at that moment, for assignments, lecture notes, announcements and the downloads. Nothing changes in what is shown; if your checks were failing since the LMS update, the next one succeeds.
+
 ## 1.6.1 - 2026-10-25
 
 - Settings are saved as changes on top of what is on disk, not as a whole snapshot: a window left open for hours (or a second copy of the app) saving its size no longer puts its stale copy of the GitHub sign-in or the phone pairing back over a newer one.

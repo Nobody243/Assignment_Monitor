@@ -242,9 +242,28 @@ class PortalSession:
                 courses.append((val, text))
         return courses
 
-    def select_course(self, value: str):
-        self.page.select_option("#courseId", value=value)
-        _settle(self.page, 15000, 1.5)
+    def select_course(self, name: str):
+        """Selects a course by its name. The option values are one-time tokens the portal re-issues every time the
+        course list reloads (each selection rebuilds the dropdown), so a value read earlier is stale by the next
+        course; the value is read from the page as it is now."""
+        page = self.page
+        last = None
+        for _attempt in range(3):
+            value = None
+            for val, text in self.lms_courses():
+                if text == name:
+                    value = val
+                    break
+            if value is None:
+                raise RuntimeError(f"Course not found in the course list: {name}")
+            try:
+                page.select_option("#courseId", value=value, timeout=15000)
+                _settle(page, 15000, 1.5)
+                return
+            except Exception as e:  # the list reloaded between reading and selecting: read it again
+                last = e
+                _settle(page, 8000, 1.0)
+        raise last
 
 
 # ---------------------------------------------------------------------------- collectors
@@ -265,9 +284,9 @@ def _collect_assignments(s: PortalSession, meta: dict) -> List[dict]:
     meta["courses"] = [c[1] for c in courses]
     log.info("Found %d enrolled courses for %s.", len(courses), meta["semester"] or "the current semester")
     items: List[dict] = []
-    for course_val, course_name in courses:
+    for _val, course_name in courses:
         log.info("Reading assignments: %s", course_name)
-        s.select_course(course_val)
+        s.select_course(course_name)
         items.extend(_parse_course_table(_html(page), course_name))
     log.info("Collected %d assignments across %d courses.", len(items), len(courses))
     return items
@@ -334,14 +353,14 @@ def _collect_lectures(s: PortalSession) -> List[dict]:
     """Lecture notes and the Miscellaneous files of every course, in one list (misc records carry kind='misc')."""
     page = s.lms(LECTURES_URL)
     out: List[dict] = []
-    for course_val, course_name in s.lms_courses():
-        s.select_course(course_val)
+    for _val, course_name in s.lms_courses():
+        s.select_course(course_name)
         out.extend(parse_lectures(_html(page), course_name))
     log.info("Lecture notes: %d weeks across all courses.", len(out))
     page = s.lms(MISC_URL)
     n = 0
-    for course_val, course_name in s.lms_courses():
-        s.select_course(course_val)
+    for _val, course_name in s.lms_courses():
+        s.select_course(course_name)
         items = parse_misc(_html(page), course_name)
         n += len(items)
         out.extend(items)
@@ -359,8 +378,8 @@ def _collect_timetable(s: PortalSession) -> dict:
 def _collect_announcements(s: PortalSession) -> List[dict]:
     page = s.lms(ANNOUNCEMENTS_URL)
     out: List[dict] = []
-    for course_val, course_name in s.lms_courses():
-        s.select_course(course_val)
+    for _val, course_name in s.lms_courses():
+        s.select_course(course_name)
         out.extend(parse_announcements(_html(page), course_name))
     log.info("Announcements: %d across all courses.", len(out))
     return out
@@ -538,18 +557,17 @@ def download_assignment_files(selection: List[tuple], dest_dir, progress: Option
                 session = PortalSession(page, enrollment, password, institute_id)
                 session.sign_in()
                 session.lms(ASSIGNMENTS_URL)
-                courses = dict((name, val) for val, name in session.lms_courses())
+                courses = set(name for _val, name in session.lms_courses())
                 done = 0
                 for course, items in by_course.items():
                     if stop():
                         break
-                    val = courses.get(course)
-                    if not val:
+                    if course not in courses:
                         for a, kind in items:
                             result["failed"].append((f"{a['title'][:40]} ({FILE_KIND_LABELS[kind]})", "course is no longer on the LMS"))
                         done += len(items)
                         continue
-                    session.select_course(val)
+                    session.select_course(course)
                     fresh = {x["id"]: x for x in _parse_course_table(_html(page), course)}
                     for a, kind in items:
                         if stop():
@@ -610,7 +628,7 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                 session = PortalSession(page, enrollment, password, institute_id)
                 session.sign_in()
                 session.lms(LECTURES_URL)
-                courses = dict((name, val) for val, name in session.lms_courses())
+                courses = set(name for _val, name in session.lms_courses())
                 done = 0
                 current_kind = "lecture"
                 for (course, kind), items in wanted.items():
@@ -619,13 +637,12 @@ def download_lectures(selection: List[dict], dest_dir, progress: Optional[Callab
                     if kind != current_kind:
                         session.lms(MISC_URL if kind == "misc" else LECTURES_URL)
                         current_kind = kind
-                    val = courses.get(course)
-                    if not val:
+                    if course not in courses:
                         for _lec, f in items:
                             result["failed"].append((f["filename"], "course is no longer on the LMS"))
                         done += len(items)
                         continue
-                    session.select_course(val)
+                    session.select_course(course)
                     live_items = parse_misc(_html(page), course) if kind == "misc" else parse_lectures(_html(page), course)
                     for lec, f in items:
                         if stop():
