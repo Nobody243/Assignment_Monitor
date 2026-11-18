@@ -1,0 +1,48 @@
+name: Desktop app build
+
+# Builds the new desktop app (interface + engine + shell) into the same installer and portable zip the release uses,
+# with a SHA-256 file for the in-app updater. Manual or on the new-ui branch; the numbered release still comes from build.yml.
+on:
+  push:
+    branches: ["new-ui"]
+    paths: ["ui/**", "desktop/**", "engine.py", "settings_api.py", "cli.py", "build_desktop.py", "build_engine.py", "installer.iss", ".github/workflows/desktop-build.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest   # ships with Inno Setup 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install -r requirements-dev.txt
+      - name: Build interface, engine, shell, zip and installer
+        run: python build_desktop.py
+      - name: The packaged app starts and serves fictional data
+        shell: bash
+        run: |
+          python tools/seed_demo_data.py "$RUNNER_TEMP/home"
+          ASSIGNMENT_MONITOR_HOME="$RUNNER_TEMP/home" dist/shell/AssignmentMonitor/AssignmentMonitor.exe --smoke | tee smoke.txt
+          grep -q '"ok":true' smoke.txt
+          ASSIGNMENT_MONITOR_HOME="$RUNNER_TEMP/home" dist/shell/AssignmentMonitor/AssignmentMonitor.exe --status | head -3
+      - name: Installer checksum matches
+        shell: bash
+        run: |
+          cd dist
+          sha256sum -c AssignmentMonitor-Setup.exe.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AssignmentMonitor-desktop-${{ github.sha }}
+          path: |
+            dist/AssignmentMonitor-Setup.exe
+            dist/AssignmentMonitor-Setup.exe.sha256
+            dist/AssignmentMonitor-portable.zip
