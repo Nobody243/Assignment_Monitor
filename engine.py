@@ -32,6 +32,7 @@ from urllib.parse import parse_qs, urlparse
 
 import lms_scraper as scraper
 import tracker
+from campus import attendance_margin
 from config import APP_NAME, APP_VERSION, load_env, load_meta
 from deadlines import classify, deadline_of, is_open_pending
 from jobs import collectors_for, process_sync
@@ -56,16 +57,42 @@ def assignment_view(a: dict, now: datetime) -> dict:
     return out
 
 
+def attendance_view(minimum: int) -> dict:
+    """Per course: percent, whether it is at or above the minimum, hours that can still be missed or must be attended.
+    Plus the overall percent across all courses."""
+    courses, present, total = [], 0.0, 0.0
+    for code, c in tracker.load_attendance().items():
+        p, a = float(c.get("present") or 0), float(c.get("absent") or 0)
+        m = attendance_margin(p, p + a, minimum)
+        present, total = present + p, total + p + a
+        courses.append({"code": code, "title": c.get("title", ""), "credit_hours": c.get("credit_hours", ""),
+                        "present": p, "absent": a, "recorded": (p + a) > 0, **m})
+    overall = round(100 * present / total, 1) if total else None
+    return {"minimum": minimum, "overall": overall, "courses": courses}
+
+
+def standing(results: dict | None) -> dict | None:
+    """The latest finished semester's GPA and the running CGPA, from the Results page data."""
+    done = [s for s in (results or {}).get("semesters", []) if s.get("complete") and s.get("cgpa") is not None]
+    if not done:
+        return None
+    last = done[-1]
+    return {"semester": last.get("name"), "gpa": last.get("gpa"), "cgpa": last.get("cgpa"), "semesters": len(done)}
+
+
 def build_state() -> dict:
     now = datetime.now()
     data = tracker.load_stored_assignments()
+    minimum = int(load_env().get("ATTENDANCE_MIN", 75))
     return {
         "app": APP_NAME, "version": APP_VERSION, "now": now.isoformat(),
         "meta": load_meta(),
         "assignments": [assignment_view(a, now) for a in data.values()],
-        "attendance": tracker.load_attendance(),
-        "exams": tracker.load_exams(),
+        "attendance": attendance_view(minimum),
+        "exams": [e for e in tracker.load_exams() if e.get("date")],
         "announcements": tracker.load_announcements(),
+        "timetable": tracker.load_timetable(),
+        "standing": standing(tracker.load_results()),
     }
 
 

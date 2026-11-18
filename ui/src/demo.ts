@@ -38,4 +38,22 @@ export const DEMO: State = {
     make(7, 'Human Computer Interaction', 'Paper prototype', -24 * 9, true, 'Deadline Exceeded'),
     make(8, 'Software Engineering', 'Requirements document', 24 * 20),
   ],
+  attendance: {
+    minimum: 75, overall: 82.5,
+    courses: [
+      { code: 'HCI 301', title: 'Human Computer Interaction', present: 22, absent: 3, recorded: true, percent: 88, ok: true, can_miss: 4, need: 0 },
+      { code: 'DB 310', title: 'Database Systems', present: 14, absent: 6, recorded: true, percent: 70, ok: false, can_miss: 0, need: 4 },
+      { code: 'OS 320', title: 'Operating Systems', present: 20, absent: 5, recorded: true, percent: 80, ok: true, can_miss: 1, need: 0 },
+    ],
+  },
+  timetable: {
+    semester: 'Fall-2026',
+    sessions: [
+      { day: 'Mon', start: '09:00', end: '10:30', course: 'Database Systems', abbr: 'DB', teacher: 'Sample Teacher', initials: 'ST' },
+      { day: 'Tue', start: '11:00', end: '12:30', course: 'Operating Systems', abbr: 'OS', teacher: 'Sample Teacher', initials: 'ST' },
+      { day: 'Wed', start: '09:00', end: '10:30', course: 'Human Computer Interaction', abbr: 'HCI', teacher: 'Sample Teacher', initials: 'ST' },
+      { day: 'Thu', start: '14:00', end: '15:30', course: 'Software Engineering', abbr: 'SE', teacher: 'Sample Teacher', initials: 'ST' },
+    ],
+  },
+  standing: { semester: 'Spring-2026', gpa: 3.4, cgpa: 3.3, semesters: 4 },
 }

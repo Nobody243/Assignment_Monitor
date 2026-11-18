@@ -22,7 +22,7 @@ PAST = dict(REC, id="SQA#1#Old", assign_no="1", title="Old one", action="Deadlin
 @pytest.fixture()
 def api(monkeypatch, tmp_path):
     monkeypatch.setattr(tracker, "DB_PATH", tmp_path / "a.json")
-    for name in ("ATTENDANCE_PATH", "EXAMS_PATH", "ANNOUNCEMENTS_PATH"):
+    for name in ("ATTENDANCE_PATH", "EXAMS_PATH", "ANNOUNCEMENTS_PATH", "TIMETABLE_PATH", "RESULTS_PATH"):
         monkeypatch.setattr(tracker, name, tmp_path / f"{name}.json")
     tracker.save_assignments({REC["id"]: dict(REC), PAST["id"]: dict(PAST)})
     monkeypatch.setattr(engine, "JOBS", engine.Jobs())
@@ -88,6 +88,23 @@ def test_state_has_urgency_and_allowed_actions(api):
     assert by[REC["id"]]["can_upload"] is True and by[REC["id"]]["can_replace"] is False
     assert by[PAST["id"]]["can_upload"] is False and by[PAST["id"]]["urgency"] == "missed"
     assert by[REC["id"]]["due_at"].startswith("2026-11-21")
+    assert body["attendance"]["courses"] == [] and body["attendance"]["overall"] is None and body["standing"] is None
+
+
+def test_attendance_and_standing_are_derived_from_stored_data(api, monkeypatch):
+    call, _w, _b = api
+    tracker._save_json(tracker.ATTENDANCE_PATH, {"X 1": {"title": "Course X", "credit_hours": "3", "present": 15.0, "absent": 5.0},
+                                                 "Y 2": {"title": "Course Y", "credit_hours": "1", "present": 9.0, "absent": 1.0}})
+    tracker._save_json(tracker.RESULTS_PATH, {"semesters": [{"name": "Fall-2025", "gpa": 3.0, "cgpa": 3.0, "complete": True},
+                                                          {"name": "Spring-2026", "gpa": 3.5, "cgpa": 3.25, "complete": True},
+                                                          {"name": "Fall-2026", "gpa": None, "cgpa": None, "complete": False}]})
+    _st, body, _h = call("GET", "/api/state")
+    att = body["attendance"]
+    assert att["overall"] == 80.0 and att["minimum"] == 75
+    by = {c["code"]: c for c in att["courses"]}
+    assert by["X 1"]["percent"] == 75.0 and by["X 1"]["ok"] is True and by["Y 2"]["percent"] == 90.0
+    assert by["X 1"]["recorded"] is True
+    assert body["standing"] == {"semester": "Spring-2026", "gpa": 3.5, "cgpa": 3.25, "semesters": 2}
 
 
 def test_upload_is_checked_before_it_becomes_a_job(api):

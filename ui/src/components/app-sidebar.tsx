@@ -1,4 +1,4 @@
-import { Award, BookOpen, CalendarCheck, ChevronsUpDown, CircleCheckBig, GraduationCap, ListChecks, Moon, Settings, Sun } from 'lucide-react'
+import { Award, BookOpen, CalendarCheck, ChevronsUpDown, CircleCheckBig, GraduationCap, House, ListChecks, Moon, Settings, Sun } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -9,6 +9,7 @@ import {
 import { initials } from '@/format'
 
 const NAV = [
+  { key: 'home', label: 'Home', icon: House },
   { key: 'assignments', label: 'Assignments', icon: ListChecks },
   { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { key: 'exams', label: 'Exams', icon: GraduationCap },
@@ -16,8 +17,9 @@ const NAV = [
   { key: 'results', label: 'Results', icon: Award },
 ]
 
-export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme }: {
+export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme, page, onNavigate }: {
   name?: string; semester?: string; dueSoon: number; dark: boolean; onToggleTheme: () => void
+  page: 'home' | 'assignments'; onNavigate: (p: 'home' | 'assignments') => void
 }) {
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -43,15 +45,16 @@ export function AppSidebar({ name, semester, dueSoon, dark, onToggleTheme }: {
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV.map(n => {
-                const live = n.key === 'assignments'
+                const live = n.key === 'home' || n.key === 'assignments'
                 return (
                   <SidebarMenuItem key={n.key}>
-                    <SidebarMenuButton tooltip={n.label} isActive={live} disabled={!live} className={live ? '' : 'opacity-50'}>
+                    <SidebarMenuButton tooltip={n.label} isActive={n.key === page} disabled={!live} className={live ? '' : 'opacity-50'}
+                      onClick={() => live && onNavigate(n.key as 'home' | 'assignments')}>
                       <n.icon />
                       <span>{n.label}</span>
                     </SidebarMenuButton>
                     {live
-                      ? dueSoon > 0 && <SidebarMenuBadge>{dueSoon}</SidebarMenuBadge>
+                      ? n.key === 'assignments' && dueSoon > 0 && <SidebarMenuBadge>{dueSoon}</SidebarMenuBadge>
                       : <SidebarMenuBadge><Badge variant="outline" className="h-4 px-1.5 text-[10px] font-normal">Soon</Badge></SidebarMenuBadge>}
                   </SidebarMenuItem>
                 )

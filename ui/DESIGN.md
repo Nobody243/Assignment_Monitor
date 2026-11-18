@@ -62,7 +62,7 @@ A generic LMS kit (CC BY 4.0). Its Assignments page is a plain table: title, cou
 - **Skip:** pagination (we have dozens of rows, not thousands); small low-contrast text; an orange accent that reads as
   status. Ideas only, no assets copied.
 
-## Merged direction (proposal, not built)
+## Merged direction (prototype built: Home page, 2026-11-18)
 Campus gives the **home layout and the calm light theme**; Helio gives the **dark theme and "Needs attention"**; Ronas gives the
 **lime action colour and big radii** (used for buttons and the Up next tile only). Course colour appears as a small dot or progress bar,
 never as a full card and never as status.
