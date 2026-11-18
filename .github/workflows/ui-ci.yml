@@ -1,0 +1,75 @@
+name: New interface checks
+
+on:
+  push:
+    branches: ["main", "new-ui"]
+    paths: ["ui/**", "desktop/**", "engine.py", "settings_api.py", "tools/**", ".github/workflows/ui-ci.yml"]
+  pull_request:
+    paths: ["ui/**", "desktop/**", "engine.py", "settings_api.py", "tools/**", ".github/workflows/ui-ci.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  interface:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: "ui/package-lock.json" }
+      - name: Install
+        working-directory: ui
+        run: npm ci
+      - name: Types
+        working-directory: ui
+        run: npx tsc -b
+      - name: Lint
+        working-directory: ui
+        run: npm run lint
+      - name: Unit tests
+        working-directory: ui
+        run: npm test
+      - name: Build
+        working-directory: ui
+        run: npm run build
+      - name: Dependency audit (runtime only)
+        working-directory: ui
+        run: npm audit --omit=dev --audit-level=high
+      - name: Registry signatures
+        working-directory: ui
+        run: npm audit signatures
+
+  shell:
+    runs-on: windows-latest
+    needs: interface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: "desktop/package-lock.json" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements-dev.txt
+      - name: Build the interface
+        working-directory: ui
+        run: npm ci && npm run build
+      - name: Install the shell
+        working-directory: desktop
+        run: npm ci
+      - name: Shell unit tests
+        working-directory: desktop
+        run: npm test
+      - name: Dependency audit and signatures
+        working-directory: desktop
+        run: npm audit --omit=dev --audit-level=high && npm audit signatures
+      - name: Real run with fictional data (headless smoke)
+        shell: bash
+        run: |
+          python tools/seed_demo_data.py "$RUNNER_TEMP/home"
+          cd desktop
+          ASSIGNMENT_MONITOR_HOME="$RUNNER_TEMP/home" npm run smoke | tee smoke.txt
+          grep -q '"ok":true' smoke.txt

@@ -22,7 +22,7 @@ export function useEngine() {
   const [running, setRunning] = useState<Running | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const runningRef = useRef<Running | null>(null)
-  runningRef.current = running
+  const mark = useCallback((r: Running | null) => { runningRef.current = r; setRunning(r) }, [])
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setConnection(c => (c === 'online' ? c : 'connecting'))
@@ -70,13 +70,13 @@ export function useEngine() {
   /** Starts an action (the caller passes the function that begins the job) and resolves with its outcome. */
   const run = useCallback(async (kind: string, begin: () => Promise<{ job: string }>, assignmentId?: string): Promise<Outcome> => {
     if (runningRef.current) return { ok: false, message: 'Another action is still running.' }
-    setRunning({ kind, assignmentId, step: 'Starting…' })
+    mark({ kind, assignmentId, step: 'Starting…' })
     try {
       const { job } = await begin()
       for (;;) {
         await new Promise(r => setTimeout(r, 600))
         const j: Job = await getJob(job)
-        setRunning({ kind, assignmentId, step: j.step })
+        mark({ kind, assignmentId, step: j.step })
         if (j.status === 'done') {
           await refresh(true)
           return j.result ?? { ok: false, message: 'No result.' }
@@ -87,9 +87,9 @@ export function useEngine() {
       if (offline) setConnection('offline')
       return { ok: false, message: offline ? 'The engine stopped answering. Check that the app is still running.' : e instanceof Error ? e.message : 'It did not work.' }
     } finally {
-      setRunning(null)
+      mark(null)
     }
-  }, [refresh])
+  }, [refresh, mark])
 
   const state = real ?? (wantDemo ? DEMO : null)
   return {

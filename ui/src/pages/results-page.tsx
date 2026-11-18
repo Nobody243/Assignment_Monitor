@@ -16,7 +16,7 @@ const f2 = (n: number | null | undefined) => (n == null ? '–' : n.toFixed(2))
 const shortName = (n: string) => n.replace(/^(Fall|Spring|Summer)-(\d{2})(\d{2})$/, (_m, t: string, _c: string, y: string) => `${t[0]}${y}`)
 
 export function ResultsPage({ results }: { results: Results }) {
-  const semesters = results?.semesters ?? []
+  const semesters = useMemo(() => results?.semesters ?? [], [results])
   const current = [...semesters].reverse().find(s => !s.complete)
   const [selName, setSel] = useState<string | null>(null)
   const sel = semesters.find(s => s.name === selName) ?? current ?? semesters[semesters.length - 1]

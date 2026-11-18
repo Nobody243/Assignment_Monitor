@@ -24,15 +24,15 @@ const hasMarks = (a: Assignment) => !!a.marks && !/not marked/i.test(a.marks)
 
 type Group = { title: string; items: Assignment[] }
 
-export function AssignmentsPage({ all, colors, tab, setTab, course, setCourse, selectedId, onSelect, onDownload, busy, demo }: {
-  all: Assignment[]; colors: Record<string, string>; tab: Filter; setTab: (t: Filter) => void; course: string; setCourse: (c: string) => void
+export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCourse, selectedId, onSelect, onDownload, busy, demo }: {
+  all: Assignment[]; now: number; colors: Record<string, string>; tab: Filter; setTab: (t: Filter) => void; course: string; setCourse: (c: string) => void
   selectedId: string | null; onSelect: (id: string | null) => void; onDownload: (a: Assignment[], kind: FileKind) => void; busy: boolean; demo: boolean
 }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<'due' | 'due-desc' | 'course'>('due')
   const courses = useMemo(() => [...new Set(all.map(a => a.course))].sort(), [all])
   const counts = { todo: all.filter(isTodo).length, overdue: all.filter(isOverdue).length, submitted: all.filter(a => a.is_submitted).length, all: all.length }
-  const week = all.filter(a => a.open && !a.is_submitted && a.due_at && new Date(a.due_at).getTime() - Date.now() < 7 * 864e5).length
+  const week = all.filter(a => a.open && !a.is_submitted && a.due_at && new Date(a.due_at).getTime() - now < 7 * 864e5).length
 
   const rows = useMemo(() => {
     const pick = ({ todo: isTodo, overdue: isOverdue, submitted: (a: Assignment) => a.is_submitted, all: () => true })[tab]

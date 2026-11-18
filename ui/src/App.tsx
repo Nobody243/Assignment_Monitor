@@ -165,7 +165,7 @@ export default function App() {
     switch (page) {
       case 'home': return <Home state={state} now={now} onOpen={setSelId} onGo={go} />
       case 'assignments':
-        return <AssignmentsPage all={all} colors={colors} tab={tab} setTab={setTab} course={course} setCourse={setCourse} selectedId={selId} onSelect={setSelId}
+        return <AssignmentsPage all={all} colors={colors} now={now} tab={tab} setTab={setTab} course={course} setCourse={setCourse} selectedId={selId} onSelect={setSelId}
           onDownload={(items, kind) => void doDownload(items, kind)} busy={busy} demo={demo} />
       case 'attendance': return <AttendancePage state={state} />
       case 'exams': return <ExamsPage state={state} now={now} />
