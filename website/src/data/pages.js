@@ -90,7 +90,7 @@ export const PAGES = {
       { h: "What it does not do", bullets: [
         "It does not send your credentials or your data to the author or to any third party.",
         "It does not access anyone else's account or data.",
-        "It does not change anything on the portal: it never submits, uploads or posts.",
+        "It changes nothing on the portal on its own: it only reads. The one exception is when you press Upload, Replace or Delete on an assignment and confirm; it never posts or submits in the background.",
         "It does not collect analytics, crash reports or usage statistics.",
       ] },
     ],

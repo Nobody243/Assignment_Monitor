@@ -21,7 +21,7 @@ const NETWORK = [
 const NOT = [
   "It does not send your credentials or your data to the author or to any third party.",
   "It does not access anyone else's account or data.",
-  "It does not change anything on the portal: it never submits, uploads, or posts.",
+  "It changes nothing on the portal on its own: it only reads. The one exception is when you press Upload, Replace or Delete on an assignment and confirm; it never posts or submits in the background.",
   "It does not collect analytics, crash reports, or usage statistics.",
 ];
 
@@ -65,7 +65,7 @@ export default function Privacy() {
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mono">What it does not do</p>
-            <h2 className="h-md">Read-only, by design.</h2>
+            <h2 className="h-md">Read-only, unless you say so.</h2>
             <ul className="plain-list ticks">{NOT.map((t) => <li key={t}><span>{t}</span></li>)}</ul>
             <p className="mono">Your side</p>
             <ul className="plain-list ticks">
