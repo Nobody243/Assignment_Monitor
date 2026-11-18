@@ -35,8 +35,22 @@ npm test                                    # unit tests for the shell's safety 
   (a second launch focuses the first), a tray icon, and "keep running in the tray when closed" follows the app's own setting.
 - **Closing mid-action:** if an upload or delete is running, the window asks before it closes.
 
+## Building the installed app
+
+```bash
+python build_desktop.py        # from the repository root: interface, engine exe, shell folder, portable zip, installer, SHA-256
+```
+
+Steps it runs: `ui` build, `python build_engine.py` (PyInstaller, `dist/engine`), `npm run package` here (`@electron/packager`, then
+the unused Electron features are switched off with fuses), then Inno Setup (`installer.iss`, same app id, name and per-user folder
+as before, so existing installs update in place and old Tk files are removed). Tasks, shortcuts and the installer's `--quit`
+keep working because the shell understands the old command line and hands background jobs (`--check`, `--remind`, ...) to the engine.
+
+The packaged app was checked with `AssignmentMonitor.exe --smoke` and `--status` on fictional data (`tools/seed_demo_data.py`).
+The installer itself is built and tested in CI (`desktop-build.yml`); it is not run on a developer machine, because it would replace
+the real shortcuts and tasks.
+
 ## Not done yet
 
-Packaging: bundling the engine with PyInstaller, producing an installer (electron-builder or Inno Setup), code signing, and
-auto-update. The shell already looks for the engine at `resources/engine/AssignmentEngine.exe` and the interface at
-`resources/ui` when packaged.
+Code signing (the SignPath hook in `build.yml` still applies once the release build switches to `build_desktop.py`), and switching
+`build.yml` from `python build.py` to `python build_desktop.py` when this branch becomes the release.
