@@ -10,7 +10,7 @@ With your permission, the app signs in to the Bahria University CMS/LMS portal u
 
 - It does not send your credentials or your data to the author or to any third party. The optional phone and email channels deliver alerts only to your own mailbox and your own phone (see below).
 - It does not access anyone else's account or data.
-- It does not change anything on the portal: it never submits, uploads, or posts.
+- It changes something on the portal only when you click Upload, Replace or Delete on an assignment and confirm it: that sends the file you chose (or removes your own submission) through the portal's own form, exactly as the buttons on the website do. It never does so on its own, in the background, or in a cloud check, and it never posts anything else.
 - It does not collect analytics, crash reports, or usage statistics.
 - The optional update check contacts GitHub (`api.github.com`) to read the latest release number; you can turn it off in Settings.
 

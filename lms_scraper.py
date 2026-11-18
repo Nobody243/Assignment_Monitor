@@ -1,4 +1,5 @@
 import base64
+from contextlib import contextmanager
 import logging
 import os
 import re
@@ -163,8 +164,8 @@ class PortalSession:
     def sign_in(self):
         page = self.page
         log.info("Opening Bahria University CMS portal...")
-        page.goto(LOGIN_URL, wait_until="networkidle")
-        time.sleep(1.5)
+        page.goto(LOGIN_URL, wait_until="load")
+        time.sleep(0.6)
         if page.locator("#BodyPH_tbEnrollment").count() > 0:
             log.info("Signing in as %s (%s)...", mask_enrollment(self.enrollment), campus_name(self.institute_id))
             page.fill("#BodyPH_tbEnrollment", self.enrollment)
@@ -180,7 +181,7 @@ class PortalSession:
                 page.wait_for_url(lambda u: "login.aspx" not in u.lower(), timeout=30000)
             except Exception:
                 pass
-            _settle(page, 15000, 1.0)
+            _settle(page, 4000, 0.2)
         if "login.aspx" in page.url.lower():
             msg = _login_error_text(page) or "the portal rejected the enrollment number, password, or campus"
             raise LoginError(f"Sign-in failed: {msg}")
@@ -204,9 +205,12 @@ class PortalSession:
         if self.in_lms:
             return
         log.info("Opening LMS via single sign-on...")
-        self.page.goto(SSO_URL, wait_until="networkidle")
+        self.page.goto(SSO_URL, wait_until="load")
         try:
-            self.page.wait_for_url(re.compile(r"lms\.bahria\.edu\.pk", re.IGNORECASE), timeout=30000)
+            # either the LMS or, with the session gone, the login page: do not sit out 30 s waiting for the former
+            self.page.wait_for_url(re.compile(r"lms\.bahria\.edu\.pk|login\.aspx", re.IGNORECASE), timeout=30000)
+            if "login.aspx" in self.page.url.lower():
+                raise RuntimeError("signed out")
         except Exception:
             if "login.aspx" in self.page.url.lower():
                 self.sign_in()
@@ -214,13 +218,15 @@ class PortalSession:
                 self.page.wait_for_url(re.compile(r"lms\.bahria\.edu\.pk", re.IGNORECASE), timeout=30000)
             else:
                 raise RuntimeError(f"LMS single sign-on failed; the portal landed on {self.page.url}") from None
-        time.sleep(1)
+        time.sleep(0.3)
         self.in_lms = True
 
-    def lms(self, url: str):
+    def lms(self, url: str, quick: bool = False):
+        """Opens an LMS page. quick=True waits only for the page to load (the caller waits for what it needs) instead
+        of for the network to go idle plus a pause."""
         self.enter_lms()
-        self.page.goto(url, wait_until="networkidle")
-        time.sleep(1)
+        self.page.goto(url, wait_until="load" if quick else "networkidle")
+        time.sleep(0.2 if quick else 1)
         if "lms.bahria.edu.pk" not in self.page.url.lower():
             self.in_lms = False
             self.enter_lms()
@@ -242,7 +248,7 @@ class PortalSession:
                 courses.append((val, text))
         return courses
 
-    def select_course(self, name: str):
+    def select_course(self, name: str, settle: bool = True):
         """Selects a course by its name. The option values are one-time tokens the portal re-issues every time the
         course list reloads (each selection rebuilds the dropdown), so a value read earlier is stale by the next
         course; the value is read from the page as it is now."""
@@ -258,7 +264,8 @@ class PortalSession:
                 raise RuntimeError(f"Course not found in the course list: {name}")
             try:
                 page.select_option("#courseId", value=value, timeout=15000)
-                _settle(page, 15000, 1.5)
+                if settle:
+                    _settle(page, 15000, 1.5)
                 return
             except Exception as e:  # the list reloaded between reading and selecting: read it again
                 last = e
@@ -590,6 +597,234 @@ def download_assignment_files(selection: List[tuple], dest_dir, progress: Option
                 context.close()
     finally:
         _release_lock()
+    return result
+
+
+# ---------------------------------------------------------------------------- submitting work
+SUBMIT_EXTENSIONS = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip")
+SUBMIT_MAX_BYTES = 15 * 1024 * 1024  # the portal's own limit
+_SUBMIT_NAME_BAD = re.compile(r"[^A-Za-z0-9 ._()\-]")
+_SUBMIT_MIME = {".pdf": "application/pdf", ".zip": "application/zip", ".doc": "application/msword",
+                ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls": "application/vnd.ms-excel",
+                ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+
+
+def submission_upload_name(path) -> str:
+    """The file name sent to the portal: the portal asks for no special symbols (#, $ ...) in it."""
+    stem, ext = os.path.splitext(os.path.basename(str(path)))
+    stem = re.sub(r"\s+", " ", _SUBMIT_NAME_BAD.sub("", stem)).strip(" .") or "submission"
+    return stem + ext.lower()
+
+
+def check_submission_file(path) -> str:
+    """'' when the file can be sent, else the reason it cannot (checked before anything is touched on the portal)."""
+    from pathlib import Path
+    f = Path(path)
+    if not f.is_file():
+        return "That file does not exist."
+    if f.suffix.lower() not in SUBMIT_EXTENSIONS:
+        return "The portal accepts only " + ", ".join(SUBMIT_EXTENSIONS) + " files."
+    size = f.stat().st_size
+    if size == 0:
+        return "That file is empty."
+    if size > SUBMIT_MAX_BYTES:
+        return f"That file is {size / 1048576:.1f} MB; the portal's limit is 15 MB."
+    return ""
+
+
+def submission_actions(action_text: str) -> tuple:
+    """(can_upload, can_replace_or_delete) from the Action cell of an assignment row, as the portal words it:
+    'Submit' offers an upload, 'Delete' offers to remove the submission, 'Deadline Exceeded' offers neither."""
+    t = (action_text or "").lower()
+    if "exceeded" in t:
+        return False, False
+    return "submit" in t, "delete" in t
+
+
+def _assignment_row(page, a: dict):
+    """The live table row of this assignment (matched by number and title), or None. One round trip to the page:
+    asking each row's cells one by one is dozens of calls on a long table."""
+    idx = page.evaluate(
+        r"""([no, title]) => {
+            const clean = t => t.replace(/\s+/g, ' ').trim();
+            const rows = [...document.querySelectorAll('table tr')];
+            return rows.findIndex(r => r.cells.length >= 8 && r.querySelector('td') &&
+                clean(r.cells[0].innerText) === no && clean(r.cells[1].innerText) === title);
+        }""", [str(a.get("assign_no", "")).strip(), a.get("title", "").strip()])
+    return page.locator("table tr").nth(idx) if idx >= 0 else None
+
+
+def _open_modal(page, anchor, modal_id: str):
+    """Opens a Bootstrap modal from its anchor. This portal ignores the headless browser's mouse clicks (the page
+    never sees a mouse-down), so the page's own jQuery is asked to show the modal, which is what the click would do;
+    a real click is the fallback if jQuery is not there."""
+    anchor.scroll_into_view_if_needed()
+    modal = page.locator(modal_id)
+    try:
+        page.evaluate("(m) => window.jQuery(m).modal('show')", modal_id)
+        modal.wait_for(state="visible", timeout=6000)
+    except Exception:
+        anchor.click()
+        modal.wait_for(state="visible", timeout=10000)
+    time.sleep(0.35)  # the fade-in
+    return modal
+
+
+class SubmitError(Exception):
+    """A reason the portal flow stopped, worded for the student."""
+
+
+@contextmanager
+def _assignment_page(a: dict, say):
+    """A signed-in browser on this assignment's course page. Raises SubmitError when the course or the assignment
+    is not on the portal. One lock, one browser, always cleaned up."""
+    env = load_env()
+    enrollment, password = env.get("ENROLLMENT", "").strip(), env.get("PASSWORD", "").strip()
+    institute_id = str(env.get("INSTITUTE_ID", "1")).strip()
+    if not enrollment or not password:
+        raise LoginError("Enrollment number and password are not configured yet.")
+    _acquire_lock()
+    try:
+        with sync_playwright() as p:
+            context = _launch_browser(p, True)
+            try:
+                page = context.pages[0] if context.pages else context.new_page()
+                page.set_default_timeout(45000)
+                session = PortalSession(page, enrollment, password, institute_id)
+                say("Signing in…")
+                session.sign_in()
+                session.lms(ASSIGNMENTS_URL, quick=True)
+                if a["course"] not in {name for _v, name in session.lms_courses()}:
+                    raise SubmitError("That course is no longer on the LMS.")
+                session.select_course(a["course"], settle=False)
+                for _ in range(60):                       # the course loads by itself; the row shows up when it has
+                    try:
+                        if _assignment_row(page, a) is not None:
+                            break
+                    except Exception:                     # the page was replaced under us: look again
+                        pass
+                    time.sleep(0.3)
+                else:
+                    raise SubmitError("The assignment was not found on the portal (it may have been removed or renamed).")
+                yield page, session
+            finally:
+                context.close()
+    finally:
+        _release_lock()
+
+
+def _post(page, element, timeout: int = 180000):
+    """Triggers a form's button (a JavaScript click, see _open_modal) and waits for the portal's answer page."""
+    with page.expect_navigation(timeout=timeout, wait_until="load"):
+        element.evaluate("b => b.click()")
+
+
+def _read_row(page, session, a: dict) -> Optional[dict]:
+    """The assignment's row as the portal shows it now. After a form post the portal answers with the same course
+    already selected, so the page is read as it is; only if the row is not there is the course selected again."""
+    fresh = {x["id"]: x for x in _parse_course_table(_html(page), a["course"])}.get(a["id"])
+    if fresh is None:
+        session.select_course(a["course"])
+        fresh = {x["id"]: x for x in _parse_course_table(_html(page), a["course"])}.get(a["id"])
+    return fresh
+
+
+def _flash(page) -> str:
+    try:
+        return " | ".join(t for t in (re.sub(r"\s+", " ", x).strip() for x in page.locator(".alert").all_inner_texts()) if t)
+    except Exception:
+        return ""
+
+
+def _delete_here(page, a: dict, say) -> None:
+    row = _assignment_row(page, a)
+    delete = row.locator('a[data-target^="#modal-delete-assignment-submission"]') if row else None
+    if not delete or not delete.count():
+        raise SubmitError("The portal does not offer to delete a submission here (none yet, or the deadline has passed).")
+    say("Removing the submission…")
+    modal = _open_modal(page, delete.first, delete.first.get_attribute("data-target"))
+    _post(page, modal.locator("a.btn[href*='assignmentSubmissionDelete']"), 60000)
+
+
+def delete_submission(a: dict, progress: Optional[Callable[[str], None]] = None) -> dict:
+    """Deletes the student's submission for assignment record `a`, if the portal still offers Delete (until the
+    deadline). Returns {"ok", "message", "deleted", "row"}; row is the assignment as the portal shows it afterwards."""
+    say = progress or (lambda msg: None)
+    result = {"ok": False, "message": "", "deleted": False, "row": None}
+    try:
+        with _assignment_page(a, say) as (page, session):
+            _delete_here(page, a, say)
+            result["deleted"] = True
+            fresh = _read_row(page, session, a)
+            result["row"] = fresh
+            if fresh and not fresh.get("is_submitted"):
+                result.update(ok=True, message="The submission was deleted.")
+            else:
+                result["message"] = "The portal did not confirm the deletion."
+    except SubmitError as e:
+        result["message"] = str(e)
+    return result
+
+
+def submit_assignment(a: dict, file_path, replace: bool = False,
+                      progress: Optional[Callable[[str], None]] = None) -> dict:
+    """
+    Uploads `file_path` as the submission for assignment record `a` through the portal's own Submit form. With
+    replace=True the existing submission is deleted first (the portal offers Delete until the deadline). Everything
+    that can be checked is checked before anything is deleted: the file, the course, the assignment and that the
+    portal offers the delete. Nothing is sent unless the portal itself offers the button: an assignment past its
+    deadline, or one extended only for those who missed it, is decided by the portal, not by the app.
+    Returns {"ok", "message", "deleted", "row"}; deleted says the old submission is gone, so a failure after it can
+    be reported plainly; row is the assignment as the portal shows it afterwards (to update the list at once).
+    """
+    say = progress or (lambda msg: None)
+    result = {"ok": False, "message": "", "deleted": False, "row": None}
+    bad = check_submission_file(file_path)
+    if bad:
+        result["message"] = bad
+        return result
+    with open(file_path, "rb") as fh:
+        body = fh.read()
+    upload_name = submission_upload_name(file_path)
+    mime = _SUBMIT_MIME.get(os.path.splitext(upload_name)[1], "application/octet-stream")
+    try:
+        with _assignment_page(a, say) as (page, session):
+            if replace:
+                _delete_here(page, a, say)
+                result["deleted"] = True
+                if _assignment_row(page, a) is None:
+                    session.select_course(a["course"])
+            row = _assignment_row(page, a)
+            add = row.locator('a[data-target^="#modal-assignment-solution"]') if row else None
+            if not add or not add.count():
+                result["message"] = ("The old submission was removed but the portal is not offering a new upload."
+                                     if result["deleted"] else
+                                     "The portal is not accepting a submission here (deadline passed or already submitted).")
+                return result
+            modal = _open_modal(page, add.first, add.first.get_attribute("data-target"))
+            shown = modal.locator("input[name='assignmentTitle']").input_value().strip()
+            if shown != a.get("title", "").strip():
+                result["message"] = "The portal's form is for a different assignment than the one chosen; nothing was sent."
+                return result
+            say("Uploading…")
+            modal.locator("input[type='file']").set_input_files({"name": upload_name, "mimeType": mime, "buffer": body})
+            try:
+                _post(page, modal.locator("button[type='submit']"))
+            except Exception as e:
+                log.warning("No answer after the upload for %s: %s", a.get("title"), str(e).splitlines()[0][:160])
+            flash = _flash(page)
+            log.info("Portal answer after upload of %s: %s", a.get("title"), flash[:200] or "(no message)")
+            fresh = _read_row(page, session, a)
+            result["row"] = fresh
+            if (fresh and fresh.get("is_submitted")) or "uploaded successfully" in flash.lower():
+                result.update(ok=True, message="Uploaded; the portal lists your submission.")
+            else:
+                said = f' (it said: "{flash[:150]}")' if flash else ""
+                result["message"] = f"The portal did not confirm the upload{said}." + (
+                    " Your old submission was removed, so please upload again." if result["deleted"] else "")
+    except SubmitError as e:
+        result["message"] = str(e)
     return result
 
 

@@ -4,6 +4,7 @@
 
 A desktop app that keeps an eye on your LMS and CMS so you don't have to: assignments, attendance, exams, announcements, lecture notes and your timetable. Install it, sign in once, and it quietly does the rest, on your PC, on your phone and in your inbox if you want.
 
+- **Upload your work from the app**: Upload, Replace and Delete on each assignment, using the portal's own Submit form, only while the portal offers it, only after you confirm, and checked against the portal afterwards
 - Dashboard: next deadline, what's pending, due today, due this week, extended, overdue, submitted
 - Catches **extended deadlines**, which the portal hides by merging the old and new dates into one string
 - **Checks automatically** every day at 7 PM (waking a sleeping laptop, on battery too) and when you sign in to Windows
@@ -81,7 +82,7 @@ They run even when the app is closed, on battery as well as mains. Turn them off
 
 - Your password is encrypted with Windows Data Protection (DPAPI) for your user account and stored in `%LOCALAPPDATA%\Assignment Monitor\settings.env`. It is only ever sent to `cms.bahria.edu.pk` when signing in. The email app password and the phone's push keys are stored the same way.
 - Assignments, attendance, the exam plan, announcements, the lecture and file lists, the timetable, logs and the browser profile stay in that same local folder. There is no server, no account, no telemetry.
-- The app only reads your own pages (LMS assignments and their files, announcements, lecture notes and Miscellaneous files; CMS attendance, exam seating and timetable); it never submits or changes anything on the portal. Each of these can be switched off in Settings. Files are downloaded only when you click Download, to a folder you choose.
+- The app only reads your own pages (LMS assignments and their files, announcements, lecture notes and Miscellaneous files; CMS attendance, exam seating and timetable); it changes something on the portal only when you click Upload, Replace or Delete on an assignment and confirm (the same submit and delete the portal's own buttons do). Each of these can be switched off in Settings. Files are downloaded only when you click Download, to a folder you choose.
 - Phone and email alerts, when enabled, go from your PC to your own mail server and to your phone's browser push service. The website only passes the phone's push address to your PC once, encrypted, during pairing; it keeps no accounts and no data.
 
 Details: [PRIVACY.md](PRIVACY.md) · [SECURITY.md](SECURITY.md) · [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)

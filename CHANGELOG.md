@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0 - 2026-11-18
+
+- Upload your work from the app. On the Assignments page a row the portal lets you submit gets **Upload**; a row with a submission gets **Replace** and **Delete**; a row past its deadline gets neither, because the portal decides (including deadlines extended only for those who missed). You choose the file, confirm what will happen, and the app fills in the portal's own Submit form, then reads the portal back to confirm. Replace checks the file, the course and the form first and only then deletes the old submission; if the upload fails after that, it tells you plainly. Files are checked before anything is touched: .pdf .doc .docx .xls .xlsx .zip, up to 15 MB; special symbols in the name are removed, as the portal asks. Manual only: never in the background and never in a cloud check.
+- While an upload or delete runs, a progress card covers the window so nothing can be clicked, and closing the app waits until it has finished.
+- Questions and results appear as small cards inside the window instead of Windows alerts here.
+- Faster: the list is updated from the portal's own answer instead of re-checking everything, and signing in and opening a course wait less.
+- Sign-in no longer sits out 30 seconds when the portal sends the single sign-on back to the login page.
+
 ## 1.6.2 - 2026-11-18
 
 - Fixed: checks failing with "Timeout 45000ms exceeded ... waiting for locator("#courseId")" ("Checks are failing"). The LMS now re-issues the course list with fresh one-time values every time a course is opened, so the values read at the start were stale by the second course and the check waited out its timeout. The app now picks each course by name from the list as it is at that moment, for assignments, lecture notes, announcements and the downloads. Nothing changes in what is shown; if your checks were failing since the LMS update, the next one succeeds.

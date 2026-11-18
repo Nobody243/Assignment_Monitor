@@ -115,3 +115,63 @@ def test_lecture_download_shows_progress_and_finishes(gui, monkeypatch):
     files = sorted(f["filename"] for x in seen["chosen"] for f in x["files"])
     assert files == ["Lab-2.pdf", "Lec-1-Cyber-Security-Concepts.pptx"]
     assert state["selected_after"] == set()               # a clean result clears the selection
+
+
+def test_in_window_dialog_opens_runs_ok_and_closes(gui):
+    """The card that replaces system alerts: it draws, its OK runs the callback, Cancel does not, and a working card
+    (no buttons) can be retitled and closed."""
+    win, _m = gui
+    hits = []
+    steps = [
+        (100, lambda: win.dialog("Upload this file?", "a.pdf", ok="Upload", cancel="Cancel", on_ok=lambda: hits.append("ok"))),
+        (100, lambda: win._dialog_key(0)),
+        (100, lambda: win.dialog("Delete?", "x", ok="Delete", cancel="Cancel", tone="red", on_ok=lambda: hits.append("bad"))),
+        (100, lambda: win._dialog_key(1)),
+        (100, lambda: win.dialog("Working", "…")),
+        (100, lambda: win.dialog_text("Uploading…")),
+        (100, win.close_dialog),
+    ]
+    errors = run_steps(win, steps)
+    assert not errors, errors
+    assert hits == ["ok"]
+    assert getattr(win, "_dialog", None) is None
+
+
+def test_busy_card_covers_the_window_and_a_quit_waits_for_it(gui):
+    """While an upload or delete runs, a full-window cover with a progress bar blocks the page, and a quit request
+    (window close, tray, --quit) is deferred until the work is done instead of cutting it in half."""
+    win, _m = gui
+    seen = {}
+
+    def start():
+        win.portal_busy = True
+        win._busy_line = "Working"
+        win.dialog("Uploading…", "x", ok=None)
+
+    def covered():
+        seen["scrim"] = getattr(win, "_scrim", None) is not None
+        seen["bar"] = getattr(win, "_dialog_bar", None) is not None
+
+    def try_quit():
+        win.quit_app()
+        seen["deferred"] = bool(getattr(win, "_quit_after_busy", False)) and bool(win.winfo_exists())
+
+    def finish():
+        win.portal_busy = False
+        win._quit_after_busy = False
+        win.close_dialog()
+        seen["closed"] = getattr(win, "_scrim", None) is None
+
+    errors = run_steps(win, [(100, start), (150, covered), (100, try_quit), (100, finish)])
+    assert not errors, errors
+    assert seen == {"scrim": True, "bar": True, "deferred": True, "closed": True}
+
+
+def test_a_sync_request_is_ignored_while_an_upload_runs(gui):
+    win, _m = gui
+    win.portal_busy = True
+    try:
+        win.start_sync()
+        assert not win.syncing
+    finally:
+        win.portal_busy = False

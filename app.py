@@ -178,9 +178,11 @@ import updater                                                                  
 from tray import TrayIcon                                                                   # noqa: E402
 from results import GRADES, apply_overrides, gpa_of, grade_needed, project, required_gpa, totals, uniform_scenarios
 from tracker import load_results
-from tracker import (load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
+from tracker import (update_assignment_row, load_stored_assignments, clear_stored_assignments, load_attendance,    # noqa: E402
                      load_exams, load_announcements, load_lectures, load_timetable)
-from lms_scraper import run_sync, download_lectures, download_assignment_files, FILE_KIND_LABELS, LoginError, _release_lock              # noqa: E402
+from lms_scraper import (run_sync, download_lectures, download_assignment_files, FILE_KIND_LABELS, LoginError,  # noqa: E402
+                         _release_lock, submit_assignment, delete_submission, check_submission_file, submission_upload_name,
+                         SUBMIT_EXTENSIONS, submission_actions)
 from notifier import send_toast, speak_voice, list_voices                                   # noqa: E402
 from deadlines import classify, is_open_pending, sort_key, deadline_of                     # noqa: E402
 from campus import upcoming_exams, seat_text, session_date, sessions_on, minutes            # noqa: E402
@@ -1440,16 +1442,121 @@ class AssignmentsView(ctk.CTkFrame):
         # a button per file the portal actually links for this row (brief, your submission, returned work, solution);
         # nothing is shown for a kind the row does not have
         files = {k: v for k, v in (a.get("files") or {}).items() if isinstance(v, dict) and v.get("href")}
-        if files:
+        # the portal decides who may submit: Upload only where its row offers Submit, Replace only where it offers Delete
+        can_add, can_replace = submission_actions(a.get("action"))
+        if files or can_add or can_replace:
             fb = ctk.CTkFrame(row, fg_color="transparent")
             fb.grid(row=0, column=2, sticky="e", padx=(12, 0))
             for kind in ("brief", "submission", "returned", "solution"):
                 if kind in files:
                     soft_button(fb, FILE_KIND_LABELS[kind], lambda a=a, k=kind: self._download([(a, k)]),
                                 width=max(64, 8 * len(FILE_KIND_LABELS[kind]) + 20)).pack(side="left", padx=(6, 0))
-        pill(row, info["label"], info["key"]).grid(row=1 if files else 0, column=2, rowspan=1 if files else 2, sticky="e", padx=(12, 0),
+            if can_add:
+                soft_button(fb, "Upload", lambda a=a: self._upload(a, False), width=72).pack(side="left", padx=(6, 0))
+            if can_replace:
+                soft_button(fb, "Replace", lambda a=a: self._upload(a, True), width=80).pack(side="left", padx=(6, 0))
+                soft_button(fb, "Delete", lambda a=a: self._delete(a), width=70).pack(side="left", padx=(6, 0))
+        pill(row, info["label"], info["key"]).grid(row=1 if (files or can_add or can_replace) else 0, column=2,
+                                                   rowspan=1 if (files or can_add or can_replace) else 2, sticky="e", padx=(12, 0),
                                                    pady=(4, 0) if files else 0)
         hover_lift(row, fg=C["surface2"], border=C["surface2"])
+
+    # -- submitting your own work (the portal's own Submit form, driven for you; nothing is sent without a confirmation)
+    def _can_act(self):
+        if self.dl_busy or self.app.syncing or getattr(self.app, "portal_busy", False):
+            self.app.dialog("Please wait", "A check or a download is still running. Try again when it has finished.")
+            return False
+        return True
+
+    def _upload(self, a, replace):
+        if not self._can_act():
+            return
+        ext = " ".join("*" + e for e in SUBMIT_EXTENSIONS)
+        path = filedialog.askopenfilename(
+            title=f"Choose your file for {a.get('title', '')}",
+            filetypes=[("Files the portal accepts", ext), ("All files", "*.*")])
+        if not path:
+            return
+        bad = check_submission_file(path)
+        if bad:
+            self.app.dialog("This file cannot be sent", bad, tone="red")
+            return
+        sent = submission_upload_name(path)
+        size = os.path.getsize(path) / 1048576
+        lines = [f"{os.path.basename(path)}  ({size:.1f} MB)", f"{a.get('title', '')}  ·  {a.get('course', '')}",
+                 f"Due {fmt_due(a)}", ""]
+        if sent != os.path.basename(path):
+            lines += [f"Special symbols are not accepted by the portal, so it is sent as {sent}.", ""]
+        if replace:
+            lines += ["Your current submission is deleted first, then this file is uploaded. You can do it again until the "
+                      "deadline.", ""]
+        lines.append("You are graded on what you upload.")
+        self.app.dialog("Replace your submission?" if replace else "Upload this file?", "\n".join(lines),
+                        ok="Replace and upload" if replace else "Upload", cancel="Cancel",
+                        on_ok=lambda: self._run_portal(
+                            a, "Replacing…" if replace else "Uploading…",
+                            lambda prog: submit_assignment(a, path, replace=replace, progress=prog)))
+
+    def _delete(self, a):
+        if not self._can_act():
+            return
+        self.app.dialog("Delete your submission?",
+                        f"{a.get('title', '')}  ·  {a.get('course', '')}\nDue {fmt_due(a)}\n\n"
+                        "Your uploaded file is removed from the portal. You can upload again until the deadline.",
+                        ok="Delete", cancel="Cancel", tone="red",
+                        on_ok=lambda: self._run_portal(a, "Deleting…", lambda prog: delete_submission(a, progress=prog)))
+
+    def _run_portal(self, a, busy_text, job):
+        """Runs an upload or a delete in the background behind a small 'working' card, then shows the outcome."""
+        self.dl_busy = True
+        self.app.portal_busy = True
+        title = a.get("title", "")
+        keep = "\n\nPlease keep the app open until this finishes."
+        self.app._busy_line = f"{title}\n\nSigning in…"
+        self.app.dialog(busy_text, self.app._busy_line + keep, ok=None)
+
+        def prog(msg):
+            def show():
+                self.app._busy_line = f"{title}\n\n{msg}"
+                self.app.dialog_text(self.app._busy_line + keep)
+            try:
+                self.after(0, show)
+            except RuntimeError:
+                pass
+
+        def work():
+            try:
+                res = job(prog)
+            except LoginError as e:
+                res = {"ok": False, "message": str(e), "deleted": False, "row": None}
+            except Exception as e:
+                log.error("Portal action failed: %s", e)
+                first = str(e).splitlines()[0][:200] if str(e) else "It did not work."
+                res = {"ok": False, "message": first, "deleted": False, "row": None}
+            try:
+                self.after(0, self._portal_done, a, res)
+            except RuntimeError:
+                pass
+        threading.Thread(target=work, daemon=True).start()
+
+    def _portal_done(self, a, res):
+        self.dl_busy = False
+        self.app.portal_busy = False
+        title = a.get("title", "")
+        if res.get("row"):
+            update_assignment_row(a["id"], res["row"])
+            self.app.reload_data()
+        if res["ok"]:
+            self.app.set_status(f"{title}: {res['message']}")
+            self.app.dialog(res["message"], title, tone="green")
+        else:
+            self.app.set_status(f"{title}: not done")
+            note = ("\n\nYour previous submission is already deleted. Upload again before the deadline."
+                    if res.get("deleted") else "")
+            self.app.dialog("That did not go through", f"{title}\n\n{res['message']}{note}", tone="red")
+        if getattr(self.app, "_quit_after_busy", False):
+            self.app._quit_after_busy = False
+            self.after(1500, self.app.quit_app)
 
     # -- files: the brief, your submission, returned work, a posted solution
     def _download_briefs(self):
@@ -4004,6 +4111,85 @@ class App(ctk.CTk):
         if self.current and self.current in self.views and hasattr(self.views[self.current], "refresh"):
             self.views[self.current].refresh()
 
+    # ---- a small in-window card instead of a system alert
+    def dialog(self, title, text="", ok="OK", cancel=None, on_ok=None, tone="accent"):
+        """Shows a card over the window. ok=None gives a 'working' card: no buttons, a moving progress bar, and a
+        cover over the whole window so nothing behind it can be clicked (dialog_text() updates the line).
+        on_ok runs after OK; Escape or Cancel closes without it."""
+        self.close_dialog()
+        if not ok:
+            scrim = ctk.CTkFrame(self, fg_color=C["bg"], corner_radius=0)
+            scrim.place(relx=0, rely=0, relwidth=1, relheight=1)
+            scrim.lift()
+            self._scrim = scrim
+        card = ctk.CTkFrame(self, fg_color=C["surface"], corner_radius=14, border_width=1, border_color=C["line2"], width=440)
+        card.pack_propagate(True)
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=26, pady=22)
+        ctk.CTkFrame(inner, fg_color=C[tone] if tone in C else C["accent"], height=3, width=36, corner_radius=2).pack(anchor="w")
+        ctk.CTkLabel(inner, text=title, font=F(LG, "semibold", display=True), text_color=C["ink"], anchor="w",
+                     wraplength=380, justify="left").pack(fill="x", pady=(12, 6))
+        body = ctk.CTkLabel(inner, text=text, font=F(SM), text_color=C["muted"], anchor="w", wraplength=380, justify="left")
+        body.pack(fill="x")
+        self._dialog, self._dialog_body = card, body
+        if not ok:
+            bar = ctk.CTkProgressBar(inner, mode="indeterminate", height=6, corner_radius=3,
+                                     progress_color=C["accent"], fg_color=C["surface2"])
+            bar.pack(fill="x", pady=(18, 4))
+            bar.start()
+            self._dialog_bar = bar
+
+        def done(run):
+            self.close_dialog()
+            if run and on_ok:
+                on_ok()
+        if ok:
+            row = ctk.CTkFrame(inner, fg_color="transparent")
+            row.pack(fill="x", pady=(18, 0))
+            danger = tone == "red" and cancel
+            btn = ctk.CTkButton(row, text=ok, font=F(MD, "semibold"), height=36, corner_radius=8, width=96,
+                                fg_color=C["red"] if danger else C["accent"],
+                                hover_color=C["red"] if danger else C["accent_h"],
+                                text_color=C["on_accent"], command=lambda: done(True))
+            btn.pack(side="right")
+            if cancel:
+                soft_button(row, cancel, lambda: done(False), width=84).pack(side="right", padx=(0, 8))
+            self._dialog_keys = (lambda: done(True), lambda: done(False))
+            if not getattr(self, "_dialog_bound", False):
+                self._dialog_bound = True
+                self.bind("<Return>", lambda e: self._dialog_key(0), add="+")
+                self.bind("<Escape>", lambda e: self._dialog_key(1), add="+")
+        card.place(relx=0.5, rely=0.42, anchor="center")
+        card.lift()
+
+    def dialog_text(self, text):
+        if getattr(self, "_dialog", None) is not None and self._dialog.winfo_exists():
+            self._dialog_body.configure(text=text)
+
+    def close_dialog(self):
+        card = getattr(self, "_dialog", None)
+        bar = getattr(self, "_dialog_bar", None)
+        if bar is not None:
+            try:
+                bar.stop()
+            except Exception:
+                pass
+            self._dialog_bar = None
+        for w in (card, getattr(self, "_scrim", None)):
+            if w is not None:
+                try:
+                    w.destroy()
+                except Exception:
+                    pass
+        self._scrim = None
+        self._dialog = None
+        self._dialog_keys = None
+
+    def _dialog_key(self, which):
+        keys = getattr(self, "_dialog_keys", None)
+        if keys and getattr(self, "_dialog", None) is not None:
+            keys[which]()
+
     def set_status(self, text):
         if "status_lbl" in self.__dict__:
             self.status_lbl.configure(text=text)
@@ -4021,7 +4207,7 @@ class App(ctk.CTk):
             self.sync_bar.grid_remove()
 
     def start_sync(self, on_done=None):
-        if self.syncing:
+        if self.syncing or getattr(self, "portal_busy", False):
             return
         self.syncing = True
         self._show_syncing(True)
@@ -4118,6 +4304,11 @@ class App(ctk.CTk):
                 self.tray.notify("Still running in the tray. Right-click the icon to open or quit.", APP_NAME)
 
     def quit_app(self):
+        if getattr(self, "portal_busy", False):
+            # an upload or a delete is half way through the portal's own steps: let it finish, then quit
+            self._quit_after_busy = True
+            self.dialog_text(getattr(self, "_busy_line", "") + "\n\nThe app closes by itself as soon as this is done.")
+            return
         self._remember_geometry()
         if self.syncing:
             _release_lock()
@@ -4150,6 +4341,9 @@ class App(ctk.CTk):
         self.after(250, self._drain_logs)
 
     def _on_close(self):
+        if getattr(self, "portal_busy", False):
+            self.quit_app()
+            return
         if self.tray and self.env.get("CLOSE_TO_TRAY", True) and self.views:
             self.hide_to_tray()
             return

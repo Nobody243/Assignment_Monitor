@@ -45,6 +45,23 @@ def save_assignments(assignments: Dict[str, dict]) -> None:
     _save_json(DB_PATH, assignments)
 
 
+_PORTAL_ROW_FIELDS = ("action", "submission_status", "is_submitted", "status", "marks", "files")
+
+
+def update_assignment_row(assignment_id: str, row: dict) -> bool:
+    """Writes what the portal shows for one assignment (its Submit/Delete state, submission, marks, files) into the
+    stored record, so the list is right at once after an upload or a delete without reading every course again."""
+    data = load_stored_assignments()
+    rec = data.get(assignment_id)
+    if rec is None or not row:
+        return False
+    for k in _PORTAL_ROW_FIELDS:
+        if k in row:
+            rec[k] = row[k]
+    save_assignments(data)
+    return True
+
+
 def clear_stored_assignments() -> None:
     for path in (DB_PATH, META_PATH, ATTENDANCE_PATH, EXAMS_PATH, ANNOUNCEMENTS_PATH, REMINDERS_PATH, LECTURES_PATH,
                  TIMETABLE_PATH):
