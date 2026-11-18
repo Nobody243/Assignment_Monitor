@@ -40,7 +40,7 @@ export function AppearanceSection({ dark, onTheme, palette, onPalette, motion, o
           ))}
         </div>
       </div>
-      <SwitchRow label={<span className="flex items-center gap-2"><Sparkles className="size-4" />Animations</span>} hint="Page transitions, fades and progress movement. Turn off if you prefer a still screen." checked={motion} onChange={onMotion} />
+      <SwitchRow name="Animations" label={<span className="flex items-center gap-2"><Sparkles className="size-4" />Animations</span>} hint="Page transitions, fades and progress movement. Turn off if you prefer a still screen." checked={motion} onChange={onMotion} />
     </Section>
   )
 }

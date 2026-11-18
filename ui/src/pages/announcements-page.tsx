@@ -54,7 +54,7 @@ export function AnnouncementsPage({ items, colors, now }: { items: Announcement[
                   {fresh && <Badge className="h-5 px-1.5 text-[10px]">New</Badge>}
                   <span className="num text-muted-foreground ml-auto text-xs">{d ? fmt.format(d) : a.posted}</span>
                 </div>
-                <h3 className="mt-2 font-semibold">{a.title}</h3>
+                <h2 className="mt-2 font-semibold">{a.title}</h2>
                 <p className="text-muted-foreground mt-1 text-sm whitespace-pre-line">{a.text}</p>
               </li>
             )

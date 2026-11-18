@@ -36,7 +36,7 @@ function CourseCard({ c, minimum }: { c: AttendanceCourse; minimum: number }) {
       <div className="flex items-start gap-4">
         <Ring pct={c.percent} level={lv} />
         <div className="min-w-0 flex-1">
-          <h3 className="leading-snug font-semibold text-balance">{c.title}</h3>
+          <h2 className="leading-snug font-semibold text-balance">{c.title}</h2>
           <p className="text-muted-foreground mt-0.5 text-xs">{[c.teacher, c.class, c.credit_hours ? `${c.credit_hours} credit hours` : ''].filter(Boolean).join(' · ')}</p>
           <p className={cn('mt-2 text-sm', TONE[lv])}>
             {lv === 'none' ? 'No classes recorded yet.'

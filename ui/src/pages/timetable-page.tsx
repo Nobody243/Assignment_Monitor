@@ -47,7 +47,7 @@ export function TimetablePage({ state, now, dark, demo }: { state: State; now: n
   }
 
   return (
-    <div className="flex w-full flex-col gap-5">
+    <div className="flex w-full min-w-0 flex-col gap-5">
       <PageHeader title="Timetable" description={`${state.timetable.semester ?? 'This semester'}: one column per day, a colour per course.`}
         actions={<>
           {(['png', 'jpg', 'pdf'] as const).map(f => (
@@ -57,12 +57,12 @@ export function TimetablePage({ state, now, dark, demo }: { state: State; now: n
         </>} />
       {demo && <Alert tone="info">Sample data: start the engine to save your timetable as a picture.</Alert>}
 
-      <div className="bg-card overflow-x-auto rounded-2xl border p-4">
+      <div className="bg-card relative overflow-x-auto rounded-2xl border p-4">
         <div className="grid min-w-[44rem]" style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(0, 1fr))` }}>
           <div />
           {days.map(d => (
-            <div key={d} className={cn('pb-2 text-center text-sm font-medium', d === today ? 'text-primary' : 'text-muted-foreground')}>
-              {FULL[d]}{d === today && <span className="bg-primary ml-1.5 inline-block size-1.5 rounded-full align-middle" aria-label="today" />}
+            <div key={d} className={cn('pb-2 text-center text-sm font-medium', d === today ? 'text-foreground' : 'text-muted-foreground')}>
+              {FULL[d]}{d === today && <><span className="bg-primary ml-1.5 inline-block size-1.5 rounded-full align-middle" aria-hidden="true" /><span className="sr-only"> (today)</span></>}
             </div>
           ))}
           <div className="relative" style={{ height: hours.length * HOUR_PX }}>

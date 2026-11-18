@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CircleHelp, RefreshCw, Search } from 'lucide-react'
-import { deleteSubmission, downloadAssignmentFiles, downloadLectures, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
+import { deleteSubmission, downloadAssignmentFiles, downloadLectures, getSettings, getUpdate, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AssignmentSheet } from '@/components/assignment-sheet'
 import { CommandMenu } from '@/components/command-menu'
@@ -109,6 +109,22 @@ export default function App() {
     syncToast.current = null
     if (r.ok) toast.success(r.message || 'Checked the portal.', { id }); else toast.error('The check did not finish', { id, description: r.message })
   }, [demo, run])
+  // once per launch, a while after start: tell the student a newer version exists (installed build, and only if they allow update checks)
+  const loaded = !!state && !demo
+  useEffect(() => {
+    if (!loaded) return
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const s = await getSettings()
+          if (!s.about.installed || !s.background.check_updates) return
+          const u = await getUpdate()
+          if (u.newer) toast.info(`Version ${u.version} is available`, { duration: 15000, action: { label: 'Update', onClick: () => navigate('settings', 'about') } })
+        } catch { /* offline or GitHub unreachable: say nothing */ }
+      })()
+    }, 8000)
+    return () => clearTimeout(t)
+  }, [loaded, navigate])
   useEffect(() => { if (running?.kind === 'sync' && syncToast.current != null) toast.loading(`Checking the portal · ${running.step.replace(/[….]+$/, '')}`, { id: syncToast.current }) }, [running])
 
   const doUpload = async ({ a, file, replace }: PendingUpload) => {
@@ -213,7 +229,7 @@ export default function App() {
           <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
             {demo && <Alert tone="info"><span className="flex flex-wrap items-center gap-x-3 gap-y-1">Showing sample data. The engine is not running, so nothing here is yours.<Button size="sm" variant="outline" className="h-7" onClick={eng.leaveDemo}>Try the engine again</Button></span></Alert>}
             {eng.stale && <Alert tone="warning"><span className="flex flex-wrap items-center gap-x-3 gap-y-1">Lost the connection to the engine. You are seeing the last data it sent{eng.lastGood ? ` (${dueParts(new Date(eng.lastGood).toISOString()).time})` : ''}. {eng.retryIn != null ? `Trying again in ${eng.retryIn}s.` : ''}<Button size="sm" variant="outline" className="h-7" onClick={eng.retry}>Try now</Button></span></Alert>}
-            <div key={page} className="animate-in fade-in slide-in-from-bottom-2 duration-300">{render()}</div>
+            <div key={page} className="animate-in fade-in slide-in-from-bottom-2 min-w-0 duration-300">{render()}</div>
           </div>
         </SidebarInset>
 

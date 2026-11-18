@@ -106,7 +106,7 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
                 <TableHead className="hidden w-28 xl:table-cell">Files</TableHead>
                 <TableHead className="hidden w-24 xl:table-cell">Marks</TableHead>
                 <TableHead className="w-36">Status</TableHead>
-                <TableHead className="w-24" />
+                <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

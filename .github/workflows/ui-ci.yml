@@ -73,3 +73,22 @@ jobs:
           cd desktop
           ASSIGNMENT_MONITOR_HOME="$RUNNER_TEMP/home" npm run smoke | tee smoke.txt
           grep -q '"ok":true' smoke.txt
+
+  accessibility:
+    runs-on: windows-latest
+    needs: interface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: "ui/package-lock.json" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements-dev.txt
+      - name: Build the interface
+        working-directory: ui
+        run: npm ci && npm run build
+      - name: axe-core on every page, light and dark, four palettes, plus narrow-window overflow (fictional data)
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/axe" axe-core@4.10.2
+          python tools/audit_a11y.py "$RUNNER_TEMP/axe/node_modules/axe-core/axe.min.js"
+        shell: bash

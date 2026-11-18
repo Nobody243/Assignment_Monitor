@@ -38,7 +38,7 @@ export function AppSidebar({ name, semester, badges, dark, onToggleTheme, page, 
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent role="navigation" aria-label="Main">
         {GROUPS.map(g => (
           <SidebarGroup key={g.label}>
             <SidebarGroupLabel>{g.label}</SidebarGroupLabel>

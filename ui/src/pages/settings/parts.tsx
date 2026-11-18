@@ -27,10 +27,10 @@ export function Row({ label, hint, children, className }: { label: ReactNode; hi
   )
 }
 
-export function SwitchRow({ label, hint, checked, onChange, disabled }: { label: ReactNode; hint?: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+export function SwitchRow({ label, name, hint, checked, onChange, disabled }: { label: ReactNode; name?: string; hint?: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <Row label={label} hint={hint}>
-      <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={typeof label === 'string' ? label : undefined} />
+      <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={name ?? (typeof label === 'string' ? label : undefined)} />
     </Row>
   )
 }

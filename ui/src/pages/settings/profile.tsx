@@ -28,14 +28,14 @@ export function ProfileCard({ view, state, now }: { view: SettingsView; state: S
           <div className="text-muted-foreground text-xs">Last checked {m.last_sync ? ago(m.last_sync, now) : 'never'}</div>
         </div>
       </div>
-      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+      <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
         {rows.map(r => (
-          <div key={r.label} className="flex items-start gap-3 rounded-xl border p-3">
+          <li key={r.label} className="flex items-start gap-3 rounded-xl border p-3">
             <r.icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            <div className="min-w-0"><dt className="text-muted-foreground text-xs">{r.label}</dt><dd className="truncate text-sm font-medium" title={r.value}>{r.value}</dd></div>
-          </div>
+            <div className="min-w-0"><div className="text-muted-foreground text-xs">{r.label}</div><div className="truncate text-sm font-medium" title={r.value}>{r.value}</div></div>
+          </li>
         ))}
-      </dl>
+      </ul>
     </Section>
   )
 }
