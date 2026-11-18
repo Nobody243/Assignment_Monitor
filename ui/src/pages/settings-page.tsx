@@ -30,7 +30,7 @@ export function SettingsPage({ dark, onToggleTheme, palette, onPalette, paths, v
   const busy = !!running
 
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <PageHeader title="Settings" description="Your account, alerts and how the app runs. Changes are saved as you make them." />
 
       <nav aria-label="Sections" className="flex flex-wrap gap-1.5">
@@ -41,6 +41,8 @@ export function SettingsPage({ dark, onToggleTheme, palette, onPalette, paths, v
       {demo && <Alert tone="info">Sample data: start the engine to see and change your real settings.</Alert>}
       {error && !demo && <Alert tone="danger">{error}</Alert>}
 
+      {/* sections flow into two balanced columns on wide screens and never split across them */}
+      <div className="columns-1 gap-5 xl:columns-2 [&>section]:mb-5 [&>section]:break-inside-avoid">
       {view ? <AccountSection key={view.account.enrollment + view.account.institute_id + String(view.account.password_set)} view={view} save={save} run={run} busy={busy} /> : !demo && <Skeleton className="h-64 w-full rounded-2xl" />}
 
       <Section id="appearance" title="Appearance" description="Colours are remembered on this computer.">
@@ -79,6 +81,7 @@ export function SettingsPage({ dark, onToggleTheme, palette, onPalette, paths, v
           <dt className="text-muted-foreground">Data</dt><dd className="text-right">{demo ? 'sample data (engine not running)' : 'live, from the app engine'}</dd>
         </dl>
       </Section>
+      </div>
     </div>
   )
 }
