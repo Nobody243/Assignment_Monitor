@@ -1,111 +1,98 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import {
-  Award, BookOpen, CalendarCheck, CheckCheck, CheckCircle2, ChevronRight, GraduationCap, Info, ListChecks, Moon, RefreshCw,
-  Search, Settings, Sun, Upload, XCircle,
-} from './icons'
-import { deleteSubmission, startSync, uploadFile, type Assignment } from './api'
-import { Detail } from './Detail'
-import { Palette, type Command } from './Palette'
-import { ago, byDue, countdown, dueParts, initials, toneOf } from './format'
-import { useEngine } from './useEngine'
+import { CheckCheck, RefreshCw, Search, Upload } from 'lucide-react'
+import { toast } from 'sonner'
+import { deleteSubmission, startSync, uploadFile, type Assignment } from '@/api'
+import { AppSidebar } from '@/components/app-sidebar'
+import { AssignmentSheet } from '@/components/assignment-sheet'
+import { AssignmentsTable } from '@/components/assignments-table'
+import { CommandMenu } from '@/components/command-menu'
+import { Alert } from '@/components/inline-alert'
+import { Badge } from '@/components/ui/badge'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Kbd } from '@/components/ui/kbd'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Toaster } from '@/components/ui/sonner'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { ago, byDue, countdown, dueParts } from '@/format'
+import { useEngine } from '@/useEngine'
 
 type Filter = 'todo' | 'overdue' | 'submitted' | 'all'
-type Toast = { id: number; ok: boolean; text: string }
-
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'todo', label: 'To do' }, { key: 'overdue', label: 'Overdue' }, { key: 'submitted', label: 'Submitted' }, { key: 'all', label: 'All' },
-]
-const NAV = [
-  { key: 'assignments', label: 'Assignments', icon: ListChecks }, { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
-  { key: 'exams', label: 'Exams', icon: GraduationCap }, { key: 'lectures', label: 'Lectures', icon: BookOpen },
-  { key: 'results', label: 'Results', icon: Award }, { key: 'settings', label: 'Settings', icon: Settings },
-]
-
 const isTodo = (a: Assignment) => !a.is_submitted && a.urgency !== 'missed'
 const isOverdue = (a: Assignment) => !a.is_submitted && a.urgency === 'missed'
 
 function useTheme() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    try { const t = localStorage.getItem('am-theme'); if (t === 'light' || t === 'dark') return t } catch { /* private mode */ }
-    return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  const [dark, setDark] = useState(() => {
+    try { const t = localStorage.getItem('am-theme'); if (t) return t === 'dark' } catch { /* private mode */ }
+    return matchMedia('(prefers-color-scheme: dark)').matches
   })
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try { localStorage.setItem('am-theme', theme) } catch { /* private mode */ }
-  }, [theme])
-  return [theme, () => setTheme(t => (t === 'dark' ? 'light' : 'dark'))] as const
+    document.documentElement.classList.toggle('dark', dark)
+    try { localStorage.setItem('am-theme', dark ? 'dark' : 'light') } catch { /* private mode */ }
+  }, [dark])
+  return [dark, () => setDark(d => !d)] as const
 }
 
 export default function App() {
   const { state, demo, running, run, now } = useEngine()
-  const [theme, toggleTheme] = useTheme()
-  const [filter, setFilter] = useState<Filter>('todo')
+  const [dark, toggleTheme] = useTheme()
+  const [tab, setTab] = useState<Filter>('todo')
   const [course, setCourse] = useState('all')
   const [selId, setSelId] = useState<string | null>(null)
-  const [paletteOpen, setPaletteOpen] = useState(false)
-  const [toasts, setToasts] = useState<Toast[]>([])
+  const [cmdOpen, setCmdOpen] = useState(false)
 
-  const all = state?.assignments ?? []
+  const all = useMemo(() => state?.assignments ?? [], [state])
   const courses = useMemo(() => [...new Set(all.map(a => a.course))].sort(), [all])
   const counts = useMemo(() => ({
     todo: all.filter(isTodo).length, overdue: all.filter(isOverdue).length, submitted: all.filter(a => a.is_submitted).length, all: all.length,
   }), [all])
-  const urgentCount = all.filter(a => !a.is_submitted && (a.urgency === 'today' || a.urgency === 'soon')).length
+  const today = all.filter(a => !a.is_submitted && a.urgency === 'today')
+  const coming = all.filter(a => !a.is_submitted && (a.urgency === 'soon' || a.urgency === 'week'))
+  const dueSoon = today.length + all.filter(a => !a.is_submitted && a.urgency === 'soon').length
 
-  const visible = useMemo(() => {
-    const pick = ({ todo: isTodo, overdue: isOverdue, submitted: (a: Assignment) => a.is_submitted, all: () => true })[filter]
-    return all.filter(a => pick(a) && (course === 'all' || a.course === course)).sort(byDue)
-  }, [all, filter, course])
-
-  const groups = useMemo(() => {
-    const g: { title: string; items: Assignment[] }[] = []
-    const add = (title: string, items: Assignment[]) => { if (items.length) g.push({ title, items }) }
-    add('Due today', visible.filter(a => !a.is_submitted && a.urgency === 'today'))
-    add('Coming up', visible.filter(a => !a.is_submitted && (a.urgency === 'soon' || a.urgency === 'week')))
-    add('Later', visible.filter(a => !a.is_submitted && (a.urgency === 'later' || a.urgency === 'unknown')))
-    add('Overdue', visible.filter(isOverdue).reverse())
-    add('Submitted', visible.filter(a => a.is_submitted).reverse())
-    return g
-  }, [visible])
+  const rows = useMemo(() => {
+    const pick = ({ todo: isTodo, overdue: isOverdue, submitted: (a: Assignment) => a.is_submitted, all: () => true })[tab]
+    const list = all.filter(a => pick(a) && (course === 'all' || a.course === course)).sort(byDue)
+    return tab === 'overdue' || tab === 'submitted' ? list.reverse() : list
+  }, [all, tab, course])
 
   const next = useMemo(() => all.filter(a => a.open && !a.is_submitted).sort(byDue)[0], [all])
   const sel = all.find(a => a.id === selId) ?? null
-  const order = useMemo(() => groups.flatMap(g => g.items.map(a => a.id)), [groups])
-
-  const toast = useCallback((ok: boolean, text: string) => {
-    const id = Date.now() + Math.random()
-    setToasts(t => [...t, { id, ok, text }])
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 5200)
-  }, [])
+  const order = useMemo(() => rows.map(a => a.id), [rows])
 
   const doSync = useCallback(async () => {
-    if (demo) return toast(false, 'Sample data: start the engine to check the portal.')
+    if (demo) return void toast.info('Sample data: start the engine to check the portal.')
+    const id = toast.loading('Checking the portal…')
     const r = await run('sync', startSync)
-    toast(r.ok, r.message || (r.ok ? 'Checked.' : 'The check did not finish.'))
-  }, [demo, run, toast])
+    if (r.ok) toast.success(r.message || 'Checked.', { id }); else toast.error(r.message || 'The check did not finish.', { id })
+  }, [demo, run])
 
   const doUpload = async (a: Assignment, file: File, replace: boolean) => {
     const r = await run('upload', () => uploadFile(a.id, file, replace), a.id)
-    toast(r.ok, r.ok ? `${a.title}: ${r.message}` : `${a.title} was not uploaded. ${r.message}${r.deleted ? ' Your previous submission was already deleted, so upload again before the deadline.' : ''}`)
+    if (r.ok) toast.success(`${a.title}: ${r.message}`)
+    else toast.error(`${a.title} was not uploaded`, { description: r.message + (r.deleted ? ' Your previous submission was already deleted, so upload again before the deadline.' : ''), duration: 9000 })
   }
   const doDelete = async (a: Assignment) => {
     const r = await run('delete', () => deleteSubmission(a.id), a.id)
-    toast(r.ok, r.ok ? `${a.title}: ${r.message}` : `${a.title}: ${r.message}`)
+    if (r.ok) toast.success(`${a.title}: ${r.message}`); else toast.error(`${a.title}: ${r.message}`)
   }
 
-  // keyboard: Ctrl/Cmd+K or / search, j/k move, u upload, Esc close
+  // keyboard: Ctrl/Cmd+K or / search, j/k move, u upload
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
-      const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen(o => !o); return }
-      if (typing || paletteOpen || e.ctrlKey || e.metaKey || e.altKey) return
-      if (e.key === '/') { e.preventDefault(); setPaletteOpen(true) }
-      else if (e.key === 'Escape') setSelId(null)
-      else if (e.key === 'j' || e.key === 'ArrowDown' || e.key === 'k' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        const step = e.key === 'j' || e.key === 'ArrowDown' ? 1 : -1
+      const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t.isContentEditable
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCmdOpen(o => !o); return }
+      if (typing || cmdOpen || e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.key === '/') { e.preventDefault(); setCmdOpen(true) }
+      else if (e.key === 'j' || e.key === 'k') {
+        const step = e.key === 'j' ? 1 : -1
         const i = selId ? order.indexOf(selId) : -1
         const to = order[Math.min(order.length - 1, Math.max(0, i + step))]
         if (to) setSelId(to)
@@ -113,184 +100,133 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [paletteOpen, order, selId])
+  }, [cmdOpen, order, selId])
 
-  useEffect(() => {
-    if (selId) document.getElementById(`row-${CSS.escape(selId)}`)?.scrollIntoView({ block: 'nearest' })
-  }, [selId])
-
-  const commands: Command[] = [
-    { id: 'cmd-sync', label: 'Check the portal now', icon: 'sync', run: () => void doSync() },
-    { id: 'cmd-theme', label: theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme', icon: 'theme', run: toggleTheme },
+  const meta = state?.meta
+  const busy = !!running
+  const first = (list: Assignment[]) => [...list].sort(byDue)[0]
+  const stats: { label: string; n: number; foot: string; go: Filter }[] = [
+    { label: 'Due today', n: today.length, foot: today.length ? first(today).title : 'Nothing due today', go: 'todo' },
+    { label: 'Coming up', n: coming.length, foot: coming.length ? `Next: ${first(coming).title}` : 'Nothing in the next 7 days', go: 'todo' },
+    { label: 'Overdue', n: counts.overdue, foot: counts.overdue ? 'Not submitted' : 'Nothing missed', go: 'overdue' },
+    { label: 'Submitted', n: counts.submitted, foot: `of ${counts.all} this semester`, go: 'submitted' },
   ]
 
-  const busy = !!running
-  const meta = state?.meta
-  const nextTone = next ? toneOf(next.urgency) : 'later'
-
   return (
-    <div className="app">
-      {busy && <div className="topline" role="progressbar" aria-label="Working" />}
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar name={meta?.student_name} semester={meta?.semester} dueSoon={dueSoon} dark={dark} onToggleTheme={toggleTheme} />
+        <SidebarInset>
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="max-sm:hidden">{meta?.semester ?? 'This semester'}</BreadcrumbItem>
+                <BreadcrumbSeparator className="max-sm:hidden" />
+                <BreadcrumbItem><BreadcrumbPage>Assignments</BreadcrumbPage></BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-muted-foreground mr-1 text-xs max-md:hidden">Checked {ago(meta?.last_sync, now)}</span>
+              <Button variant="outline" size="sm" onClick={() => setCmdOpen(true)} className="text-muted-foreground max-sm:px-2">
+                <Search /><span className="max-sm:hidden">Search</span><Kbd className="max-sm:hidden">Ctrl K</Kbd>
+              </Button>
+              <Button size="sm" onClick={() => void doSync()} disabled={busy}>
+                <RefreshCw className={running?.kind === 'sync' ? 'animate-spin' : ''} />
+                <span className="max-sm:hidden">{running?.kind === 'sync' ? 'Checking…' : 'Check now'}</span>
+              </Button>
+            </div>
+          </header>
 
-      <nav className="rail" aria-label="Main">
-        <div className="brand">
-          <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
-            <defs>
-              <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="var(--accent)" /><stop offset="1" stopColor="var(--accent-2)" /></linearGradient>
-            </defs>
-            <rect width="32" height="32" rx="9" fill="var(--logo-bg)" />
-            <circle cx="16" cy="16" r="8.4" fill="none" stroke="url(#bm)" strokeWidth="2.2" strokeDasharray="42 11" strokeLinecap="round" transform="rotate(-70 16 16)" />
-            <path d="M12.6 16.3l2.5 2.5 4.4-5" fill="none" stroke="url(#bm)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <div><b>Assignment Monitor</b><span>Bahria University</span></div>
-        </div>
-        <div className="nav">
-          {NAV.map(n => (
-            <button key={n.key} className="nav-item" disabled={n.key !== 'assignments'} aria-current={n.key === 'assignments' ? 'page' : undefined}>
-              <n.icon aria-hidden weight={n.key === 'assignments' ? 'duotone' : 'regular'} /><span>{n.label}</span>
-              {n.key === 'assignments' ? (urgentCount > 0 && <span className="nav-badge" aria-label={`${urgentCount} due soon`}>{urgentCount}</span>) : <span className="soon">Soon</span>}
-            </button>
-          ))}
-        </div>
-        <div className="rail-foot">
-          <div className="me">
-            <div className="avatar" aria-hidden>{initials(meta?.student_name)}</div>
-            <div style={{ minWidth: 0 }}><b>{meta?.student_name ?? 'Student'}</b><span>{meta?.semester ?? ''}</span></div>
-            <button className="icon-btn" style={{ marginLeft: 'auto' }} onClick={toggleTheme} aria-label={theme === 'dark' ? 'Use the light theme' : 'Use the dark theme'}>
-              {theme === 'dark' ? <Sun /> : <Moon />}
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className={`stage${sel ? ' with-panel' : ''}`}>
-        <main className="page">
-          <div className="page-inner">
-            {demo && state && (
-              <div className="banner" role="status"><Info aria-hidden /><span>Showing sample data. The engine is not running, so nothing here is yours yet.</span></div>
-            )}
-
-            <header className="topbar">
-              <div>
-                <h1>Assignments</h1>
-                <p>{meta?.semester ? `${meta.semester} · ` : ''}checked {ago(meta?.last_sync, now)}</p>
-              </div>
-              <div className="actions">
-                <button className="search-trigger" onClick={() => setPaletteOpen(true)} aria-label="Search and commands">
-                  <Search aria-hidden /><span>Search</span><span className="kbd">Ctrl K</span>
-                </button>
-                <button className="btn btn-quiet" onClick={() => void doSync()} disabled={busy}>
-                  <RefreshCw aria-hidden className={running?.kind === 'sync' ? 'spin' : ''} />{running?.kind === 'sync' ? 'Checking…' : 'Check now'}
-                </button>
-              </div>
-            </header>
+          <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+            {demo && state && <Alert tone="info">Showing sample data. The engine is not running, so nothing here is yours yet.</Alert>}
 
             {!state ? (
-              <div aria-busy="true" style={{ display: 'grid', gap: 12 }}>
-                <div className="skeleton" style={{ height: 168 }} />
-                {[0, 1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 56 }} />)}
+              <div className="flex flex-col gap-3" aria-busy="true">
+                <Skeleton className="h-36 w-full" />
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}</div>
+                {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : (
               <>
                 {next ? (
-                  <motion.section className={`focus tone-${nextTone}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 160, damping: 22 }} aria-label="Up next">
-                    <div>
-                      <div className="eyebrow">{next.urgency === 'today' ? 'Due today' : 'Up next'}</div>
-                      <h2>{next.title}</h2>
-                      <div className="meta">{next.course} · {dueParts(next.due_at).day}{dueParts(next.due_at).time && ` at ${dueParts(next.due_at).time}`}</div>
-                    </div>
-                    <div className="count" aria-label={`${countdown(next.due_at, now).big} left`}>
-                      <div className="big mono">{countdown(next.due_at, now).big}</div>
-                      <div className="unit">{countdown(next.due_at, now).unit}</div>
-                    </div>
-                    <div className="focus-actions">
-                      <button className="btn btn-primary btn-lg" onClick={() => setSelId(next.id)}><Upload aria-hidden />{next.can_upload ? 'Upload your work' : 'Open'}</button>
-                      <span style={{ color: 'var(--muted)', fontSize: 'var(--t-sm)' }}>{counts.todo > 1 ? `${counts.todo - 1} more to do after this` : 'Nothing else is waiting'}</span>
-                    </div>
-                  </motion.section>
+                  <Card className="border-brand/25 bg-gradient-to-br from-brand/[0.06] to-transparent">
+                    <CardContent className="flex flex-wrap items-center justify-between gap-6">
+                      <div className="min-w-0 flex-1">
+                        <Badge variant="outline" className="border-brand/30 text-brand mb-3 gap-1.5"><span className="bg-brand size-1.5 rounded-full" />{next.urgency === 'today' ? 'Due today' : 'Up next'}</Badge>
+                        <h2 className="text-xl font-semibold tracking-tight text-balance">{next.title}</h2>
+                        <p className="text-muted-foreground mt-1 text-sm">{next.course} · {dueParts(next.due_at).day}{dueParts(next.due_at).time && ` at ${dueParts(next.due_at).time}`}</p>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right" aria-label={`${countdown(next.due_at, now).big} left`}>
+                          <div className="num text-4xl font-medium">{countdown(next.due_at, now).big}</div>
+                          <div className="text-muted-foreground text-xs">{countdown(next.due_at, now).unit}</div>
+                        </div>
+                        <Button size="lg" onClick={() => setSelId(next.id)}><Upload />{next.can_upload ? 'Upload your work' : 'Open'}</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ) : (
-                  <section className="caught-up" aria-label="All caught up">
-                    <CheckCheck aria-hidden />
-                    <div><b>You are all caught up</b><span>{all.length ? 'Nothing is waiting for you. New work shows up here as soon as the portal lists it.' : 'No assignments yet. They appear here once the portal lists them.'}</span></div>
-                  </section>
+                  <Empty className="border border-dashed">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon"><CheckCheck /></EmptyMedia>
+                      <EmptyTitle>You are all caught up</EmptyTitle>
+                      <EmptyDescription>{all.length ? 'Nothing is waiting for you. New work shows up here as soon as the portal lists it.' : 'No assignments yet. They appear here once the portal lists them.'}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 )}
 
-                <div className="toolbar">
-                  <div className="seg" role="group" aria-label="Show">
-                    {FILTERS.map(f => (
-                      <button key={f.key} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>{f.label}<span className="n">{counts[f.key]}</span></button>
-                    ))}
-                  </div>
-                  {courses.length > 1 && (
-                    <select className="select" value={course} onChange={e => setCourse(e.target.value)} aria-label="Course">
-                      <option value="all">All courses</option>
-                      {courses.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  )}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  {stats.map(s => (
+                    <Card key={s.label} size="sm" className="hover:bg-muted/40 cursor-pointer transition-colors" role="button" tabIndex={0}
+                      onClick={() => setTab(s.go)} onKeyDown={e => { if (e.key === 'Enter') setTab(s.go) }}>
+                      <CardHeader>
+                        <CardDescription>{s.label}</CardDescription>
+                        <CardTitle className="num text-3xl font-medium">{s.n}</CardTitle>
+                      </CardHeader>
+                      <CardFooter className="text-muted-foreground truncate text-xs">{s.foot}</CardFooter>
+                    </Card>
+                  ))}
                 </div>
 
-                {groups.length === 0 ? (
-                  <div className="empty"><b>Nothing here</b>{filter === 'todo' ? 'You have no open assignments in this view.' : 'No assignments match this view.'}</div>
-                ) : groups.map(g => (
-                  <section key={g.title} className="group" aria-label={g.title}>
-                    <div className="group-head">{g.title}<span className="n">{g.items.length}</span></div>
-                    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                      {g.items.map((a, i) => {
-                        const tone = toneOf(a.urgency)
-                        const d = dueParts(a.due_at)
-                        return (
-                          <motion.li key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: Math.min(i, 8) * 0.025, type: 'spring', stiffness: 220, damping: 26 }}>
-                            <button id={`row-${a.id}`} className={`row tone-${tone}`} aria-current={a.id === selId ? 'true' : undefined} onClick={() => setSelId(a.id === selId ? null : a.id)}>
-                              <span className="dot" aria-hidden />
-                              <span style={{ minWidth: 0 }}>
-                                <span className="row-title" style={{ display: 'block' }}>{a.title}</span>
-                                <span className="row-sub" style={{ display: 'block' }}>{a.course} · #{a.assign_no}</span>
-                              </span>
-                              <span className="row-end">
-                                {(a.can_upload || a.can_replace) && <span className="quick pill tone-week">{a.can_replace ? 'Replace' : 'Upload'}</span>}
-                                {a.is_submitted
-                                  ? <span className="pill tone-ok"><CheckCircle2 aria-hidden />Submitted</span>
-                                  : a.urgency === 'missed'
-                                    ? <span className="pill tone-urgent"><XCircle aria-hidden />Overdue</span>
-                                    : <span className="when mono">{d.day}<small>{d.time}</small></span>}
-                                <ChevronRight aria-hidden style={{ width: 16, height: 16, color: 'var(--faint)' }} />
-                              </span>
-                            </button>
-                          </motion.li>
-                        )
-                      })}
-                    </ul>
-                  </section>
-                ))}
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Tabs value={tab} onValueChange={v => setTab(v as Filter)}>
+                      <TabsList>
+                        {([['todo', 'To do'], ['overdue', 'Overdue'], ['submitted', 'Submitted'], ['all', 'All']] as const).map(([k, l]) => (
+                          <TabsTrigger key={k} value={k}>{l}<span className="num text-muted-foreground ml-1.5 text-xs">{counts[k]}</span></TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                    {courses.length > 1 && (
+                      <Select value={course} onValueChange={setCourse}>
+                        <SelectTrigger size="sm" className="w-52" aria-label="Course"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All courses</SelectItem>
+                          {courses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  {rows.length ? (
+                    <AssignmentsTable rows={rows} selectedId={selId} onSelect={id => setSelId(id === selId ? null : id)} />
+                  ) : (
+                    <Empty className="border border-dashed">
+                      <EmptyHeader><EmptyTitle>Nothing here</EmptyTitle><EmptyDescription>No assignments match this view.</EmptyDescription></EmptyHeader>
+                    </Empty>
+                  )}
+                </div>
               </>
             )}
           </div>
-        </main>
+        </SidebarInset>
 
-        {sel && (
-          <Detail key={sel.id} a={sel} now={now} demo={demo} running={running} onClose={() => setSelId(null)}
-            onUpload={(f, r) => void doUpload(sel, f, r)} onDelete={() => void doDelete(sel)} />
-        )}
-      </div>
-
-      <AnimatePresence>
-        {paletteOpen && (
-          <Palette assignments={all} commands={commands} onClose={() => setPaletteOpen(false)} onPick={id => setSelId(id)} />
-        )}
-      </AnimatePresence>
-
-      <div className="toasts" aria-live="polite">
-        <AnimatePresence>
-          {toasts.map(t => (
-            <motion.div key={t.id} className={`toast ${t.ok ? 'ok' : 'bad'}`} initial={{ opacity: 0, y: 12, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 320, damping: 28 }}>
-              {t.ok ? <CheckCircle2 aria-hidden /> : <XCircle aria-hidden />}<span>{t.text}</span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </div>
+        <AssignmentSheet a={sel} now={now} demo={demo} running={running} onClose={() => setSelId(null)}
+          onUpload={(f, r) => sel && void doUpload(sel, f, r)} onDelete={() => sel && void doDelete(sel)} />
+        <CommandMenu open={cmdOpen} onOpenChange={setCmdOpen} assignments={all} dark={dark} onPick={setSelId} onSync={() => void doSync()} onToggleTheme={toggleTheme} />
+        <Toaster position="bottom-right" theme={dark ? 'dark' : 'light'} />
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
