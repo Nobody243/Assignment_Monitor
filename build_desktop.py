@@ -60,7 +60,7 @@ def main():
     run([iscc, "/Q", f"/DAppVersion={APP_VERSION}", f"/DSourceDir={app_dir}", ROOT / "installer.iss"])
     setup = DIST / f"{NAME}-Setup.exe"
     digest = hashlib.sha256(setup.read_bytes()).hexdigest()
-    Path(f"{setup}.sha256").write_text(f"{digest}  {setup.name}\n", encoding="ascii")
+    Path(f"{setup}.sha256").write_bytes(f"{digest}  {setup.name}\n".encode("ascii"))   # LF only, so sha256sum -c accepts it
     print(f"Installer:    {setup} ({setup.stat().st_size / 1_048_576:.0f} MB)\nSHA-256:      {digest}")
 
 
