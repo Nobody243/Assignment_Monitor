@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ArrowRight, Moon, RefreshCw, Search } from 'lucide-react'
+import { ArrowRight, Moon, RefreshCw, Search } from './icons'
 import type { Assignment } from './api'
 import { dueParts } from './format'
 

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import {
   Award, BookOpen, CalendarCheck, CheckCheck, CheckCircle2, ChevronRight, GraduationCap, Info, ListChecks, Moon, RefreshCw,
   Search, Settings, Sun, Upload, XCircle,
-} from 'lucide-react'
+} from './icons'
 import { deleteSubmission, startSync, uploadFile, type Assignment } from './api'
 import { Detail } from './Detail'
 import { Palette, type Command } from './Palette'
@@ -135,16 +135,19 @@ export default function App() {
       <nav className="rail" aria-label="Main">
         <div className="brand">
           <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
-            <rect width="32" height="32" rx="9" fill="var(--ink)" />
-            <circle cx="16" cy="16" r="8" fill="none" stroke="var(--canvas)" strokeWidth="2.4" />
-            <path d="M12.5 16.2l2.6 2.6 4.6-5.2" fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            <defs>
+              <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="var(--accent)" /><stop offset="1" stopColor="var(--accent-2)" /></linearGradient>
+            </defs>
+            <rect width="32" height="32" rx="9" fill="var(--logo-bg)" />
+            <circle cx="16" cy="16" r="8.4" fill="none" stroke="url(#bm)" strokeWidth="2.2" strokeDasharray="42 11" strokeLinecap="round" transform="rotate(-70 16 16)" />
+            <path d="M12.6 16.3l2.5 2.5 4.4-5" fill="none" stroke="url(#bm)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div><b>Assignment Monitor</b><span>Bahria University</span></div>
         </div>
         <div className="nav">
           {NAV.map(n => (
             <button key={n.key} className="nav-item" disabled={n.key !== 'assignments'} aria-current={n.key === 'assignments' ? 'page' : undefined}>
-              <n.icon aria-hidden /><span>{n.label}</span>
+              <n.icon aria-hidden weight={n.key === 'assignments' ? 'duotone' : 'regular'} /><span>{n.label}</span>
               {n.key === 'assignments' ? (urgentCount > 0 && <span className="nav-badge" aria-label={`${urgentCount} due soon`}>{urgentCount}</span>) : <span className="soon">Soon</span>}
             </button>
           ))}

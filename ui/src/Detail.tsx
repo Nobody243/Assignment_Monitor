@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { AlertTriangle, CheckCircle2, FileText, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FileText, Trash2, Upload, X } from './icons'
 import { ALLOWED, checkFile, type Assignment } from './api'
 import { countdown, dueParts, sizeLabel, toneOf } from './format'
 import type { Running } from './useEngine'

@@ -21,52 +21,63 @@
   --fast: 140ms;
 }
 
-/* light */
+/* light: cool silver-white, deep ink, azure to aqua accent */
 :root, :root[data-theme='light'] {
-  --canvas: #f6f5f2;
+  --canvas: #eef1f6;
   --surface: #ffffff;
-  --raised: #fbfaf8;
-  --hover: rgba(28, 27, 25, 0.045);
-  --press: rgba(28, 27, 25, 0.08);
-  --ink: #1c1b19;
-  --ink-2: #4a4843;
-  --muted: #7a776f;
-  --faint: #a8a59d;
-  --line: rgba(28, 27, 25, 0.09);
-  --line-strong: rgba(28, 27, 25, 0.16);
-  --accent: #3b55d9;
+  --raised: #f6f8fc;
+  --hover: rgba(15, 30, 60, 0.05);
+  --press: rgba(15, 30, 60, 0.09);
+  --ink: #0b1220;
+  --ink-2: #354158;
+  --muted: #66738a;
+  --faint: #98a3b6;
+  --line: rgba(15, 30, 60, 0.09);
+  --line-strong: rgba(15, 30, 60, 0.17);
+  --accent: #1769e0;
+  --accent-2: #0ba5c9;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(59, 85, 217, 0.1);
-  --urgent: #c2410c;  --urgent-soft: rgba(194, 65, 12, 0.1);
-  --soon: #a16207;    --soon-soft: rgba(161, 98, 7, 0.11);
-  --ok: #15803d;      --ok-soft: rgba(21, 128, 61, 0.1);
-  --shadow: 0 1px 2px rgba(60, 50, 30, 0.06), 0 8px 24px -8px rgba(60, 50, 30, 0.12);
-  --shadow-pop: 0 2px 4px rgba(60, 50, 30, 0.08), 0 24px 56px -12px rgba(60, 50, 30, 0.28);
-  --scrim: rgba(246, 245, 242, 0.7);
+  --accent-soft: rgba(23, 105, 224, 0.1);
+  --grad: linear-gradient(135deg, var(--accent), var(--accent-2));
+  --urgent: #d9412e;  --urgent-soft: rgba(217, 65, 46, 0.1);
+  --soon: #b86e00;    --soon-soft: rgba(184, 110, 0, 0.11);
+  --ok: #0f9d63;      --ok-soft: rgba(15, 157, 99, 0.1);
+  --logo-bg: #0b1220;
+  --ambient-a: rgba(23, 105, 224, 0.11);
+  --ambient-b: rgba(11, 165, 201, 0.09);
+  --grid: rgba(15, 30, 60, 0.075);
+  --shadow: 0 1px 2px rgba(20, 40, 80, 0.06), 0 14px 32px -14px rgba(20, 40, 80, 0.18);
+  --shadow-pop: 0 2px 4px rgba(20, 40, 80, 0.08), 0 28px 60px -14px rgba(20, 40, 80, 0.32);
+  --scrim: rgba(238, 241, 246, 0.7);
 }
 
-/* dark: depth comes from lighter surfaces, not shadows */
+/* dark: graphite-blue, lighter surfaces for depth, a luminous azure to aqua accent */
 :root[data-theme='dark'] {
-  --canvas: #101010;
-  --surface: #171716;
-  --raised: #1d1d1b;
-  --hover: rgba(255, 252, 245, 0.05);
-  --press: rgba(255, 252, 245, 0.09);
-  --ink: #efede8;
-  --ink-2: #c4c1b9;
-  --muted: #8f8c84;
-  --faint: #66645e;
-  --line: rgba(255, 252, 245, 0.08);
-  --line-strong: rgba(255, 252, 245, 0.16);
-  --accent: #8a9dff;
-  --accent-ink: #0d1030;
-  --accent-soft: rgba(138, 157, 255, 0.14);
-  --urgent: #ff9468;  --urgent-soft: rgba(255, 148, 104, 0.13);
-  --soon: #e6bd5c;    --soon-soft: rgba(230, 189, 92, 0.13);
-  --ok: #5fd08e;      --ok-soft: rgba(95, 208, 142, 0.12);
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -8px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 24px 56px -12px rgba(0, 0, 0, 0.7);
-  --scrim: rgba(16, 16, 16, 0.72);
+  --canvas: #07090d;
+  --surface: #0d1118;
+  --raised: #121823;
+  --hover: rgba(150, 180, 240, 0.055);
+  --press: rgba(150, 180, 240, 0.1);
+  --ink: #e9eef7;
+  --ink-2: #bcc6d6;
+  --muted: #7f8ca1;
+  --faint: #526077;
+  --line: rgba(140, 170, 230, 0.1);
+  --line-strong: rgba(140, 170, 230, 0.2);
+  --accent: #5cc8ff;
+  --accent-2: #7ae7d4;
+  --accent-ink: #03131d;
+  --accent-soft: rgba(92, 200, 255, 0.13);
+  --urgent: #ff7b6b;  --urgent-soft: rgba(255, 123, 107, 0.13);
+  --soon: #ffc561;    --soon-soft: rgba(255, 197, 97, 0.13);
+  --ok: #4fe0a0;      --ok-soft: rgba(79, 224, 160, 0.12);
+  --logo-bg: #0b0f16;
+  --ambient-a: rgba(92, 200, 255, 0.1);
+  --ambient-b: rgba(122, 231, 212, 0.06);
+  --grid: rgba(160, 190, 255, 0.06);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 16px 36px -16px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 28px 64px -14px rgba(0, 0, 0, 0.8);
+  --scrim: rgba(7, 9, 13, 0.74);
 }
 
 * { box-sizing: border-box; }
@@ -354,3 +365,69 @@ a { color: inherit; }
 
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------- sleek layer: ambient light, glass, gradient accents */
+body { background: var(--canvas); }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(900px 520px at 14% -12%, var(--ambient-a), transparent 62%),
+    radial-gradient(720px 440px at 104% 2%, var(--ambient-b), transparent 58%);
+}
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(var(--grid) 1px, transparent 1.4px); background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 72%); mask-image: linear-gradient(180deg, #000, transparent 72%);
+}
+#root { position: relative; z-index: 1; }
+
+.rail { background: color-mix(in srgb, var(--canvas) 68%, transparent); backdrop-filter: blur(18px) saturate(1.2); }
+.nav-item { position: relative; }
+.nav-item[aria-current='page'] { background: linear-gradient(90deg, var(--accent-soft), transparent 90%); }
+.nav-item[aria-current='page']::before {
+  content: ''; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--grad);
+}
+.nav-badge { background: var(--grad); color: var(--accent-ink); }
+
+.btn-primary {
+  background: var(--grad); color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 10px 22px -12px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.07) saturate(1.05); }
+.btn-quiet { background: var(--surface); border: 1px solid var(--line); }
+.btn-quiet:hover:not(:disabled) { background: var(--raised); border-color: var(--line-strong); }
+.search-trigger { background: color-mix(in srgb, var(--surface) 80%, transparent); backdrop-filter: blur(10px); }
+.seg { background: color-mix(in srgb, var(--surface) 60%, transparent); border: 1px solid var(--line); }
+.seg button[aria-pressed='true'] { background: var(--raised); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--ink); }
+
+.focus {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 7%, var(--surface)), var(--surface) 55%);
+  border-color: transparent;
+}
+.focus::before { background: linear-gradient(180deg, var(--tone, var(--accent)), color-mix(in srgb, var(--tone, var(--accent)) 10%, transparent)); }
+.focus::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 60%, transparent), transparent 38%, transparent 62%, color-mix(in srgb, var(--accent-2) 40%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.focus.tone-later, .focus.tone-week { --tone: var(--accent); }
+.focus .count .big { color: var(--tone, var(--accent)); }
+.eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--tone, var(--accent)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone, var(--accent)) 20%, transparent); }
+
+.row[aria-current='true'] { background: linear-gradient(90deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 40%, transparent)); box-shadow: inset 2px 0 0 var(--accent); }
+.group-head { background: color-mix(in srgb, var(--canvas) 80%, transparent); }
+.pill { border: 1px solid color-mix(in srgb, var(--tone, var(--muted)) 18%, transparent); }
+.quick.pill { --tone: var(--accent); }
+
+.panel { background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(20px) saturate(1.2); }
+.drop { background: color-mix(in srgb, var(--raised) 55%, transparent); border-color: var(--line-strong); }
+.drop svg { color: var(--accent); }
+.drop:hover:not(:disabled), .drop[data-over='true'] { box-shadow: 0 0 0 4px var(--accent-soft); }
+.file-card, .working { background: color-mix(in srgb, var(--raised) 80%, transparent); }
+.progress::after { background: var(--grad); }
+.topline::after { background: var(--grad); }
+.palette { background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(24px); }
+.palette li button[aria-selected='true'] { background: linear-gradient(90deg, var(--accent-soft), transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.avatar { background: var(--grad); color: var(--accent-ink); }
+.caught-up svg { color: var(--ok); }
+svg { flex: none; }
