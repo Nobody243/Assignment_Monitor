@@ -289,7 +289,7 @@ def load_env() -> dict:
             password = decrypt_secret(raw["PASSWORD_ENC"])
         except Exception as e:
             logging.getLogger("bahria.config").warning(
-                "Stored password could not be decrypted (%s). Please sign in again.", e)
+                "The stored password could not be decrypted (%s). Please sign in again.", type(e).__name__)
     if not password and raw.get("PASSWORD"):
         password = raw["PASSWORD"]
         config["PASSWORD"] = password
@@ -304,7 +304,7 @@ def load_env() -> dict:
                 from secure_store import decrypt_secret
                 config[key] = decrypt_secret(raw[key + "_ENC"])
             except Exception as e:
-                logging.getLogger("bahria.config").warning("Stored %s could not be decrypted (%s).", key, e)
+                logging.getLogger("bahria.config").warning("A stored secret could not be decrypted (%s).", type(e).__name__)
     config.update(env_overrides())
     out = Settings(config)
     out.dirty.clear()
@@ -335,12 +335,12 @@ def save_env(config: dict) -> None:
         try:
             from secure_store import encrypt_secret
             enc = encrypt_secret(password)
-        except Exception:
+        except Exception as e:
             enc = ""
+            # never fall back to writing the password as plain text: it is left out and has to be typed again
+            logging.getLogger("bahria.config").warning("The password could not be encrypted, so it was not saved (%s).", type(e).__name__)
     if enc:
         lines.append(f"PASSWORD_ENC={enc}")
-    elif password:
-        lines.append(f"PASSWORD={password}")
     lines.append(f"INSTITUTE_ID={merged['INSTITUTE_ID']}")
     lines.append(f"NOTIFY_DAYS_AHEAD={int(merged['NOTIFY_DAYS_AHEAD'])}")
     lines.append(f"THEME={merged['THEME']}")
@@ -364,8 +364,8 @@ def save_env(config: dict) -> None:
             try:
                 from secure_store import encrypt_secret
                 lines.append(f"{key}_ENC={encrypt_secret(value)}")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.getLogger("bahria.config").warning("A secret could not be encrypted, so it was not saved (%s).", type(e).__name__)
     for key in _BOOL_KEYS:
         lines.append(f"{key}={'True' if merged[key] else 'False'}")
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
