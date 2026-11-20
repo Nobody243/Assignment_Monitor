@@ -29,9 +29,10 @@ class GithubAuth {
   final Duration unit;
   static const _json = {'Accept': 'application/json'};
 
-  Future<DeviceCode> start() async {
+  /// [scope] is what the token may do: `repo` reads the summary (the default); the phone-only setup asks for `repo workflow`.
+  Future<DeviceCode> start({String scope = 'repo'}) async {
     final r = await _http.post(Uri.https('github.com', '/login/device/code'), headers: _json,
-        body: {'client_id': githubClientId, 'scope': 'repo'});
+        body: {'client_id': githubClientId, 'scope': scope});
     final d = jsonDecode(r.body) as Map<String, dynamic>;
     if (r.statusCode != 200 || d['device_code'] == null) throw SourceError('GitHub did not give a code (${d['error'] ?? r.statusCode}).');
     return DeviceCode(d['device_code'] as String, d['user_code'] as String, d['verification_uri'] as String,

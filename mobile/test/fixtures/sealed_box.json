@@ -1,0 +1,7 @@
+{
+  "note": "Test-only keypair made once with PyNaCl (libsodium). The plaintext is an obviously fake value.",
+  "public_key": "JZ7AM2lu/D1lXP5ozBDEpI9UZDfFfTjB6fNzIk1/WQs=",
+  "private_key": "FexOUJ/H2KlHXVCBEMFKLg3UD84CkDziyZRduvOtTNU=",
+  "plaintext": "fake-portal-password-for-tests",
+  "sealed_by_libsodium": "Uhq6SRfRifM274O6UtBFxzhTaOw9+JgFgRDlEEgRIQ50QYoRYc+8eB/drnwf6O3oFQVdMrzYPRCi9PIiqraXfjzEiCx+Gz1N7XedpSB+"
+}
