@@ -20,6 +20,9 @@ class TodayScreen extends StatelessWidget {
     final next = open.isEmpty ? null : open.first;
     final overdue = work.where((w) => w.overdue).length;
     final low = summary.attendance.where((c) => c.recorded && !c.ok).toList();
+    final rec = summary.attendance.where((c) => c.recorded).toList();
+    final presentSum = rec.fold<double>(0, (n, c) => n + c.present), totalSum = rec.fold<double>(0, (n, c) => n + c.present + c.absent);
+    final double? overall = totalSum == 0 ? null : 100 * presentSum / totalSum;
     final today = weekdays[now.weekday - 1];
     final classes = summary.timetable.where((c) => c.day == today).toList()..sort((a, c) => a.start.compareTo(c.start));
     final hour = now.hour;
@@ -35,13 +38,23 @@ class TodayScreen extends StatelessWidget {
         ])),
       ]),
       const SizedBox(height: 16),
-      if (next != null) _Hero(work: next, now: now, prefs: prefs, onOpen: onOpenWork) else const _AllClear(),
+      Reveal(index: 0, child: next != null ? _Hero(work: next, now: now, prefs: prefs, onOpen: onOpenWork) : const _AllClear()),
+      const SizedBox(height: 16),
+      Reveal(index: 1, child: _WeekStrip(summary: summary, now: now, prefs: prefs)),
+      const SizedBox(height: 12),
+      Reveal(index: 2, child: Row(children: [
+        Expanded(child: _Stat(value: '${open.length}', label: 'to do', color: null, onTap: onOpenWork)),
+        const SizedBox(width: 10),
+        Expanded(child: _Stat(value: '$overdue', label: 'overdue', color: overdue > 0 ? Status.bad(b) : null, onTap: onOpenWork)),
+        const SizedBox(width: 10),
+        Expanded(child: _Stat(value: overall == null ? '–' : '${overall.toStringAsFixed(0)}%', label: 'attendance', color: overall != null && overall < summary.minimum ? Status.bad(b) : null, onTap: onOpenAttendance)),
+      ])),
       const SizedBox(height: 20),
       SectionTitle('Today\'s classes', trailing: classes.isEmpty ? null : '${classes.length}'),
       if (classes.isEmpty)
         const Muted('No classes today.')
       else
-        Column(children: [for (final c in classes) _ClassTile(slot: c, now: now)]),
+        Column(children: [for (final (i, c) in classes.indexed) Reveal(index: i + 3, child: _ClassTile(slot: c, now: now))]),
       const SizedBox(height: 20),
       const SectionTitle('Needs attention'),
       if (overdue == 0 && low.isEmpty && next == null)
@@ -88,7 +101,11 @@ class _HeroState extends State<_Hero> {
         const SizedBox(height: 14),
         Text(w.title, style: t.textTheme.titleLarge?.copyWith(color: fg, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        Text('${w.course} · ${dayLabel(due)}, ${timeLabel(due)}', style: t.textTheme.bodyMedium?.copyWith(color: fg.withValues(alpha: 0.8))),
+        Row(children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: courseColor(w.course), shape: BoxShape.circle, border: Border.all(color: fg.withValues(alpha: 0.5)))),
+          const SizedBox(width: 8),
+          Expanded(child: Text('${w.course} · ${dayLabel(due)}, ${timeLabel(due)}', style: t.textTheme.bodyMedium?.copyWith(color: fg.withValues(alpha: 0.8)))),
+        ]),
         if (w.extended && w.wasDue != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Extended from ${w.wasDue}', style: t.textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.8)))),
         const SizedBox(height: 16),
         Row(children: [
@@ -133,14 +150,14 @@ class _ClassTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(16), border: Border(left: BorderSide(color: courseColor(slot.course), width: 5))),
       child: Row(children: [
         SizedBox(width: 92, child: Text('${slot.start}–${slot.end}', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]))),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(slot.course, style: t.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
           if (slot.teacher != null) Text(slot.teacher!, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
         ])),
-        if (live) Text('now', style: t.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+        if (live) Pill('now', color: Status.good(t.brightness)),
       ]),
     );
   }
@@ -151,4 +168,70 @@ String agoText(Duration d) {
   if (d.inMinutes < 60) return '${d.inMinutes} min ago';
   if (d.inHours < 24) return '${d.inHours} h ago';
   return '${d.inDays} d ago';
+}
+
+
+/// The next seven days at a glance: a dot per deadline, one for an exam.
+class _WeekStrip extends StatelessWidget {
+  const _WeekStrip({required this.summary, required this.now, required this.prefs});
+  final Summary summary;
+  final DateTime now;
+  final Prefs prefs;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context), b = t.brightness;
+    final start = DateTime(now.year, now.month, now.day);
+    bool same(DateTime? a, DateTime d) => a != null && a.year == d.year && a.month == d.month && a.day == d.day;
+    final work = summary.work.where((w) => w.todo && w.open && !prefs.done.contains(w.id)).toList();
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      decoration: BoxDecoration(color: t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(20)),
+      child: Row(children: [
+        for (var i = 0; i < 7; i++) Builder(builder: (_) {
+          final d = start.add(Duration(days: i));
+          final due = work.where((w) => same(w.due, d)).length;
+          final exam = summary.exams.any((e) => same(e.day, d));
+          final isToday = i == 0;
+          return Expanded(child: Column(children: [
+            Text(weekdays[d.weekday - 1].substring(0, 1), style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Container(
+              width: 34, height: 34, alignment: Alignment.center,
+              decoration: BoxDecoration(color: isToday ? t.colorScheme.primary : null, shape: BoxShape.circle),
+              child: Text('${d.day}', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: isToday ? t.colorScheme.onPrimary : null)),
+            ),
+            const SizedBox(height: 5),
+            SizedBox(height: 8, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              for (var k = 0; k < due.clamp(0, 3); k++) Container(width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 1.5), decoration: BoxDecoration(color: Status.warn(b), shape: BoxShape.circle)),
+              if (exam) Container(width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 1.5), decoration: BoxDecoration(color: Status.bad(b), borderRadius: BorderRadius.circular(1.5))),
+            ])),
+          ]));
+        }),
+      ]),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label, required this.color, required this.onTap});
+  final String value, label;
+  final Color? color;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Material(
+      color: t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20), onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Column(children: [
+            Text(value, style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: color, fontFeatures: const [FontFeature.tabularFigures()])),
+            Text(label, style: t.textTheme.labelMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+          ]),
+        ),
+      ),
+    );
+  }
 }

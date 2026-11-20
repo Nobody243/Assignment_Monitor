@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data.dart';
 import '../logic.dart';
 import '../theme.dart';
+import 'widgets.dart';
 
 class AttendanceScreen extends StatelessWidget {
   const AttendanceScreen({super.key, required this.summary});
@@ -17,7 +18,7 @@ class AttendanceScreen extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
       Text('Against your ${summary.minimum}% minimum. Overall ${total == 0 ? '–' : '${(100 * present / total).toStringAsFixed(1)}%'}.', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
       const SizedBox(height: 14),
-      for (final c in courses) Padding(padding: const EdgeInsets.only(bottom: 12), child: _CourseCard(course: c, minimum: summary.minimum)),
+      for (final (i, c) in courses.indexed) Reveal(index: i, child: Padding(padding: const EdgeInsets.only(bottom: 12), child: _CourseCard(course: c, minimum: summary.minimum))),
     ]);
   }
 }
@@ -40,7 +41,10 @@ class _CourseCardState extends State<_CourseCard> {
     final allow = semesterAllowance(c.credit, widget.minimum, c.absent, c.classHours);
     final sentence = !c.recorded ? 'No classes recorded yet.' : !c.ok ? 'Below the ${widget.minimum}% minimum. Attend the next ${c.need.ceil()} hours to get back.' : risk ? 'Close to the limit: you can miss only ${hoursText(c.canMiss)} more.' : 'Safe: you can miss ${hoursText(c.canMiss)} more and stay above ${widget.minimum}%.';
     return Card(
-      child: Padding(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+      child: Container(
+        decoration: BoxDecoration(border: Border(left: BorderSide(color: courseColor(c.title), width: 5))),
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [

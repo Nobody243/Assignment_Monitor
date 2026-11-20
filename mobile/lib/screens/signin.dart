@@ -20,13 +20,39 @@ class SignInScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
             child: ListView(padding: const EdgeInsets.all(24), shrinkWrap: true, children: [
-              Icon(Icons.assignment_turned_in_outlined, size: 44, color: t.colorScheme.primary),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(32),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [t.colorScheme.primary, t.colorScheme.tertiary]),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(color: t.colorScheme.onPrimary.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(18)),
+                    child: Icon(Icons.assignment_turned_in_outlined, size: 30, color: t.colorScheme.onPrimary),
+                  ),
+                  const SizedBox(height: 18),
+                  Text('Assignment\nMonitor', style: t.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.05, color: t.colorScheme.onPrimary)),
+                  const SizedBox(height: 8),
+                  Text('Never miss a deadline again.', style: t.textTheme.titleMedium?.copyWith(color: t.colorScheme.onPrimary.withValues(alpha: 0.9))),
+                ]),
+              ),
+              const SizedBox(height: 22),
+              for (final (icon, text) in const [
+                (Icons.timer_outlined, 'Live countdowns and reminders that work offline'),
+                (Icons.event_available_outlined, 'Attendance: exactly how many hours you can still miss'),
+                (Icons.lock_outline, 'Reads from your own private GitHub repository. Your portal password never touches the phone.'),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(icon, size: 20, color: t.colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(text, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+                  ]),
+                ),
               const SizedBox(height: 16),
-              Text('Assignment Monitor', style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Text('Your deadlines, attendance, exams and GPA on your phone. It reads a small summary file from your own private GitHub repository (cloud checks). Your portal password never touches the phone.',
-                  style: t.textTheme.bodyLarge?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 28),
               if (model.phase == Phase.waiting) ..._waiting(context) else if (c != null) ..._code(context, c) else ..._start(context),
             ]),
           ),

@@ -58,3 +58,51 @@ class Pill extends StatelessWidget {
     );
   }
 }
+
+/// A stable colour per course, so a subject looks the same on Today, Work, Attendance and the timetable.
+const _courseColors = [
+  Color(0xFFE8552B), Color(0xFF3558D9), Color(0xFF2F8F4E), Color(0xFF8E44AD),
+  Color(0xFFD39A00), Color(0xFF0F8B8D), Color(0xFFC2185B), Color(0xFF5D6D7E),
+];
+Color courseColor(String name) => _courseColors[name.codeUnits.fold<int>(7, (a, b) => (a * 31 + b) & 0x7fffffff) % _courseColors.length];
+
+/// Fades and lifts its child in; later items (higher [index]) arrive a moment after the earlier ones.
+class Reveal extends StatelessWidget {
+  const Reveal({super.key, required this.index, required this.child});
+  final int index;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.of(context).disableAnimations) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 320 + index.clamp(0, 8) * 70),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, c) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, (1 - v) * 16), child: c)),
+      child: child,
+    );
+  }
+}
+
+/// A calm empty state: an icon, a line, and optionally what to do next.
+class EmptyState extends StatelessWidget {
+  const EmptyState({super.key, required this.icon, required this.title, this.hint});
+  final IconData icon;
+  final String title;
+  final String? hint;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 72, height: 72, decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, shape: BoxShape.circle), child: Icon(icon, size: 32, color: t.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 16),
+          Text(title, textAlign: TextAlign.center, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          if (hint != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(hint!, textAlign: TextAlign.center, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+        ]),
+      ),
+    );
+  }
+}

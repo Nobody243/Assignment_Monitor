@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data.dart';
 import '../model.dart';
@@ -58,12 +59,12 @@ class _WorkState extends State<WorkScreen> {
       ),
       Expanded(
         child: rows.isEmpty
-            ? const Center(child: Muted('Nothing here.'))
+            ? const EmptyState(icon: Icons.task_alt, title: 'Nothing here', hint: 'Try another filter above.')
             : ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
                 for (final g in order)
                   if (groups[g] != null) ...[
                     Padding(padding: const EdgeInsets.only(top: 12, bottom: 6), child: Text('$g  ·  ${groups[g]!.length}', style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700))),
-                    for (final w in groups[g]!) _WorkTile(work: w, now: widget.now, prefs: widget.prefs),
+                    for (final (i, w) in groups[g]!.indexed) Reveal(index: i, child: _WorkTile(work: w, now: widget.now, prefs: widget.prefs)),
                   ],
               ]),
       ),
@@ -89,29 +90,60 @@ class _WorkTile extends StatelessWidget {
       c = left.inHours < 3 ? Status.bad(b) : left.inHours < 24 ? Status.warn(b) : null;
     } else { chip = ''; }
     final muted = prefs.done.contains(w.id) || (prefs.snoozed[w.id]?.isAfter(now) ?? false);
+    final cc = courseColor(w.course);
+    final card = Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () { HapticFeedback.selectionClick(); showModalBottomSheet(context: context, showDragHandle: true, isScrollControlled: true, builder: (_) => _Detail(work: w, now: now, prefs: prefs)); },
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(width: 5, color: cc),
+            Expanded(child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(w.title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text('${w.course} · #${w.number}', maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+                  if (due != null) Text('${dayLabel(due)} · ${timeLabel(due)}${w.extended ? '  (extended)' : ''}', style: t.textTheme.bodySmall?.copyWith(color: w.extended ? Status.warn(b) : t.colorScheme.onSurfaceVariant)),
+                ])),
+                const SizedBox(width: 8),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  if (chip.isNotEmpty) Pill(chip, color: c),
+                  if (muted) Padding(padding: const EdgeInsets.only(top: 6), child: Icon(Icons.notifications_off_outlined, size: 16, color: t.colorScheme.onSurfaceVariant)),
+                ]),
+              ]),
+            )),
+          ]),
+        ),
+      ),
+    );
+    Widget side(Color bg, IconData i, String label, Alignment a) => Container(
+          alignment: a, padding: const EdgeInsets.symmetric(horizontal: 22),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(i, color: Colors.white), const SizedBox(width: 8), Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))]),
+        );
+    final swipeable = w.open && !w.submitted;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => showModalBottomSheet(context: context, showDragHandle: true, isScrollControlled: true, builder: (_) => _Detail(work: w, now: now, prefs: prefs)),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(w.title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text('${w.course} · #${w.number}', maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-                if (due != null) Text('${dayLabel(due)} · ${timeLabel(due)}${w.extended ? '  (extended)' : ''}', style: t.textTheme.bodySmall?.copyWith(color: w.extended ? Status.warn(b) : t.colorScheme.onSurfaceVariant)),
-              ])),
-              const SizedBox(width: 8),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                if (chip.isNotEmpty) Pill(chip, color: c),
-                if (muted) Padding(padding: const EdgeInsets.only(top: 6), child: Icon(Icons.notifications_off_outlined, size: 16, color: t.colorScheme.onSurfaceVariant)),
-              ]),
-            ]),
-          ),
-        ),
+      child: !swipeable ? card : Dismissible(
+        key: ValueKey('swipe-${w.id}'),
+        background: side(Status.good(b), Icons.check_circle_outline, 'Done', Alignment.centerLeft),
+        secondaryBackground: side(t.colorScheme.secondary, Icons.snooze, 'Snooze 1 h', Alignment.centerRight),
+        confirmDismiss: (dir) async {
+          HapticFeedback.mediumImpact();
+          final m = ScaffoldMessenger.of(context);
+          m.hideCurrentSnackBar();
+          if (dir == DismissDirection.startToEnd) {
+            prefs.update(() => prefs.done.add(w.id));
+            m.showSnackBar(SnackBar(content: const Text('Marked done. No more reminders for it.'), action: SnackBarAction(label: 'Undo', onPressed: () => prefs.update(() => prefs.done.remove(w.id)))));
+          } else {
+            prefs.update(() => prefs.snoozed[w.id] = now.add(const Duration(hours: 1)));
+            m.showSnackBar(SnackBar(content: const Text('Snoozed for 1 hour.'), action: SnackBarAction(label: 'Undo', onPressed: () => prefs.update(() => prefs.snoozed.remove(w.id)))));
+          }
+          return false;   // the row stays: it only goes quiet
+        },
+        child: card,
       ),
     );
   }
