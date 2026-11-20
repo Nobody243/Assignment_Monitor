@@ -332,6 +332,9 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/state":
             return self._send(200, build_state())
+        if url.path == "/api/summary":
+            import summary
+            return self._send(200, summary.build(build_state()))
         if url.path == "/api/support":
             import support
             return self._send(200, {"text": support.build_report()})

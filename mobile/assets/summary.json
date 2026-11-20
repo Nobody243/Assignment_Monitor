@@ -1,0 +1,574 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-20T15:54:12",
+  "app_version": "1.8.1",
+  "student": {
+    "name": "Alex Morgan",
+    "semester": "Fall-2026",
+    "campus": "Islamabad E-8 Campus"
+  },
+  "last_check": "2026-11-20T15:14:12",
+  "minimum_attendance": 75,
+  "assignments": [
+    {
+      "id": "Human_Computer_Interaction#3#Usability_test_report",
+      "course": "Human Computer Interaction",
+      "title": "Usability test report",
+      "number": "3",
+      "due_at": "2026-11-20T23:59:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": false,
+      "open": true,
+      "urgency": "today",
+      "marks": "Not marked yet",
+      "can_submit": true,
+      "has_brief": true
+    },
+    {
+      "id": "Database_Systems#4#Normalisation_worksheet",
+      "course": "Database Systems",
+      "title": "Normalisation worksheet",
+      "number": "4",
+      "due_at": "2026-11-22T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": false,
+      "open": true,
+      "urgency": "soon",
+      "marks": "Not marked yet",
+      "can_submit": true,
+      "has_brief": true
+    },
+    {
+      "id": "Operating_Systems#2#Scheduler_simulation",
+      "course": "Operating Systems",
+      "title": "Scheduler simulation",
+      "number": "2",
+      "due_at": "2026-11-25T23:55:00",
+      "extended": true,
+      "was_due": "23 november 2026-11:55 pm",
+      "submitted": false,
+      "open": true,
+      "urgency": "week",
+      "marks": "Not marked yet",
+      "can_submit": true,
+      "has_brief": true
+    },
+    {
+      "id": "Software_Engineering#5#Sprint_retrospective",
+      "course": "Software Engineering",
+      "title": "Sprint retrospective",
+      "number": "5",
+      "due_at": "2026-12-04T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": false,
+      "open": true,
+      "urgency": "later",
+      "marks": "Not marked yet",
+      "can_submit": true,
+      "has_brief": true
+    },
+    {
+      "id": "Database_Systems#3#ER_diagram_draft",
+      "course": "Database Systems",
+      "title": "ER diagram draft",
+      "number": "3",
+      "due_at": "2026-11-21T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": true,
+      "open": false,
+      "urgency": "submitted",
+      "marks": "Not marked yet",
+      "can_submit": true,
+      "has_brief": true
+    },
+    {
+      "id": "Operating_Systems#1#Lab_journal_1",
+      "course": "Operating Systems",
+      "title": "Lab journal 1",
+      "number": "1",
+      "due_at": "2026-11-10T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": true,
+      "open": false,
+      "urgency": "submitted",
+      "marks": "8 / 10",
+      "can_submit": false,
+      "has_brief": true
+    },
+    {
+      "id": "Human_Computer_Interaction#2#Paper_prototype",
+      "course": "Human Computer Interaction",
+      "title": "Paper prototype",
+      "number": "2",
+      "due_at": "2026-10-31T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": true,
+      "open": false,
+      "urgency": "submitted",
+      "marks": "9 / 10",
+      "can_submit": false,
+      "has_brief": true
+    },
+    {
+      "id": "Software_Engineering#4#Requirements_document",
+      "course": "Software Engineering",
+      "title": "Requirements document",
+      "number": "4",
+      "due_at": "2026-11-14T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": false,
+      "open": false,
+      "urgency": "missed",
+      "marks": "Not marked yet",
+      "can_submit": false,
+      "has_brief": true
+    },
+    {
+      "id": "Data_Structures_Lab#6#Lab_6:_balanced_trees",
+      "course": "Data Structures Lab",
+      "title": "Lab 6: balanced trees",
+      "number": "6",
+      "due_at": "2026-11-17T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": false,
+      "open": false,
+      "urgency": "missed",
+      "marks": "Not marked yet",
+      "can_submit": false,
+      "has_brief": false
+    },
+    {
+      "id": "Data_Structures_Lab#5#Lab_5:_heaps",
+      "course": "Data Structures Lab",
+      "title": "Lab 5: heaps",
+      "number": "5",
+      "due_at": "2026-11-03T23:55:00",
+      "extended": false,
+      "was_due": null,
+      "submitted": true,
+      "open": false,
+      "urgency": "submitted",
+      "marks": "Not marked yet",
+      "can_submit": false,
+      "has_brief": true
+    }
+  ],
+  "attendance": [
+    {
+      "code": "HCI 301",
+      "title": "Human Computer Interaction",
+      "credit_hours": "3",
+      "teacher": "Dr. Rivera",
+      "present": 22.0,
+      "absent": 3.0,
+      "percent": 88.0,
+      "ok": true,
+      "can_miss": 4.3,
+      "need": 0.0,
+      "classes": [
+        {
+          "date": "Thursday, 19 November 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 12 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 05 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 29 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 22 October 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 15 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        }
+      ]
+    },
+    {
+      "code": "DB 310",
+      "title": "Database Systems",
+      "credit_hours": "3",
+      "teacher": "Dr. Okafor",
+      "present": 14.0,
+      "absent": 6.0,
+      "percent": 70.0,
+      "ok": false,
+      "can_miss": 0.0,
+      "need": 4.0,
+      "classes": [
+        {
+          "date": "Thursday, 19 November 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 12 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 05 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 29 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 22 October 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 15 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        }
+      ]
+    },
+    {
+      "code": "OS 320",
+      "title": "Operating Systems",
+      "credit_hours": "3",
+      "teacher": "Dr. Lindqvist",
+      "present": 20.0,
+      "absent": 5.0,
+      "percent": 80.0,
+      "ok": true,
+      "can_miss": 1.7,
+      "need": 0.0,
+      "classes": [
+        {
+          "date": "Thursday, 19 November 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 12 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 05 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 29 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 22 October 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 15 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        }
+      ]
+    },
+    {
+      "code": "SE 330",
+      "title": "Software Engineering",
+      "credit_hours": "3",
+      "teacher": "Dr. Tanaka",
+      "present": 24.0,
+      "absent": 1.5,
+      "percent": 94.12,
+      "ok": true,
+      "can_miss": 6.5,
+      "need": 0.0,
+      "classes": [
+        {
+          "date": "Thursday, 19 November 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 12 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 05 November 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 29 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        },
+        {
+          "date": "Thursday, 22 October 2026",
+          "hours": 1.5,
+          "present": 0.0,
+          "absent": 1.5
+        },
+        {
+          "date": "Thursday, 15 October 2026",
+          "hours": 1.5,
+          "present": 1.5,
+          "absent": 0.0
+        }
+      ]
+    },
+    {
+      "code": "DS 240",
+      "title": "Data Structures Lab",
+      "credit_hours": "1",
+      "teacher": "Ms. Haddad",
+      "present": 0.0,
+      "absent": 0.0,
+      "percent": 0.0,
+      "ok": true,
+      "can_miss": 0.0,
+      "need": 0.0,
+      "classes": []
+    }
+  ],
+  "exams": [
+    {
+      "title": "Human Computer Interaction",
+      "type": "Mid-Term",
+      "date": "30/11/2026",
+      "time": "09:00 AM",
+      "room": "HL-12",
+      "row": "1",
+      "seat": "2",
+      "scheduled": true
+    },
+    {
+      "title": "Database Systems",
+      "type": "Mid-Term",
+      "date": "02/12/2026",
+      "time": "09:00 AM",
+      "room": "HL-13",
+      "row": "2",
+      "seat": "3",
+      "scheduled": true
+    },
+    {
+      "title": "Operating Systems",
+      "type": "Mid-Term",
+      "date": "04/12/2026",
+      "time": "09:00 AM",
+      "room": "HL-14",
+      "row": "3",
+      "seat": "4",
+      "scheduled": true
+    },
+    {
+      "title": "Software Engineering",
+      "type": "Mid-Term",
+      "date": null,
+      "time": null,
+      "room": null,
+      "row": null,
+      "seat": null,
+      "scheduled": false
+    },
+    {
+      "title": "Data Structures Lab",
+      "type": "Mid-Term",
+      "date": null,
+      "time": null,
+      "room": null,
+      "row": null,
+      "seat": null,
+      "scheduled": false
+    }
+  ],
+  "timetable": [
+    {
+      "day": "Mon",
+      "start": "09:00",
+      "end": "10:30",
+      "course": "Database Systems",
+      "teacher": "Dr. Okafor"
+    },
+    {
+      "day": "Tue",
+      "start": "11:00",
+      "end": "12:30",
+      "course": "Operating Systems",
+      "teacher": "Dr. Lindqvist"
+    },
+    {
+      "day": "Wed",
+      "start": "09:00",
+      "end": "10:30",
+      "course": "Human Computer Interaction",
+      "teacher": "Dr. Rivera"
+    },
+    {
+      "day": "Thu",
+      "start": "14:00",
+      "end": "15:30",
+      "course": "Software Engineering",
+      "teacher": "Dr. Tanaka"
+    },
+    {
+      "day": "Fri",
+      "start": "10:00",
+      "end": "13:00",
+      "course": "Data Structures Lab",
+      "teacher": "Ms. Haddad"
+    }
+  ],
+  "results": {
+    "cgpa": 3.5,
+    "semesters": [
+      {
+        "name": "Fall-2025",
+        "gpa": 3.67,
+        "cgpa": 3.67,
+        "complete": true,
+        "courses": [
+          {
+            "code": "A1",
+            "title": "Programming",
+            "credits": 3.0,
+            "grade": "A"
+          },
+          {
+            "code": "A2",
+            "title": "Calculus",
+            "credits": 3.0,
+            "grade": "B+"
+          }
+        ]
+      },
+      {
+        "name": "Spring-2026",
+        "gpa": 3.34,
+        "cgpa": 3.5,
+        "complete": true,
+        "courses": [
+          {
+            "code": "B1",
+            "title": "Networks",
+            "credits": 3.0,
+            "grade": "A-"
+          },
+          {
+            "code": "B2",
+            "title": "Statistics",
+            "credits": 3.0,
+            "grade": "B"
+          }
+        ]
+      },
+      {
+        "name": "Fall-2026",
+        "gpa": null,
+        "cgpa": null,
+        "complete": false,
+        "courses": [
+          {
+            "code": "HCI 301",
+            "title": "Human Computer Interaction",
+            "credits": 3.0,
+            "grade": null
+          },
+          {
+            "code": "DB 310",
+            "title": "Database Systems",
+            "credits": 3.0,
+            "grade": null
+          },
+          {
+            "code": "OS 320",
+            "title": "Operating Systems",
+            "credits": 3.0,
+            "grade": null
+          },
+          {
+            "code": "SE 330",
+            "title": "Software Engineering",
+            "credits": 3.0,
+            "grade": null
+          },
+          {
+            "code": "DS 240",
+            "title": "Data Structures Lab",
+            "credits": 1.0,
+            "grade": null
+          }
+        ]
+      }
+    ]
+  },
+  "announcements": [
+    {
+      "id": "an0",
+      "course": "Human Computer Interaction",
+      "title": "Quiz on Monday",
+      "text": "A short quiz covers weeks 1 to 3.",
+      "posted_at": "2026-11-19T15:54:12"
+    },
+    {
+      "id": "an1",
+      "course": "Database Systems",
+      "title": "Deadline extended",
+      "text": "The scheduler assignment is extended by two days.",
+      "posted_at": "2026-11-16T15:54:12"
+    },
+    {
+      "id": "an2",
+      "course": "Operating Systems",
+      "title": "Guest lecture",
+      "text": "A guest lecture on usability testing is on Thursday.",
+      "posted_at": "2026-11-11T15:54:12"
+    }
+  ]
+}

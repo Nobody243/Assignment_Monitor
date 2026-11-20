@@ -393,3 +393,10 @@ def test_lead_settings_are_validated(monkeypatch):
     for bad in ("0", "9999", "a,b", "1,2,3,4,5,6,7"):
         with pytest.raises(ValueError):
             settings_api.coerce("remind_leads", bad)
+
+
+def test_the_summary_endpoint_serves_the_phone_file(api):
+    call, _w, _b = api
+    st, body, _h = call("GET", "/api/summary")
+    assert st == 200 and body["schema"] == 1 and "assignments" in body and "password" not in json.dumps(body).lower()
+    assert call("GET", "/api/summary", token=None)[0] == 401
