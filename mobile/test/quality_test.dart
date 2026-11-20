@@ -2,14 +2,23 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:assignment_monitor_mobile/cloud_setup.dart';
 import 'package:assignment_monitor_mobile/data.dart';
 import 'package:assignment_monitor_mobile/main.dart';
 import 'package:assignment_monitor_mobile/model.dart';
+import 'package:assignment_monitor_mobile/screens/cloud_setup_screens.dart';
+import 'package:assignment_monitor_mobile/screens/signin.dart';
+import 'package:assignment_monitor_mobile/source.dart';
 import 'package:assignment_monitor_mobile/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'fake_github.dart';
+import 'helpers.dart';
 
 /// Quality checks that go beyond single features:
 ///  - the contract: summary files that are empty, sparse or damaged still read and draw on every screen;
@@ -137,7 +146,111 @@ void main() {
     }
   });
 
-  group('layout: other screen shapes', skip: _roboto == null ? 'the SDK Roboto font was not found' : null, () {
+  // The phone-only setup (wizard, Cloud checks in Settings, change portal login) at the same sizes: a small phone, large text.
+  group('layout: phone-only setup screens', skip: _roboto == null ? 'the SDK Roboto font was not found' : null, () {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      for (final b in [Brightness.light, Brightness.dark]) {
+        final label = '${(scale * 100).round()}% text, ${b.name}';
+        testWidgets('wizard, Cloud checks page and change login at $label', (tester) async {
+          SharedPreferences.setMockInitialValues({});
+          tester.view.devicePixelRatio = 3;
+          tester.view.physicalSize = const Size(360 * 3, 740 * 3);
+          addTearDown(tester.view.reset);
+          final gh = FakeGithub();
+          cloudClientFactory = (t) => CloudClient(t, client: gh.client, delay: (_) async {});
+          addTearDown(() { cloudClientFactory = (t) => CloudClient(t); cloudAuthFactory = () => GithubAuth(); });
+          final store = MemoryStore()..tokenV = 'gho_faketoken'..loginV = 'student1';
+          final model = AppModel(Prefs(), store: store, source: SummarySource(MockClient((_) async => http.Response('{}', 404))))..login = 'student1';
+
+          Future<void> show(Widget home) async {
+            await tester.pumpWidget(MaterialApp(
+              key: UniqueKey(),   // a new app each time: MaterialApp keeps its first home route when only `home` changes
+              theme: buildTheme(palettes.first, b),
+              builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)), child: child!),
+              home: home,
+            ));
+            await tester.pump(const Duration(milliseconds: 300));
+          }
+          Future<void> tapText(String text) async {
+            await tester.scrollUntilVisible(find.text(text), 150, scrollable: find.byType(Scrollable).first);
+            await tester.ensureVisible(find.text(text));   // all of it, not just its edge
+            await tester.pump(const Duration(milliseconds: 50));
+            await tester.tap(find.text(text));
+            await tester.pump(const Duration(milliseconds: 400));
+          }
+
+          // sign-in screen with the new entry, the first wizard page, and the GitHub code page (never approved)
+          cloudAuthFactory = () => GithubAuth(MockClient((r) async {
+                if (r.url.path == '/login/device/code') return http.Response(jsonEncode({'device_code': 'dc', 'user_code': 'ABCD-1234', 'verification_uri': 'https://github.com/login/device', 'interval': 1, 'expires_in': 900}), 200);
+                return http.Response(jsonEncode({'error': 'authorization_pending'}), 200);
+              }));
+          await show(ListenableBuilder(listenable: model, builder: (_, _) => SignInScreen(model: model)));
+          _noException(tester, 'the sign-in screen overflowed at $label');
+          await tapText('I only use the phone');
+          await tester.pumpAndSettle();
+          _noException(tester, 'the wizard intro overflowed at $label');
+          await tester.scrollUntilVisible(find.byType(CheckboxListTile), 150, scrollable: find.byType(Scrollable).first);
+          await tester.ensureVisible(find.byType(CheckboxListTile));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(CheckboxListTile));
+          await tester.pump();
+          await tapText('Continue');
+          await tester.pump(const Duration(milliseconds: 300));
+          _noException(tester, 'the GitHub code page overflowed at $label');
+          await tapText('Cancel');
+          await tester.pump(const Duration(seconds: 6));   // lets the waiting loop see it was cancelled
+          await show(const SizedBox());
+
+          // portal login page, then a failed setup (the failure view with Retry)
+          cloudAuthFactory = () => GithubAuth(MockClient((r) async {
+                if (r.url.path == '/login/device/code') return http.Response(jsonEncode({'device_code': 'dc', 'user_code': 'ABCD-1234', 'verification_uri': 'https://github.com/login/device', 'interval': 0}), 200);
+                if (r.url.path == '/login/oauth/access_token') return http.Response(jsonEncode({'access_token': 'gho_faketoken'}), 200);
+                return http.Response(jsonEncode({'login': 'student1'}), 200);
+              }), Duration.zero);
+          gh.failures['PUT /repos/student1/assignment-monitor-cloud/actions/secrets/AM_ENROLLMENT'] = 422;
+          await show(CloudSetupWizard(model: model));
+          await tester.scrollUntilVisible(find.byType(CheckboxListTile), 150, scrollable: find.byType(Scrollable).first);
+          await tester.ensureVisible(find.byType(CheckboxListTile));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(CheckboxListTile));
+          await tester.pump();
+          await tapText('Continue');
+          await tester.pump(const Duration(seconds: 1));
+          await tester.pumpAndSettle();
+          _noException(tester, 'the portal login page overflowed at $label');
+          await tester.enterText(find.byType(TextField).at(0), '01-123456-001');
+          await tester.enterText(find.byType(TextField).at(1), 'fake-portal-password-for-tests');
+          await tester.pump();
+          await tapText('Set up Cloud checks');
+          await tester.pumpAndSettle();
+          expect(find.text('Retry'), findsOneWidget);
+          _noException(tester, 'the setup failure page overflowed at $label');
+          await show(const SizedBox());
+
+          // Settings > Cloud checks: on (with a last run), then the change-login page, then off
+          gh.failures.clear();
+          gh.repoExists = true;
+          gh.files[workflowPath] = workflowYaml();
+          gh.run = {'status': 'completed', 'conclusion': 'failure', 'run_started_at': DateTime.now().toUtc().subtract(const Duration(hours: 5)).toIso8601String(), 'html_url': ''};
+          await show(Scaffold(body: CloudSettingsPage(model: model)));
+          await tester.pumpAndSettle();
+          expect(find.text('Cloud checks are on'), findsOneWidget);
+          _noException(tester, 'Cloud checks (on) overflowed at $label');
+          await tapText('Change portal login');
+          await tester.pumpAndSettle();
+          _noException(tester, 'Change portal login overflowed at $label');
+          await show(const SizedBox());
+          gh.files.remove(workflowPath);
+          await show(Scaffold(body: CloudSettingsPage(model: model)));
+          await tester.pumpAndSettle();
+          expect(find.text('Not set up from this phone'), findsOneWidget);
+          _noException(tester, 'Cloud checks (off) overflowed at $label');
+        });
+      }
+    }
+  });
+
+  group('layout: other screen shapes',skip: _roboto == null ? 'the SDK Roboto font was not found' : null, () {
     for (final (name, size) in [('a phone on its side', const Size(800, 360)), ('a small tablet', const Size(800, 1280)), ('a large tablet on its side', const Size(1280, 800)), ('a narrow phone', const Size(320, 640))]) {
       testWidgets('$name: every section fits and the content stays in a column', (tester) async {
         final s = (await tester.runAsync(Summary.load))!;

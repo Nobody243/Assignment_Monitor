@@ -12,11 +12,11 @@ What the app holds, what it sends, what is checked, and what is still open. Upda
 | Notification text | Generic while the app lock is on | Reminders say only "Assignment due soon", news and summaries are generic too; details are inside the locked app. |
 | First-run setup | One time, after the first real data | Reminder lead times and notification permission, then an offer to turn the app lock on. |
 | Settings (palette, lead times, done and snoozed assignments) | `shared_preferences` | No personal data beyond assignment ids. |
-| Portal password | **Never** on the phone | The phone never contacts the portal. |
+| Portal password | **Not kept** | With the desktop app, never on the phone. With the phone-only setup it is typed once, sealed on the phone and sent to GitHub, then forgotten (see "Phone-only setup" below). The phone never contacts the portal. |
 
 Network: HTTPS only (`usesCleartextTraffic=false`, a network-security config with cleartext refused), and only to
 `github.com` (device-flow sign-in) and `api.github.com` (read `state/summary.json` from the student's own private
-repository). That also holds in the background: about every two hours Android runs a short check (WorkManager) that
+repository; the phone-only setup also creates and manages that repository, see below). That also holds in the background: about every two hours Android runs a short check (WorkManager) that
 reads the same file with the same sign-in to look for news; it needs no extra permission beyond the network. No analytics,
 no crash reporting, no third party. The link opened during sign-in is checked to be
 `https://github.com` before it is launched.
@@ -24,6 +24,31 @@ no crash reporting, no third party. The link opened during sign-in is checked to
 Exports: the calendar file and the timetable picture are made on the phone and handed to Android's share sheet; the
 app does not send them anywhere itself. "Copy support info" puts versions, freshness and counts on the clipboard, with no
 name, course, grade or token (a test asserts it).
+
+## Phone-only setup (Cloud checks from the phone)
+
+Sign-in screen, "I only use the phone", and Settings, Cloud checks. It does what the desktop's Cloud checks setup does
+(`cloud.py`), from the phone, so a student without the desktop app gets the same private repository
+(`assignment-monitor-cloud`), the same scheduled workflow and the same `state/summary.json`. What changes about the
+claims above, stated exactly:
+
+- **The portal password is typed on the phone once.** It is sealed on the phone with the repository's public key (a
+  libsodium sealed box, `pinenacl`; the format is checked against a box sealed by libsodium itself, in both directions)
+  and sent over HTTPS to GitHub's Actions secrets of the student's own private repository (`AM_PASSWORD`, with
+  `AM_ENROLLMENT`). It goes to GitHub and nowhere else: not to us, and the phone never contacts the portal.
+- **It is not kept on the phone.** Not in preferences, not in secure storage, not in a log line, not in an error message
+  (errors carry the step and the HTTP status only, never a request body, a response body or an exception's text). The
+  field is cleared when the setup succeeds and when the screen is left. While a setup that failed is still on screen the
+  password stays in that text field's memory so Retry works; it is never written anywhere. Tests assert that no request
+  body, stored value, error text or debug line holds it.
+- **The GitHub sign-in is wider for this path.** It asks for `repo workflow` (creating the repository and writing the
+  workflow file need both), kept in the Android Keystore like the read-only token. A student who wants the narrow
+  read-only sign-in can still switch to "Use a read-only token instead" once Cloud checks is set up.
+- **Where the check runs.** On GitHub's machines, twice a day, from the student's own repository, with the secrets
+  GitHub keeps encrypted; GitHub masks them in logs. The workflow checks out the project at a pinned release tag
+  (`cloudRunnerVersion` in `lib/cloud_setup.dart`), and the setup refuses to start if that release is not published.
+- **Turning off** (Settings, Cloud checks) deletes every secret and the workflow file. The repository stays; deleting it
+  needs a permission the app does not ask for.
 
 ## Checks that run (CI: `.github/workflows/mobile-ci.yml`, and locally)
 
@@ -37,6 +62,9 @@ name, course, grade or token (a test asserts it).
   - **contrast**: text, secondary text, accent and status colours at least 4.5 to 1 in all four palettes, light and dark;
   - **alerts**: the Sunday summary, morning digest, what-changed comparison, calendar file (escaping, folding, times) and
     the background check (new, unchanged, alerts off, first run, signed out, offline);
+  - **phone-only setup**: the sealed box, the workflow file (identical to the desktop's), the whole sequence against a
+    fake GitHub (exact calls, secret names, sealed not plain, running twice, public repository, 401, 403, 422, rate limit),
+    that the password never appears in a request, store, error or log, and the wizard and Settings screens;
   - **behaviour**: sign-in (device flow, declined, expired), refresh (304, offline, 401, no double refresh), sign out,
     reminder planning, swipe to done and snooze, calculator, announcements, settings, the intro, and fast taps on the
     menu and bar.

@@ -322,8 +322,29 @@ class AppModel extends ChangeNotifier {
   Future<void> signOut() async {
     await _store.clear();
     if (Reminders.supported) { await Reminders.schedule(Summary({'assignments': [], 'schema': 1}), leads: [], done: {}, snoozed: {}); }
-    summary = null; login = null; etag = null; fetchedAt = null; demo = false; error = null;
+    summary = null; login = null; etag = null; fetchedAt = null; demo = false; error = null; cloudFirstCheck = false;
     phase = Phase.signedOut;
     notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------------------------- phone-only Cloud checks
+  // (added for the phone-only setup, lib/screens/cloud_setup_screens.dart; kept together at the end of the class)
+
+  /// True from the end of the phone-only setup until the first summary arrives or the user signs out: the waiting screen
+  /// says the first check is running instead of telling the student to start one by hand.
+  bool cloudFirstCheck = false;
+
+  /// The saved GitHub token, for the Cloud checks screens (they talk to GitHub themselves). Never shown or logged.
+  Future<String?> cloudToken() => _store.token();
+
+  /// The setup finished: keep the sign-in it ended with (the wider "repo workflow" one) exactly like a normal sign-in, and
+  /// land on the waiting screen, which fills in when the first check has written the summary.
+  Future<void> adoptSession(String token, String githubLogin) async {
+    await _store.saveSession(token, githubLogin);
+    login = githubLogin; error = null; demo = false; code = null;
+    cloudFirstCheck = true;
+    phase = summary == null ? Phase.waiting : phase;
+    notifyListeners();
+    unawaited(refresh());
   }
 }

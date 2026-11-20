@@ -314,7 +314,7 @@ class _PrivacyArt extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(LucideIcons.keyRound, size: 18, color: t.colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
-          Flexible(child: Text('No portal password on the phone', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
+          Flexible(child: Text('Portal password never kept here', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
         ]),
       ),
     ]);
