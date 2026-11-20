@@ -66,6 +66,7 @@ class AppModel extends ChangeNotifier {
   DeviceCode? code;
   bool refreshing = false, _cancelSignIn = false;
   int scheduled = 0;
+  bool introSeen = true;   // the first-run intro is shown once, only to someone who is signed out
 
   Clock get clock => demo ? Clock(summary!.generatedAt) : Clock.real();
 
@@ -73,8 +74,13 @@ class AppModel extends ChangeNotifier {
   Duration? get age => fetchedAt == null ? null : DateTime.now().difference(fetchedAt!);
 
   Future<void> start() async {
+    final began = DateTime.now();
     await prefs.load();
+    introSeen = (await SharedPreferences.getInstance()).getBool('introSeen') ?? false;
     final token = await _store.token();
+    // keep the launch mark up for a beat, so it hands over from the native launch screen instead of flashing past
+    final left = const Duration(milliseconds: 700) - DateTime.now().difference(began);
+    if (!left.isNegative) await Future.delayed(left);
     if (token == null) { phase = Phase.signedOut; notifyListeners(); return; }
     login = await _store.login();
     final c = await _store.cached();
@@ -83,6 +89,12 @@ class AppModel extends ChangeNotifier {
     notifyListeners();
     unawaited(refresh());
     unawaited(replan());
+  }
+
+  Future<void> finishIntro() async {
+    introSeen = true;
+    notifyListeners();
+    await (await SharedPreferences.getInstance()).setBool('introSeen', true);
   }
 
   Future<void> useDemo() async {

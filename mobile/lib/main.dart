@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'data.dart' show Clock;
 import 'model.dart';
 import 'screens/attendance.dart';
+import 'screens/intro.dart';
 import 'data.dart' show Summary;
 import 'screens/more.dart';
 import 'screens/settings.dart';
@@ -62,11 +63,16 @@ class _AppState extends State<AssignmentMonitorApp> with WidgetsBindingObserver 
       themeMode: prefs.mode,
       theme: buildTheme(prefs.palette, Brightness.light),
       darkTheme: buildTheme(prefs.palette, Brightness.dark),
-      home: switch (model.phase) {
-        Phase.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
-        Phase.ready => Shell(model: model, prefs: prefs),
-        _ => SignInScreen(model: model),
-      },
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 420),
+        switchInCurve: Curves.easeOut,
+        child: switch (model.phase) {
+          Phase.loading => const BrandSplash(key: ValueKey('splash')),
+          Phase.ready => Shell(key: const ValueKey('shell'), model: model, prefs: prefs),
+          Phase.signedOut when !model.introSeen => IntroScreen(key: const ValueKey('intro'), model: model),
+          _ => SignInScreen(key: const ValueKey('signin'), model: model),
+        },
+      ),
     );
   }
 }
