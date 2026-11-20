@@ -1,5 +1,6 @@
 """The local JSON service the new interface talks to: who may call it, what it returns, how an upload becomes a job,
 and that only one action runs at a time. The portal itself is replaced by stubs; the HTTP layer is real."""
+import http.client
 import json
 import threading
 import time
@@ -288,8 +289,20 @@ def test_responses_carry_security_headers(api):
 
 
 def test_oversized_and_malformed_requests_are_refused(api):
-    call, _w, _b = api
-    assert call("POST", "/api/sync", body=b"x" * (engine.MAX_BODY + 1))[0] == 413
+    call, _w, base = api
+    # An oversized body is refused from its declared length alone, before any of it is read, and the connection is then
+    # closed. So the test declares the size and sends no body: sending megabytes into a server that closes at once is a
+    # race that raised ConnectionAbortedError on the Windows runner.
+    host, port = base.removeprefix("http://").split(":")
+    conn = http.client.HTTPConnection(host, int(port), timeout=30)
+    try:
+        conn.putrequest("POST", "/api/sync")
+        conn.putheader("Authorization", "Bearer secret")
+        conn.putheader("Content-Length", str(engine.MAX_BODY + 1))
+        conn.endheaders()
+        assert conn.getresponse().status == 413
+    finally:
+        conn.close()
     assert call("POST", "/api/sync", headers={"Content-Length": "abc"})[0] == 400
 
 
