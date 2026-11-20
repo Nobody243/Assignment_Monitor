@@ -161,7 +161,7 @@ export function DataSection({ view, save, paths, demo, onOpenFolder, onCleared }
         <p className="text-muted-foreground text-xs">Type or paste a full folder path, for example D:\University\Lectures. The folder is created the first time something is saved there.</p>
       </Section>
       <Section id="data" title="Your data" description="Everything the app keeps is on this PC. Nothing leaves it unless you turn on cloud checks.">
-        <Row label="App data and activity log" hint={<span className="num">{paths.data}</span>}><Button variant="outline" size="sm" disabled={demo} onClick={() => onOpenFolder('data')}><FolderOpen />Open</Button></Row>
+        <Row label="App data and activity log" hint={<span className="num select-text">{paths.data}</span>}><Button variant="outline" size="sm" disabled={demo} onClick={() => onOpenFolder('data')}><FolderOpen />Open</Button></Row>
         <Row label="Clear saved data" hint="Deletes the saved assignments, attendance, exams, announcements and lecture list. The next check rebuilds them. Your account and settings stay.">
           <Button variant="outline" size="sm" className="text-destructive" disabled={demo} onClick={() => setConfirm(true)}><Trash2 />Clear</Button>
         </Row>

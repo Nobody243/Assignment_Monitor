@@ -42,7 +42,7 @@ function Actions({ now }: { now: number }) {
               {e.ok ? <CircleCheck className="text-success mt-0.5 size-4 shrink-0" /> : <CircleX className="text-destructive mt-0.5 size-4 shrink-0" />}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{e.title}</div>
-                {e.detail && <div className="text-muted-foreground mt-0.5 text-xs whitespace-pre-line">{e.detail}</div>}
+                {e.detail && <div className="text-muted-foreground mt-0.5 text-xs whitespace-pre-line select-text">{e.detail}</div>}
               </div>
               <time className="num text-muted-foreground shrink-0 text-xs" dateTime={new Date(e.at).toISOString()}>{when.format(e.at)}</time>
             </Reveal></li>
@@ -84,7 +84,7 @@ function EngineLog({ demo }: { demo: boolean }) {
             <li key={e.time + i} className="flex gap-3 px-4 py-2">
               <span className="text-muted-foreground shrink-0">{e.time.slice(5, 16)}</span>
               <span className={cn('w-14 shrink-0 font-medium', LEVEL[e.level] ?? 'text-muted-foreground')}>{e.level}</span>
-              <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{e.text}</span>
+              <span className="min-w-0 flex-1 break-words whitespace-pre-wrap select-text">{e.text}</span>
             </li>
           ))}
         </ul>

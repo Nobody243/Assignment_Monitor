@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.8.1 - 2026-11-20
+
+- Dragging the mouse no longer highlights the whole window. Only text worth copying can be selected: what you type, announcements, activity log lines, file and folder names and error details. Buttons, menus, cards and tables stay clean.
 
 - A Timetable page: your week as a grid with a colour per course, today and the current time marked, and Save as PNG, JPG or PDF (to Documents / Assignment Monitor).
 - First run: a welcome with three steps (sign in, first check, automatic checks) instead of a dashboard that says you are all caught up.

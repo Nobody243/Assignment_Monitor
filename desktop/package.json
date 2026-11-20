@@ -1,6 +1,6 @@
 {
   "name": "assignment-monitor-desktop",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "description": "Desktop shell for Assignment Monitor: a secure window around the interface, with the Python engine running behind it.",
   "main": "main.cjs",

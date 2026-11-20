@@ -86,7 +86,7 @@ export function EngineOffline({ connecting, retryIn, onRetry, onDemo, detail }: 
     <Centered icon={<PlugZap className="size-7" />} title="Can't reach the app engine"
       actions={<><LoadingButton loading={connecting} onClick={onRetry}><RefreshCw />{connecting ? 'Trying…' : 'Try again'}</LoadingButton><Button variant="outline" onClick={onDemo}>View sample data</Button></>}>
       <p>The interface shows your data through a small background engine on this PC, and it isn't answering. If you just opened the app, give it a few seconds. Otherwise close and reopen the app.</p>
-      <p className="mt-2 text-xs">{retryIn != null ? `Trying again automatically in ${retryIn}s.` : 'Trying again automatically.'}{detail ? ` (${detail})` : ''}</p>
+      <p className="mt-2 text-xs select-text">{retryIn != null ? `Trying again automatically in ${retryIn}s.` : 'Trying again automatically.'}{detail ? ` (${detail})` : ''}</p>
     </Centered>
   )
 }

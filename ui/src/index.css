@@ -140,6 +140,12 @@
   body {
     @apply bg-background text-foreground;
     }
+  /* A desktop app is not a web page: dragging across the window must not highlight the sidebar, buttons and cards.
+     Only text worth copying can be selected: what you type, and anything marked .select-text (announcements, log lines,
+     file names, paths, error details). */
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable='true'], .select-text, .select-text * { -webkit-user-select: text; user-select: text; }
+  img, svg { -webkit-user-drag: none; }
   html {
     @apply font-sans;
     }

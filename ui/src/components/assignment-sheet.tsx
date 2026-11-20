@@ -72,8 +72,8 @@ function Body({ a, now, demo, running, onUpload, onDelete, onDownload }: Omit<Pr
     <>
       <SheetHeader className="gap-2 pr-12">
         <div><StatusBadge a={a} /></div>
-        <SheetTitle className="text-xl leading-tight text-balance">{a.title}</SheetTitle>
-        <SheetDescription>{a.course} · #{a.assign_no}</SheetDescription>
+        <SheetTitle className="text-xl leading-tight text-balance select-text">{a.title}</SheetTitle>
+        <SheetDescription className="select-text">{a.course} · #{a.assign_no}</SheetDescription>
       </SheetHeader>
 
       <div className="flex flex-col gap-6 px-4 pb-6">
