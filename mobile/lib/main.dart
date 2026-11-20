@@ -67,7 +67,7 @@ class _AppState extends State<AssignmentMonitorApp> with WidgetsBindingObserver 
         duration: const Duration(milliseconds: 420),
         switchInCurve: Curves.easeOut,
         child: switch (model.phase) {
-          Phase.loading => const BrandSplash(key: ValueKey('splash')),
+          Phase.loading => BrandSplash(key: const ValueKey('splash'), model: model),
           Phase.ready => Shell(key: const ValueKey('shell'), model: model, prefs: prefs),
           Phase.signedOut when !model.introSeen => IntroScreen(key: const ValueKey('intro'), model: model),
           _ => SignInScreen(key: const ValueKey('signin'), model: model),

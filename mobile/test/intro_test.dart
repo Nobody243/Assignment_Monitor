@@ -45,7 +45,7 @@ void main() {
 
   testWidgets('the launch mark draws', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: BrandSplash()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));   // the progress line never settles, so step the clock instead
     expect(find.text('Assignment Monitor'), findsOneWidget);
   });
 }

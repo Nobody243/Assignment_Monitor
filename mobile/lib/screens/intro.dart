@@ -19,9 +19,11 @@ class BrandMark extends StatelessWidget {
       );
 }
 
-/// Shown while the app reads its saved state. It continues the native launch screen: same colours, same mark.
+/// Shown while the app starts. It continues the native launch screen (same colours, same mark), then says what it is
+/// doing while the saved data is read, GitHub is asked for anything new and the reminders are planned.
 class BrandSplash extends StatelessWidget {
-  const BrandSplash({super.key});
+  const BrandSplash({super.key, this.model});
+  final AppModel? model;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
@@ -29,12 +31,35 @@ class BrandSplash extends StatelessWidget {
       body: Center(
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 650),
+          duration: const Duration(milliseconds: 900),
           curve: Curves.easeOutBack,
           builder: (_, v, _) => Column(mainAxisSize: MainAxisSize.min, children: [
-            Transform.scale(scale: 0.88 + 0.12 * v, child: const BrandMark()),
+            Transform.scale(scale: 0.86 + 0.14 * v, child: const BrandMark()),
             const SizedBox(height: 22),
             Opacity(opacity: (v * 1.4 - 0.4).clamp(0, 1), child: Text('Assignment Monitor', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3))),
+            const SizedBox(height: 28),
+            Opacity(
+              opacity: (v * 2 - 1).clamp(0, 1),
+              child: SizedBox(
+                width: 150,
+                child: Column(children: [
+                  ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(minHeight: 4, color: t.colorScheme.primary, backgroundColor: t.colorScheme.surfaceContainerHighest)),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 20,
+                    child: model == null
+                        ? const SizedBox.shrink()
+                        : ListenableBuilder(
+                            listenable: model!,
+                            builder: (_, _) => AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 260),
+                              child: Text(model!.loadingStep, key: ValueKey(model!.loadingStep), textAlign: TextAlign.center, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+                            ),
+                          ),
+                  ),
+                ]),
+              ),
+            ),
           ]),
         ),
       ),

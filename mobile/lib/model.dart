@@ -73,22 +73,39 @@ class AppModel extends ChangeNotifier {
   /// Hours since the phone last heard from the repository.
   Duration? get age => fetchedAt == null ? null : DateTime.now().difference(fetchedAt!);
 
+  /// The launch screen stays at least this long, and at most [_splashMax]: long enough to read the saved data, look for
+  /// anything new on GitHub and plan the reminders before the first screen shows, so the app opens already filled in.
+  static const _splashMin = Duration(milliseconds: 1800);
+  static const _splashMax = Duration(milliseconds: 3500);
+  String loadingStep = 'Starting';
+
+  void _step(String s) { loadingStep = s; notifyListeners(); }
+
   Future<void> start() async {
     final began = DateTime.now();
+    Duration spent() => DateTime.now().difference(began);
+    _step('Reading your saved data');
     await prefs.load();
     introSeen = (await SharedPreferences.getInstance()).getBool('introSeen') ?? false;
     final token = await _store.token();
-    // keep the launch mark up for a beat, so it hands over from the native launch screen instead of flashing past
-    final left = const Duration(milliseconds: 700) - DateTime.now().difference(began);
+    if (token != null) {
+      login = await _store.login();
+      final c = await _store.cached();
+      summary = c.summary; etag = c.etag; fetchedAt = c.fetchedAt;
+      if (summary != null && _splashMax > spent()) {
+        _step('Looking for new data');
+        // a slow network must not hold the app up: after the limit it opens on what it already has
+        await refresh().timeout(_splashMax - spent(), onTimeout: () {});
+      }
+      if (summary != null) { _step('Planning your reminders'); await replan(); }
+    }
+    _step(token == null ? 'Almost there' : 'Opening your deadlines');
+    final left = _splashMin - spent();
     if (!left.isNegative) await Future.delayed(left);
     if (token == null) { phase = Phase.signedOut; notifyListeners(); return; }
-    login = await _store.login();
-    final c = await _store.cached();
-    summary = c.summary; etag = c.etag; fetchedAt = c.fetchedAt;
     phase = summary == null ? Phase.waiting : Phase.ready;
     notifyListeners();
-    unawaited(refresh());
-    unawaited(replan());
+    if (summary == null) unawaited(refresh());
   }
 
   Future<void> finishIntro() async {
@@ -141,11 +158,11 @@ class AppModel extends ChangeNotifier {
         await _store.touchFetched();
         fetchedAt = DateTime.now();
       } else if (f.missing) {
-        if (summary == null) phase = Phase.waiting;
+        if (summary == null && phase != Phase.loading) phase = Phase.waiting;
       } else {
         summary = f.summary; etag = f.etag; fetchedAt = DateTime.now();
         await _store.saveSummary(summary!, etag);
-        phase = Phase.ready;
+        if (phase != Phase.loading) phase = Phase.ready;
         unawaited(replan());
       }
     } on SourceError catch (e) {
