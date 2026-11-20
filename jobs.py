@@ -129,6 +129,11 @@ def process_sync(result: dict, env: dict, notify: bool = True) -> dict:
             log.warning("Calendar update failed: %s", str(e)[:200])
     for key, err in (result.get("errors") or {}).items():
         log.warning("  %s could not be read this time: %s", key, err)
+    try:
+        import phone_share
+        phone_share.share_after_sync(env)            # the phone's summary file, in its own thread; never fails the check
+    except Exception as e:  # noqa: BLE001
+        log.debug("phone share: %s", e)
     return summary
 
 

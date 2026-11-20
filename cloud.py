@@ -117,12 +117,13 @@ def api(token: str, method: str, path: str, body: dict | None = None, ok=(200, 2
 
 
 # ---------------------------------------------------------------------------- device sign-in
-def device_start() -> dict:
-    """Begins GitHub's device flow. Returns {device_code, user_code, verification_uri, interval, expires_in}."""
+def device_start(scope: str = SCOPES) -> dict:
+    """Begins GitHub's device flow. Returns {device_code, user_code, verification_uri, interval, expires_in}.
+    `scope` is what is asked of the student: Cloud checks needs `repo workflow`, sharing with the phone only `repo`."""
     if not GITHUB_CLIENT_ID:
         raise CloudError("This build has no GitHub client id; cloud checks are not available.")
     status, data, _ = _request("POST", "https://github.com/login/device/code", form=True,
-                               body={"client_id": GITHUB_CLIENT_ID, "scope": SCOPES})
+                               body={"client_id": GITHUB_CLIENT_ID, "scope": scope})
     if status != 200 or not isinstance(data, dict) or "device_code" not in data:
         raise CloudError(f"GitHub did not start the sign-in ({status}): {str(data)[:160]}")
     return data

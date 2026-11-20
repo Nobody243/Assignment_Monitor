@@ -60,6 +60,10 @@ All three live in Settings → Phone, email and calendar and are off until you t
 
 Settings → Cloud checks → Set up. After a consent screen, you sign in to GitHub with a one-time code; the app then creates a private repository `assignment-monitor-cloud` in your account, stores your login and channel keys there as encrypted Actions secrets, copies the PC's cache into it and installs a workflow that runs the same check at 8 AM and 7 PM Pakistan time on GitHub's machines (free; a check takes two to three minutes). Alerts reach your phone and mailbox with the PC off; the PC keeps its desktop and voice alerts and leaves phone and email to the cloud. Settings changed on the PC (password, phone, email, tracking) are sent to the cloud automatically, and an app update moves the workflow to the new version. Turn off removes the secrets and the workflow and offers to open the repository so you can delete it. Details in `PRIVACY.md`.
 
+### Share with my phone
+
+Settings → Background → Share with my phone → Set up. You sign in to GitHub with a one-time code (only the `repo` permission), and after each check that finds something new the app writes a small summary file, `state/summary.json`, to a private repository `assignment-monitor-cloud` in your own account. The phone app reads that file with the same GitHub sign-in. It needs no workflow, no secrets and no Cloud checks, and your portal password stays on the PC. If Cloud checks is on, the cloud runner already writes the file and the PC does not send it twice. Share now sends it at once; Turn off forgets the GitHub sign-in on this PC.
+
 ### Timetable
 
 The CMS timetable is read with every sync and drawn the app's way: one row per day, a colour per course, room and teacher on each block, back-to-back slots merged into one class. **Save as PNG / JPG / PDF** writes the same picture for a lock screen or a print.
@@ -152,6 +156,7 @@ timetable_render.py  the week grid as PNG, JPG or PDF
 updater.py           in-app updates from GitHub releases
 automation.py        scheduled tasks, shortcuts, start with Windows
 cloud.py             cloud checks: GitHub device sign-in, private repo, sealed secrets, workflow
+phone_share.py       share with my phone: the phone's summary.json written to the private repo after a check
 cloud_check.py       entry point the cloud workflow runs
 tray.py              system tray icon
 secure_store.py      DPAPI encryption for the password and channel secrets

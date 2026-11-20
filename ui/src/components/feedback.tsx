@@ -21,7 +21,7 @@ export const TopProgress = ({ active }: { active: boolean }) => active ? <div cl
 
 const KIND_LABEL: Record<string, string> = {
   sync: 'Checking the portal', upload: 'Uploading your file', delete: 'Deleting your submission', download: 'Downloading',
-  verify: 'Verifying your sign-in', automation: 'Changing automatic checks', cloud: 'Working on cloud checks', email: 'Sending a test email', push: 'Sending a test notification',
+  verify: 'Verifying your sign-in', automation: 'Changing automatic checks', cloud: 'Working on cloud checks', phone: 'Setting up sharing with your phone', email: 'Sending a test email', push: 'Sending a test notification',
 }
 
 /** What is running right now and which step it is on, visible on every page. */

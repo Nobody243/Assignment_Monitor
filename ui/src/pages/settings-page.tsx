@@ -16,6 +16,7 @@ import { AppearanceSection } from './settings/appearance'
 import { AlertsSection, BackgroundSection, TrackingSection } from './settings/basics'
 import { ChannelsSection } from './settings/channels'
 import { CloudSection, DataSection } from './settings/cloud-data'
+import { PhoneShareSection } from './settings/phone-share'
 import { useSettings } from './settings/parts'
 import { ProfileCard } from './settings/profile'
 
@@ -66,7 +67,8 @@ export function SettingsPage(p: Props) {
     notifications: view ? two(<><AlertsSection view={view} save={save} demo={p.demo} /><ChannelsSection view={view} save={save} run={p.run} busy={busy} demo={p.demo} reload={load} /></>) : loading ? wait : null,
     tracking: view ? <TrackingSection view={view} save={save} /> : loading ? wait : null,
     background: view ? two(<><BackgroundSection view={view} save={save} run={p.run} busy={busy} demo={p.demo} reload={load} />
-      <CloudSection view={view} run={p.run} running={p.running} busy={busy} demo={p.demo} reload={load} /></>) : loading ? wait : null,
+      <CloudSection view={view} run={p.run} running={p.running} busy={busy} demo={p.demo} reload={load} />
+      <PhoneShareSection view={view} run={p.run} running={p.running} busy={busy} demo={p.demo} reload={load} /></>) : loading ? wait : null,
     data: <DataSection view={view} save={save} paths={p.state.paths} demo={p.demo} onOpenFolder={p.onOpenFolder} onCleared={p.onDataCleared} />,
     activity: <ActivityPanel now={p.now} demo={p.demo} />,
     about: <AboutSection view={view} version={p.state.version} demo={p.demo} run={p.run} busy={busy} />,
