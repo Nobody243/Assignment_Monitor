@@ -8,34 +8,9 @@ import '../source.dart' show repoName;
 import '../theme.dart';
 import 'widgets.dart';
 
-class MoreScreen extends StatelessWidget {
-  const MoreScreen({super.key, required this.summary, required this.now, required this.prefs, required this.model});
-  final Summary summary;
-  final DateTime now;
-  final Prefs prefs;
-  final AppModel model;
-
-  void _open(BuildContext context, String title, Widget body) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: SafeArea(child: body))));
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    Widget tile(IconData i, String title, String sub, Widget page) => Card(child: ListTile(leading: Icon(i), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(sub), trailing: const Icon(Icons.chevron_right), onTap: () => _open(context, title, page)));
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
-      Text('More', style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 14),
-      tile(Icons.school_outlined, 'Exams', 'Room, row and seat with a countdown', ExamsPage(summary: summary, now: now)),
-      const SizedBox(height: 10),
-      tile(Icons.calendar_view_week_outlined, 'Timetable', 'Your week, one column per day', TimetablePage(summary: summary, now: now)),
-      const SizedBox(height: 10),
-      tile(Icons.calculate_outlined, 'Results and GPA calculator', 'CGPA ${summary.cgpa?.toStringAsFixed(2) ?? '–'} · try grades, set a target', ResultsPage(summary: summary)),
-      const SizedBox(height: 10),
-      tile(Icons.tune, 'Settings', 'Reminders, look, account', SettingsPage(summary: summary, prefs: prefs, model: model)),
-      const SizedBox(height: 18),
-      Text('Assignment Monitor for phones${model.demo ? ' · demo with fictional data' : ''}.\nThe phone reads a summary file from your own private repository; your portal password never leaves the PC.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-    ]);
-  }
-}
+/// Opens a secondary page (Timetable, Results, Settings) over the main screens.
+void openPage(BuildContext context, String title, Widget body) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: SafeArea(child: body))));
 
 // ------------------------------------------------------------------------------------------------ exams
 class ExamsPage extends StatelessWidget {

@@ -15,8 +15,6 @@ class AttendanceScreen extends StatelessWidget {
     final rec = courses.where((c) => c.recorded).toList();
     final present = rec.fold<double>(0, (n, c) => n + c.present), total = rec.fold<double>(0, (n, c) => n + c.present + c.absent);
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
-      Text('Attendance', style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 4),
       Text('Against your ${summary.minimum}% minimum. Overall ${total == 0 ? '–' : '${(100 * present / total).toStringAsFixed(1)}%'}.', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
       const SizedBox(height: 14),
       for (final c in courses) Padding(padding: const EdgeInsets.only(bottom: 12), child: _CourseCard(course: c, minimum: summary.minimum)),

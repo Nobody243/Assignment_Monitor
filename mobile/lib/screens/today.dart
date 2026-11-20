@@ -31,9 +31,8 @@ class TodayScreen extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('$hello, ${summary.firstName}', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 21)),
           const SizedBox(height: 2),
-          Text('${dayLabel(now)} · ${summary.semester}', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+          Text('${dayLabel(now)} · ${summary.semester} · $checked', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
         ])),
-        Chip(avatar: Icon(Icons.sync, size: 16, color: t.colorScheme.onSurfaceVariant), label: Text(checked), visualDensity: VisualDensity.compact, side: BorderSide.none, backgroundColor: t.colorScheme.surfaceContainerHigh),
       ]),
       const SizedBox(height: 16),
       if (next != null) _Hero(work: next, now: now, prefs: prefs, onOpen: onOpenWork) else const _AllClear(),

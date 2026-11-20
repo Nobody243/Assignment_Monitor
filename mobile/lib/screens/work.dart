@@ -49,7 +49,6 @@ class _WorkState extends State<WorkScreen> {
     }
     const order = ['Due today', 'This week', 'Later', 'Overdue', 'Submitted', 'No date'];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Text('Work', style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700))),
       SizedBox(
         height: 52,
         child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), children: [

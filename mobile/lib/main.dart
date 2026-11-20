@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'data.dart' show Clock;
 import 'model.dart';
 import 'screens/attendance.dart';
+import 'data.dart' show Summary;
 import 'screens/more.dart';
 import 'screens/signin.dart';
 import 'screens/today.dart';
@@ -78,6 +79,9 @@ class _ShellState extends State<Shell> {
   int tab = 0;
   late Clock clock = widget.model.clock;
   Timer? tick;
+  final _scaffold = GlobalKey<ScaffoldState>();
+
+  static const _titles = ['Today', 'Work', 'Attendance', 'Exams'];
 
   @override
   void initState() {
@@ -90,17 +94,71 @@ class _ShellState extends State<Shell> {
 
   void goto(int i) => setState(() => tab = i);
 
+  /// Drawer rows: 0..3 are the bottom-bar screens, the rest open over them.
+  void _drawerPick(int i, Summary s, DateTime now) {
+    Navigator.of(context).pop();   // close the drawer
+    switch (i) {
+      case 0: case 1: case 2: case 3: goto(i);
+      case 4: openPage(context, 'Timetable', TimetablePage(summary: s, now: now));
+      case 5: openPage(context, 'Results and GPA calculator', ResultsPage(summary: s));
+      case 6: openPage(context, 'Settings', SettingsPage(summary: s, prefs: widget.prefs, model: widget.model));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final m = widget.model, s = m.summary!, now = clock.now();
+    final m = widget.model, s = m.summary!, now = clock.now(), t = Theme.of(context);
     final pages = [
       TodayScreen(summary: s, now: now, prefs: widget.prefs, onOpenWork: () => goto(1), onOpenAttendance: () => goto(2)),
       WorkScreen(summary: s, now: now, prefs: widget.prefs),
       AttendanceScreen(summary: s),
-      MoreScreen(summary: s, now: now, prefs: widget.prefs, model: m),
+      ExamsPage(summary: s, now: now),
     ];
     final stale = !m.demo && (m.age?.inHours ?? 0) >= 24;
+    final todo = s.work.where((w) => w.todo && w.open && !widget.prefs.done.contains(w.id)).length;
     return Scaffold(
+      key: _scaffold,
+      appBar: AppBar(
+        leading: IconButton(icon: const Icon(Icons.menu), tooltip: 'Menu', onPressed: () => _scaffold.currentState?.openDrawer()),
+        title: Text(_titles[tab], style: const TextStyle(fontWeight: FontWeight.w700)),
+        actions: [
+          if (!m.demo) m.refreshing
+              ? const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+              : IconButton(icon: const Icon(Icons.sync), tooltip: 'Check for new data', onPressed: m.refresh),
+          IconButton(icon: const Icon(Icons.tune), tooltip: 'Settings', onPressed: () => openPage(context, 'Settings', SettingsPage(summary: s, prefs: widget.prefs, model: m))),
+        ],
+      ),
+      drawer: NavigationDrawer(
+        selectedIndex: tab,
+        onDestinationSelected: (i) => _drawerPick(i, s, now),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 16, 16),
+            child: Row(children: [
+              CircleAvatar(radius: 26, backgroundColor: t.colorScheme.primaryContainer,
+                  child: Text(s.studentName.trim().isEmpty ? '?' : s.studentName.trim()[0].toUpperCase(), style: t.textTheme.titleLarge?.copyWith(color: t.colorScheme.onPrimaryContainer, fontWeight: FontWeight.w800))),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(s.studentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text(m.demo ? 'Demo data' : [s.semester, if (m.age != null) 'read ${agoLabel(m.age!)}'].where((e) => e.isNotEmpty).join(' · '),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+              ])),
+            ]),
+          ),
+          const NavigationDrawerDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: Text('Today')),
+          NavigationDrawerDestination(icon: const Icon(Icons.checklist_outlined), selectedIcon: const Icon(Icons.checklist), label: Text(todo > 0 ? 'Work  ·  $todo to do' : 'Work')),
+          const NavigationDrawerDestination(icon: Icon(Icons.event_available_outlined), selectedIcon: Icon(Icons.event_available), label: Text('Attendance')),
+          const NavigationDrawerDestination(icon: Icon(Icons.school_outlined), selectedIcon: Icon(Icons.school), label: Text('Exams')),
+          const Padding(padding: EdgeInsets.fromLTRB(28, 12, 28, 12), child: Divider()),
+          const NavigationDrawerDestination(icon: Icon(Icons.calendar_view_week_outlined), label: Text('Timetable')),
+          const NavigationDrawerDestination(icon: Icon(Icons.calculate_outlined), label: Text('Results and GPA')),
+          const NavigationDrawerDestination(icon: Icon(Icons.tune), label: Text('Settings')),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 16, 28, 8),
+            child: Text('Your portal password never touches this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(children: [
           if (!m.demo && (m.error != null || stale)) _Banner(model: m),
@@ -115,11 +173,11 @@ class _ShellState extends State<Shell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: goto,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: 'Today'),
-          NavigationDestination(icon: Icon(Icons.checklist_outlined), selectedIcon: Icon(Icons.checklist), label: 'Work'),
-          NavigationDestination(icon: Icon(Icons.event_available_outlined), selectedIcon: Icon(Icons.event_available), label: 'Attendance'),
-          NavigationDestination(icon: Icon(Icons.apps_outlined), selectedIcon: Icon(Icons.apps), label: 'More'),
+        destinations: [
+          const NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: 'Today'),
+          NavigationDestination(icon: Badge(isLabelVisible: todo > 0, label: Text('$todo'), child: const Icon(Icons.checklist_outlined)), selectedIcon: const Icon(Icons.checklist), label: 'Work'),
+          const NavigationDestination(icon: Icon(Icons.event_available_outlined), selectedIcon: Icon(Icons.event_available), label: 'Attendance'),
+          const NavigationDestination(icon: Icon(Icons.school_outlined), selectedIcon: Icon(Icons.school), label: 'Exams'),
         ],
       ),
     );
