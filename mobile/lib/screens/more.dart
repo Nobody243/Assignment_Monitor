@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../data.dart';
 import '../logic.dart';
 import '../theme.dart';
 import 'widgets.dart';
-
-/// Opens a secondary page (Timetable, Results, Settings) over the main screens.
-void openPage(BuildContext context, String title, Widget body) =>
-    Navigator.of(context).push(slideRoute<void>(Scaffold(appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))), body: SafeArea(child: body))));
 
 // ------------------------------------------------------------------------------------------------ exams
 class ExamsPage extends StatelessWidget {
@@ -20,7 +17,7 @@ class ExamsPage extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final dated = summary.exams.where((e) => e.scheduled && e.day != null && !e.day!.isBefore(today)).toList()..sort((x, y) => x.day!.compareTo(y.day!));
     final pending = summary.exams.where((e) => !(e.scheduled && e.day != null)).toList();
-    if (dated.isEmpty && pending.isEmpty) return const EmptyState(icon: Icons.school_outlined, title: 'No exams yet', hint: 'They appear here when the portal publishes the date sheet.');
+    if (dated.isEmpty && pending.isEmpty) return const EmptyState(icon: LucideIcons.graduationCap, title: 'No exams yet', hint: 'They appear here when the portal publishes the date sheet.');
     final next = dated.isEmpty ? null : dated.first;
     final rest = dated.skip(1).toList();
     int days(Exam e) => e.day!.difference(today).inDays;
@@ -52,11 +49,11 @@ class ExamsPage extends StatelessWidget {
           Text('${dayLabel(next.day!)}${next.time == null ? '' : ' · ${next.time}'}', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.85))),
           const SizedBox(height: 14),
           Row(children: [
-            chip(Icons.meeting_room_outlined, 'Room', next.room ?? '–'),
+            chip(LucideIcons.doorOpen, 'Room', next.room ?? '–'),
             const SizedBox(width: 8),
-            chip(Icons.table_rows_outlined, 'Row', next.row ?? '–'),
+            chip(LucideIcons.rows3, 'Row', next.row ?? '–'),
             const SizedBox(width: 8),
-            chip(Icons.event_seat_outlined, 'Seat', next.seat ?? '–'),
+            chip(LucideIcons.armchair, 'Seat', next.seat ?? '–'),
           ]),
         ]),
       )),
@@ -89,96 +86,12 @@ class ExamsPage extends StatelessWidget {
         SectionTitle('Not scheduled yet', trailing: '${pending.length}'),
         Card(child: Column(children: [
           for (final e in pending) ListTile(
-            leading: Icon(Icons.hourglass_empty, color: t.colorScheme.onSurfaceVariant),
+            leading: Icon(LucideIcons.hourglass, color: t.colorScheme.onSurfaceVariant),
             title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: const Text('Date, room and seat are not posted yet.'),
           ),
         ])),
       ],
-    ]);
-  }
-}
-
-// ------------------------------------------------------------------------------------------------ timetable
-class TimetablePage extends StatefulWidget {
-  const TimetablePage({super.key, required this.summary, required this.now});
-  final Summary summary;
-  final DateTime now;
-  @override
-  State<TimetablePage> createState() => _TimetableState();
-}
-
-class _TimetableState extends State<TimetablePage> {
-  late int day = widget.now.weekday - 1;
-
-  int _mins(String s) { final p = s.split(':'); return int.parse(p[0]) * 60 + int.parse(p[1]); }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final tt = widget.summary.timetable;
-    final todayIdx = widget.now.weekday - 1;
-    final slots = tt.where((s) => s.day == weekdays[day]).toList()..sort((a, b) => a.start.compareTo(b.start));
-    final nowMin = widget.now.hour * 60 + widget.now.minute;
-    return Column(children: [
-      SizedBox(
-        height: 74,
-        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 8, 12, 4), children: [
-          for (var i = 0; i < 7; i++)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () => setState(() => day = i),
-                child: Container(
-                  width: 54, alignment: Alignment.center,
-                  decoration: BoxDecoration(color: day == i ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18), border: i == todayIdx && day != i ? Border.all(color: t.colorScheme.primary.withValues(alpha: 0.5)) : null),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(weekdays[i], style: t.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: day == i ? t.colorScheme.onPrimaryContainer : null)),
-                    const SizedBox(height: 4),
-                    Text('${tt.where((s) => s.day == weekdays[i]).length}', style: t.textTheme.labelSmall?.copyWith(color: day == i ? t.colorScheme.onPrimaryContainer : t.colorScheme.onSurfaceVariant)),
-                  ]),
-                ),
-              ),
-            ),
-        ]),
-      ),
-      Expanded(
-        child: slots.isEmpty
-            ? EmptyState(icon: Icons.free_breakfast_outlined, title: day == todayIdx ? 'No classes today' : 'Free day', hint: 'Nothing is scheduled on ${weekdays[day]}.')
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
-                for (final (i, s) in slots.indexed) Reveal(index: i, child: Builder(builder: (_) {
-                  final live = day == todayIdx && nowMin >= _mins(s.start) && nowMin < _mins(s.end);
-                  final cc = t.colorScheme.primary;
-                  return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    SizedBox(width: 56, child: Padding(padding: const EdgeInsets.only(top: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(s.start, style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-                      Text(s.end, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-                    ]))),
-                    Column(children: [
-                      const SizedBox(height: 18),
-                      Container(width: 12, height: 12, decoration: BoxDecoration(color: live ? cc : Colors.transparent, shape: BoxShape.circle, border: Border.all(color: cc, width: 2))),
-                      if (i < slots.length - 1) Expanded(child: Container(width: 2, color: t.colorScheme.outlineVariant)),
-                    ]),
-                    const SizedBox(width: 12),
-                    Expanded(child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
-                        child: Row(children: [
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(s.course, style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                            if (s.teacher != null) Text(s.teacher!, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-                          ])),
-                          if (live) Pill('now', color: Status.good(t.brightness)),
-                        ]),
-                      ),
-                    )),
-                  ]));
-                })),
-              ]),
-      ),
     ]);
   }
 }
@@ -246,11 +159,11 @@ class _ResultsState extends State<ResultsPage> {
       const SizedBox(height: 12),
       for (var i = 0; i < rows.length; i++)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [
-          Text('Course ${i + 1}', style: t.textTheme.bodyMedium),
-          const Spacer(),
+          SizedBox(width: 72, child: Text('Course ${i + 1}', style: t.textTheme.bodyMedium)),
+          const SizedBox(width: 4),
           DropdownButton<double>(value: rows[i].credits, items: [for (final c in [0, 1, 2, 3, 4]) DropdownMenuItem(value: c.toDouble(), child: Text('$c cr'))], onChanged: (v) => setState(() => rows[i].credits = v ?? 3)),
           const SizedBox(width: 12),
-          DropdownButton<String>(value: rows[i].grade.isEmpty ? null : rows[i].grade, hint: const Text('Grade'), items: [for (final g in gradePoints.keys) DropdownMenuItem(value: g, child: Text('$g (${gradePoints[g]!.toStringAsFixed(2)})'))], onChanged: (v) => setState(() => rows[i].grade = v ?? '')),
+          Expanded(child: DropdownButton<String>(isExpanded: true, value: rows[i].grade.isEmpty ? null : rows[i].grade, hint: const Text('Grade'), items: [for (final g in gradePoints.keys) DropdownMenuItem(value: g, child: Text('$g (${gradePoints[g]!.toStringAsFixed(2)})'))], onChanged: (v) => setState(() => rows[i].grade = v ?? ''))),
         ])),
       const SizedBox(height: 8),
       Row(children: [

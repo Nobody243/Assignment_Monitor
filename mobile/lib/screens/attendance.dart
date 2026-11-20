@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../data.dart';
 import '../logic.dart';
@@ -60,7 +61,7 @@ class _Legend extends StatelessWidget {
         child: Row(children: [
           Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 8),
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
+          Flexible(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
         ]),
       );
 }
@@ -104,7 +105,7 @@ class _CourseCardState extends State<_CourseCard> {
                 const SizedBox(height: 2),
                 Text(sentence, style: t.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600)),
               ])),
-              AnimatedRotation(turns: open ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: Icon(Icons.expand_more, color: t.colorScheme.onSurfaceVariant)),
+              AnimatedRotation(turns: open ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: Icon(LucideIcons.chevronDown, color: t.colorScheme.onSurfaceVariant)),
             ]),
             AnimatedSize(
               duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic, alignment: Alignment.topCenter,
@@ -150,7 +151,7 @@ class _CourseCardState extends State<_CourseCard> {
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(gone ? Icons.close : Icons.check, size: 14, color: col),
+                            Icon(gone ? LucideIcons.x : LucideIcons.check, size: 14, color: col),
                             const SizedBox(width: 4),
                             Text('${s['date']}', style: t.textTheme.labelMedium?.copyWith(color: col, fontWeight: FontWeight.w600)),
                           ]),

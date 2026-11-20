@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../data.dart';
 import '../logic.dart';
@@ -28,20 +29,44 @@ class SettingsHub extends StatelessWidget {
           leading: Container(width: 44, height: 44, decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)), child: Icon(i, size: 22)),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: const Icon(LucideIcons.chevronRight, size: 20),
           onTap: () => _open(context, title, page),
         );
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
       Card(child: Column(children: [
-        row(Icons.notifications_outlined, 'Reminders', prefs.leads.isEmpty ? 'Off' : '${prefs.leads.map(_lead).join(', ')} before', () => RemindersSettings(prefs: prefs, model: model)),
+        row(LucideIcons.bell, 'Reminders', prefs.leads.isEmpty ? 'Off' : '${prefs.leads.map(_lead).join(', ')} before', () => RemindersSettings(prefs: prefs, model: model)),
         const Divider(height: 1, indent: 76),
-        row(Icons.palette_outlined, 'Appearance', '${prefs.palette.label} · ${switch (prefs.mode) { ThemeMode.system => 'follows the phone', ThemeMode.light => 'light', ThemeMode.dark => 'dark' }}', () => AppearanceSettings(prefs: prefs)),
+        row(LucideIcons.palette, 'Appearance', '${prefs.palette.label} · ${switch (prefs.mode) { ThemeMode.system => 'follows the phone', ThemeMode.light => 'light', ThemeMode.dark => 'dark' }}', () => AppearanceSettings(prefs: prefs)),
         const Divider(height: 1, indent: 76),
-        row(Icons.person_outline, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
+        row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
         const Divider(height: 1, indent: 76),
-        row(Icons.info_outline, 'About and privacy', 'What this app stores and sends', () => const AboutSettings()),
+        row(LucideIcons.shieldCheck, 'About and privacy', 'What this app stores and sends', () => const AboutSettings()),
       ])),
+      const SizedBox(height: 28),
+      OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52), foregroundColor: Status.bad(t.brightness), side: BorderSide(color: Status.bad(t.brightness).withValues(alpha: 0.5))),
+        onPressed: () => _confirmSignOut(context),
+        icon: const Icon(LucideIcons.logOut, size: 20),
+        label: Text(model.demo ? 'Leave the demo' : 'Sign out'),
+      ),
+      const SizedBox(height: 8),
+      Center(child: Text('Phone app 1.0.0', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
     ]);
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(model.demo ? 'Leave the demo?' : 'Sign out?'),
+        content: Text(model.demo ? 'You will go back to the first screen.' : 'This deletes the sign-in, the saved summary and every scheduled reminder from this phone. Your data on GitHub and the PC is not touched.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(model.demo ? 'Leave' : 'Sign out')),
+        ],
+      ),
+    );
+    if (ok == true) await model.signOut();
   }
 }
 
@@ -79,13 +104,13 @@ class _RemindersState extends State<RemindersSettings> {
       const Muted('Reminders are scheduled on this phone from the latest summary, so they work without a network.'),
       const Divider(height: 32),
       const _Head('Quiet hours'),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.bedtime_outlined), title: Text('23:00 to 07:00'), subtitle: Text('Reminders in this window arrive silently, with no sound or vibration.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.moon), title: Text('23:00 to 07:00'), subtitle: Text('Reminders in this window arrive silently, with no sound or vibration.')),
       const Divider(height: 32),
       const _Head('Permission'),
       if (m.demo || !Reminders.supported)
         const Muted('Reminders are available on the Android app, with real data.')
       else ...[
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.notifications_active_outlined), title: Text('${m.scheduled} reminders scheduled'), subtitle: const Text('Allow notifications so they can appear.'),
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.bellRing), title: Text('${m.scheduled} reminders scheduled'), subtitle: const Text('Allow notifications so they can appear.'),
             trailing: FilledButton.tonal(onPressed: () async { await Reminders.allowed(); await m.replan(); if (mounted) setState(() {}); }, child: const Text('Allow'))),
       ],
     ]);
@@ -143,21 +168,13 @@ class AccountSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('Signed in'),
-      ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(summary.studentName),
+      ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.userRound), title: Text(summary.studentName),
           subtitle: Text(model.demo ? 'Demo data, nothing is read from GitHub' : 'GitHub: ${model.login ?? '–'}')),
       if (!model.demo) ...[
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.folder_outlined), title: const Text('Reading from'), subtitle: Text('${model.login ?? ''}/$repoName')),
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.sync), title: const Text('Last read from GitHub'),
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.folderGit2), title: const Text('Reading from'), subtitle: Text('${model.login ?? ''}/$repoName')),
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: const Text('Last read from GitHub'),
             subtitle: Text(model.fetchedAt == null ? 'Not yet' : '${agoLabel(model.age!)} · summary made ${agoLabel(DateTime.now().difference(summary.generatedAt))}')),
       ],
-      const Divider(height: 32),
-      OutlinedButton.icon(
-        onPressed: () async { Navigator.of(context).popUntil((r) => r.isFirst); await model.signOut(); },
-        icon: const Icon(Icons.logout),
-        label: Text(model.demo ? 'Leave the demo' : 'Sign out and forget this phone'),
-      ),
-      const SizedBox(height: 8),
-      const Muted('Signing out deletes the sign-in, the saved summary and every scheduled reminder from this phone.'),
     ]);
   }
 }
@@ -169,15 +186,15 @@ class AboutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: const [
       _Head('What the phone holds'),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.lock_outline), title: Text('No portal password'), subtitle: Text('The phone never sees it and never contacts the portal.')),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.key_outlined), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.save_outlined), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
+      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('No portal password'), subtitle: Text('The phone never sees it and never contacts the portal.')),
+      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
+      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
       Divider(height: 32),
       _Head('Sharing'),
       Muted('No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
       Divider(height: 32),
       _Head('App'),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.phone_android_outlined), title: Text('Assignment Monitor for phones'), subtitle: Text('Version 1.0.0')),
+      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.smartphone), title: Text('Assignment Monitor for phones'), subtitle: Text('Version 1.0.0')),
     ]);
   }
 }

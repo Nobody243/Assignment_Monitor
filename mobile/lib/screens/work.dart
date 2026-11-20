@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../data.dart';
@@ -108,7 +109,7 @@ class _WorkTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   if (chip.isNotEmpty) Pill(chip, color: c),
-                  if (muted) Padding(padding: const EdgeInsets.only(top: 6), child: Icon(Icons.notifications_off_outlined, size: 16, color: t.colorScheme.onSurfaceVariant)),
+                  if (muted) Padding(padding: const EdgeInsets.only(top: 6), child: Icon(LucideIcons.bellOff, size: 16, color: t.colorScheme.onSurfaceVariant)),
                 ]),
               ]),
             )),
@@ -126,8 +127,8 @@ class _WorkTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: !swipeable ? card : Dismissible(
         key: ValueKey('swipe-${w.id}'),
-        background: side(Status.good(b), Icons.check_circle_outline, 'Done', Alignment.centerLeft),
-        secondaryBackground: side(t.colorScheme.secondary, Icons.snooze, 'Snooze 1 h', Alignment.centerRight),
+        background: side(Status.good(b), LucideIcons.circleCheck, 'Done', Alignment.centerLeft),
+        secondaryBackground: side(t.colorScheme.secondary, LucideIcons.alarmClock, 'Snooze 1 h', Alignment.centerRight),
         confirmDismiss: (dir) async {
           HapticFeedback.mediumImpact();
           final m = ScaffoldMessenger.of(context);
@@ -173,7 +174,7 @@ class _Detail extends StatelessWidget {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(24)),
             child: Row(children: [
-              Icon(w.submitted ? Icons.check_circle : late ? Icons.error : Icons.timer_outlined, color: tone, size: 30),
+              Icon(w.submitted ? LucideIcons.circleCheck : late ? LucideIcons.circleAlert : LucideIcons.timer, color: tone, size: 30),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(w.submitted ? 'Submitted' : late ? 'Overdue' : due == null ? 'No due date' : countdown(due, now), style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: tone)),
@@ -187,12 +188,12 @@ class _Detail extends StatelessWidget {
           _Fact('Can submit', w.canSubmit ? 'Yes, on the portal' : 'No'),
           const SizedBox(height: 16),
           if (w.open && !w.submitted) Row(children: [
-            Expanded(child: FilledButton.tonalIcon(icon: const Icon(Icons.snooze), onPressed: () {
+            Expanded(child: FilledButton.tonalIcon(icon: const Icon(LucideIcons.alarmClock), onPressed: () {
               prefs.update(() => prefs.snoozed[w.id] = now.add(const Duration(hours: 1)));
               Navigator.pop(context);
             }, label: const Text('Snooze 1 h'))),
             const SizedBox(width: 10),
-            Expanded(child: FilledButton.icon(icon: const Icon(Icons.check), onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, label: const Text('Done'))),
+            Expanded(child: FilledButton.icon(icon: const Icon(LucideIcons.check), onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, label: const Text('Done'))),
           ]),
           const SizedBox(height: 10),
           Text('Submit on the portal or the PC app. This phone shows deadlines and reminds you.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'data.dart' show Clock;
 import 'model.dart';
@@ -10,6 +11,7 @@ import 'data.dart' show Summary;
 import 'screens/more.dart';
 import 'screens/settings.dart';
 import 'screens/signin.dart';
+import 'screens/timetable.dart';
 import 'screens/today.dart';
 import 'screens/work.dart';
 import 'theme.dart';
@@ -84,7 +86,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
   Animation<double> get _t => _menu;
 
-  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams'];
+  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Timetable', 'Results & GPA', 'Settings'];
   int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
 
   @override
@@ -110,24 +112,10 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
     _settle(v.abs() > 0.8 ? v > 0 : _menu.value > 0.5, v);
   }
 
-  /// Menu rows: 0..3 are the bottom-bar screens, the rest open over them.
-  Future<void> _pick(int i, Summary s, DateTime now) async {
-    if (i <= 3) {
-      goto(i);
-      _settle(false);
-      return;
-    }
-    try {
-      await _settle(false).orCancel;
-    } on TickerCanceled {
-      return;   // the menu was grabbed again while it was closing
-    }
-    if (!mounted) return;
-    switch (i) {
-      case 4: openPage(context, 'Timetable', TimetablePage(summary: s, now: now));
-      case 5: openPage(context, 'Results & GPA', ResultsPage(summary: s));
-      case 6: openPage(context, 'Settings', SettingsHub(summary: s, prefs: widget.prefs, model: widget.model));
-    }
+  /// Every menu row is a section of the app: the bar and the menu stay, only the screen changes.
+  void _pick(int i) {
+    goto(i);
+    _settle(false);
   }
 
   @override
@@ -136,13 +124,16 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
     final w = MediaQuery.of(context).size.width;
     final todo = s.work.where((x) => x.todo && x.open && !widget.prefs.done.contains(x.id)).length;
     return PopScope(
-      canPop: _menu.value == 0 && !_menu.isAnimating,
-      onPopInvokedWithResult: (didPop, _) { if (!didPop) _settle(false); },
+      canPop: tab == 0 && _menu.value == 0 && !_menu.isAnimating,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_menu.value > 0 || _menu.isAnimating) { _settle(false); } else { goto(0); }
+      },
       child: ColoredBox(
         color: t.colorScheme.surfaceContainerLowest,
         child: Stack(children: [
           // the menu sits underneath; the app slides aside to uncover it
-          _SideMenu(summary: s, model: m, selected: tab, todo: todo, progress: _t, onPick: (i) => _pick(i, s, now), onSignOut: () { _settle(false); m.signOut(); }),
+          _SideMenu(summary: s, model: m, selected: tab, todo: todo, progress: _t, onPick: _pick, onSignOut: () { _settle(false); m.signOut(); }),
           AnimatedBuilder(
             animation: _menu,
             builder: (context, child) {
@@ -186,20 +177,24 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       WorkScreen(summary: s, now: now, prefs: widget.prefs),
       AttendanceScreen(summary: s),
       ExamsPage(summary: s, now: now),
+      TimetableScreen(summary: s, now: now),
+      ResultsPage(summary: s),
+      SettingsHub(summary: s, prefs: widget.prefs, model: m),
     ];
     final stale = !m.demo && (m.age?.inHours ?? 0) >= 24;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(icon: AnimatedIcon(icon: AnimatedIcons.menu_arrow, progress: _t), tooltip: 'Menu', onPressed: _toggleMenu),
         title: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: Offset(0.15 * _dir, 0), end: Offset.zero).animate(a), child: c)),
+          duration: const Duration(milliseconds: 180),
+          layoutBuilder: (current, previous) => Stack(alignment: Alignment.centerLeft, children: [...previous, ?current]),
+          transitionBuilder: (c, a) => FadeTransition(opacity: a, child: c),
           child: Text(_titles[tab], key: ValueKey(tab), style: const TextStyle(fontWeight: FontWeight.w700)),
         ),
         actions: [
           if (!m.demo) m.refreshing
               ? const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-              : IconButton(icon: const Icon(Icons.sync), tooltip: 'Check for new data', onPressed: m.refresh),
+              : IconButton(icon: const Icon(LucideIcons.refreshCw, size: 20), tooltip: 'Check for new data', onPressed: m.refresh),
         ],
       ),
       body: SafeArea(
@@ -212,7 +207,12 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
                 duration: const Duration(milliseconds: 320),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: Offset(0.08 * _dir, 0), end: Offset.zero).animate(a), child: c)),
+                layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+                transitionBuilder: (c, a) {
+                  final mine = (c.key as ValueKey<int>).value;
+                  final dx = mine == tab ? 0.06 * _dir : -0.06 * _dir;   // arriving from one side, leaving to the other
+                  return FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: Offset(dx, 0), end: Offset.zero).animate(a), child: c));
+                },
                 child: KeyedSubtree(key: ValueKey(tab), child: pages[tab]),
               ),
             ),
@@ -229,17 +229,12 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
             borderRadius: BorderRadius.circular(99),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: t.brightness == Brightness.dark ? 0.45 : 0.12), blurRadius: 24, offset: const Offset(0, 8))],
           ),
-          child: LayoutBuilder(builder: (context, c) {
-            final selW = c.maxWidth * 0.43, other = (c.maxWidth - selW) / 3;
-            Widget item(int i, IconData icon, IconData on, String label, {int badge = 0}) =>
-                _NavItem(icon: icon, selectedIcon: on, label: label, selected: tab == i, badge: badge, width: tab == i ? selW : other, onTap: () => goto(i));
-            return Row(children: [
-              item(0, Icons.today_outlined, Icons.today, 'Today'),
-              item(1, Icons.checklist_outlined, Icons.checklist, 'Assignments', badge: todo),
-              item(2, Icons.event_available_outlined, Icons.event_available, 'Attendance'),
-              item(3, Icons.school_outlined, Icons.school, 'Exams'),
-            ]);
-          }),
+          child: Row(children: [
+            _NavItem(icon: LucideIcons.layoutDashboard, label: 'Today', selected: tab == 0, onTap: () => goto(0)),
+            _NavItem(icon: LucideIcons.clipboardList, label: 'Assignments', selected: tab == 1, badge: todo, onTap: () => goto(1)),
+            _NavItem(icon: LucideIcons.userCheck, label: 'Attendance', selected: tab == 2, onTap: () => goto(2)),
+            _NavItem(icon: LucideIcons.graduationCap, label: 'Exams', selected: tab == 3, onTap: () => goto(3)),
+          ]),
         ),
       ),
     );
@@ -261,14 +256,14 @@ class _SideMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final w = MediaQuery.of(context).size.width;
-    final items = <(int, IconData, IconData, String)>[
-      (0, Icons.today_outlined, Icons.today, 'Today'),
-      (1, Icons.checklist_outlined, Icons.checklist, 'Assignments'),
-      (2, Icons.event_available_outlined, Icons.event_available, 'Attendance'),
-      (3, Icons.school_outlined, Icons.school, 'Exams'),
-      (4, Icons.calendar_view_week_outlined, Icons.calendar_view_week, 'Timetable'),
-      (5, Icons.calculate_outlined, Icons.calculate, 'Results & GPA'),
-      (6, Icons.tune, Icons.tune, 'Settings'),
+    final items = <(int, IconData, String)>[
+      (0, LucideIcons.layoutDashboard, 'Today'),
+      (1, LucideIcons.clipboardList, 'Assignments'),
+      (2, LucideIcons.userCheck, 'Attendance'),
+      (3, LucideIcons.graduationCap, 'Exams'),
+      (4, LucideIcons.calendarRange, 'Timetable'),
+      (5, LucideIcons.chartNoAxesColumn, 'Results & GPA'),
+      (6, LucideIcons.settings, 'Settings'),
     ];
     // row i is fully in by the time the app has moved (0.25 + 0.06 i) of the way; it starts at 0.06 i
     Widget staggered(int i, Widget child) => AnimatedBuilder(
@@ -299,11 +294,11 @@ class _SideMenu extends StatelessWidget {
             for (final (i, it) in items.indexed)
               staggered(i + 1, Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: _MenuRow(icon: selected == it.$1 ? it.$3 : it.$2, label: it.$4, count: it.$1 == 1 && todo > 0 ? todo : 0, selected: it.$1 <= 3 && selected == it.$1, onTap: () => onPick(it.$1)),
+                child: _MenuRow(icon: it.$2, label: it.$3, count: it.$1 == 1 && todo > 0 ? todo : 0, selected: selected == it.$1, onTap: () => onPick(it.$1)),
               )),
             const Spacer(),
             staggered(items.length + 1, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _MenuRow(icon: Icons.logout, label: model.demo ? 'Leave the demo' : 'Sign out', selected: false, onTap: onSignOut),
+              _MenuRow(icon: LucideIcons.logOut, label: model.demo ? 'Leave the demo' : 'Sign out', selected: false, onTap: onSignOut),
               Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text('Your portal password is never stored on this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
             ])),
           ]),
@@ -361,7 +356,7 @@ class _Banner extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(children: [
-            Icon(Icons.cloud_off_outlined, size: 18, color: t.colorScheme.onErrorContainer),
+            Icon(LucideIcons.cloudOff, size: 18, color: t.colorScheme.onErrorContainer),
             const SizedBox(width: 10),
             Expanded(child: Text(text, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onErrorContainer))),
           ]),
@@ -371,42 +366,57 @@ class _Banner extends StatelessWidget {
   }
 }
 
-/// One slot of the floating bar. Its width animates, so the selected one grows into a pill (with its name) while the
-/// others give way smoothly; the icon pops a little and the name fades in once there is room.
+/// One slot of the floating bar. The four slots are always the same width, so they never move under a finger; the
+/// selected one lights up as a pill and shows its name under the icon. A count sits on the icon as a small badge.
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.icon, required this.selectedIcon, required this.label, required this.selected, required this.onTap, required this.width, this.badge = 0});
-  final IconData icon, selectedIcon;
+  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap, this.badge = 0});
+  final IconData icon;
   final String label;
   final bool selected;
   final int badge;
-  final double width;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Semantics(
-      button: true, selected: selected, label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () { if (!selected) HapticFeedback.selectionClick(); onTap(); },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic,
-          width: width, height: double.infinity,
-          decoration: BoxDecoration(color: selected ? t.colorScheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(99)),
-          alignment: Alignment.center,
-          child: ClipRect(
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              AnimatedScale(
-                scale: selected ? 1.08 : 1.0, duration: const Duration(milliseconds: 260), curve: Curves.easeOutBack,
-                child: Badge(isLabelVisible: badge > 0 && !selected, label: Text('$badge'), child: Icon(selected ? selectedIcon : icon, size: 24, color: selected ? t.colorScheme.onPrimary : t.colorScheme.onSurfaceVariant)),
-              ),
-              Flexible(
-                child: AnimatedOpacity(
-                  opacity: selected ? 1 : 0, duration: Duration(milliseconds: selected ? 260 : 90), curve: Curves.easeOut,
-                  child: selected ? Padding(padding: const EdgeInsets.only(left: 6), child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onPrimary, fontWeight: FontWeight.w700))) : const SizedBox.shrink(),
+    final fg = selected ? t.colorScheme.onPrimary : t.colorScheme.onSurfaceVariant;
+    return Expanded(
+      child: Semantics(
+        button: true, selected: selected, label: badge > 0 ? '$label, $badge to do' : label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () { if (!selected) HapticFeedback.selectionClick(); onTap(); },
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
+              height: 54,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(color: selected ? t.colorScheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(99)),
+              alignment: Alignment.center,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(
+                  width: 28, height: 24,
+                  child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+                    Icon(icon, size: 22, color: fg),
+                    if (badge > 0 && !selected) Positioned(
+                      right: -4, top: -6,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 3.5),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: t.colorScheme.primary, borderRadius: BorderRadius.circular(99), border: Border.all(color: t.colorScheme.surfaceContainerHigh, width: 2)),
+                        child: Text(badge > 9 ? '9+' : '$badge', style: TextStyle(fontSize: 9.5, height: 1.1, fontWeight: FontWeight.w800, color: t.colorScheme.onPrimary)),
+                      ),
+                    ),
+                  ]),
                 ),
-              ),
-            ]),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
+                  child: selected
+                      ? Padding(padding: const EdgeInsets.only(top: 1), child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: TextStyle(fontSize: 11, height: 1.1, fontWeight: FontWeight.w700, color: fg)))
+                      : const SizedBox(width: 0, height: 0),
+                ),
+              ]),
+            ),
           ),
         ),
       ),

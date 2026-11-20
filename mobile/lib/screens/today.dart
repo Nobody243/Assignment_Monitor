@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../data.dart';
 import '../model.dart';
@@ -77,8 +78,8 @@ class TodayScreen extends StatelessWidget {
         const Muted('Nothing needs you right now.')
       else
         Card(child: Column(children: [
-          if (overdue > 0) AttentionRow(icon: Icons.error_outline, color: Status.bad(b), title: '$overdue overdue assignment${overdue > 1 ? 's' : ''}', detail: 'Not submitted. Review them.', onTap: onOpenWork),
-          for (final c in low) AttentionRow(icon: Icons.event_busy_outlined, color: Status.bad(b), title: '${c.title}: ${c.percent.toStringAsFixed(0)}% attendance', detail: 'Below the ${summary.minimum}% minimum. Attend the next ${c.need.ceil()} hours.', onTap: onOpenAttendance),
+          if (overdue > 0) AttentionRow(icon: LucideIcons.circleAlert, color: Status.bad(b), title: '$overdue overdue assignment${overdue > 1 ? 's' : ''}', detail: 'Not submitted. Review them.', onTap: onOpenWork),
+          for (final c in low) AttentionRow(icon: LucideIcons.calendarX, color: Status.bad(b), title: '${c.title}: ${c.percent.toStringAsFixed(0)}% attendance', detail: 'Below the ${summary.minimum}% minimum. Attend the next ${c.need.ceil()} hours.', onTap: onOpenAttendance),
         ])),
       const SizedBox(height: 20),
       const SectionTitle('Latest announcements'),
@@ -145,7 +146,7 @@ class _AllClear extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(28)),
-      child: Row(children: [Icon(Icons.done_all, size: 32, color: Status.good(t.brightness)), const SizedBox(width: 14), Expanded(child: Text('You are all caught up. Nothing is waiting for a submission.', style: t.textTheme.titleMedium))]));
+      child: Row(children: [Icon(LucideIcons.checkCheck, size: 32, color: Status.good(t.brightness)), const SizedBox(width: 14), Expanded(child: Text('You are all caught up. Nothing is waiting for a submission.', style: t.textTheme.titleMedium))]));
   }
 }
 
@@ -211,7 +212,7 @@ class _Bento extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(big ? 20 : 14),
           child: big
-              ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(Icons.north_east, size: 20, color: t.colorScheme.onSurfaceVariant), text])
+              ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(LucideIcons.arrowUpRight, size: 20, color: t.colorScheme.onSurfaceVariant), text])
               // the small tiles shrink their text a little rather than overflow, whatever the phone's font size
               : Align(alignment: Alignment.centerLeft, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: text)),
         ),
