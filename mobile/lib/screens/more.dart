@@ -21,51 +21,168 @@ class ExamsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context), b = t.brightness;
     final today = DateTime(now.year, now.month, now.day);
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      for (final e in summary.exams)
-        Padding(padding: const EdgeInsets.only(bottom: 10), child: Card(child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-          Container(
-            width: 56, height: 56, alignment: Alignment.center,
-            decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(14)),
-            child: e.day == null ? const Text('TBA') : Column(mainAxisSize: MainAxisSize.min, children: [Text('${e.day!.day}', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)), Text(months[e.day!.month - 1], style: t.textTheme.labelSmall)]),
+    final dated = summary.exams.where((e) => e.scheduled && e.day != null && !e.day!.isBefore(today)).toList()..sort((x, y) => x.day!.compareTo(y.day!));
+    final pending = summary.exams.where((e) => !(e.scheduled && e.day != null)).toList();
+    if (dated.isEmpty && pending.isEmpty) return const EmptyState(icon: Icons.school_outlined, title: 'No exams yet', hint: 'They appear here when the portal publishes the date sheet.');
+    final next = dated.isEmpty ? null : dated.first;
+    final rest = dated.skip(1).toList();
+    int days(Exam e) => e.day!.difference(today).inDays;
+
+    Widget chip(IconData i, String label, String value) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(color: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(14)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [Icon(i, size: 14, color: t.colorScheme.onPrimaryContainer), const SizedBox(width: 4), Text(label, style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onPrimaryContainer))]),
+              const SizedBox(height: 2),
+              Text(value, style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: t.colorScheme.onPrimaryContainer)),
+            ]),
           ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(e.title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            if (e.scheduled) Text([if (e.time != null) e.time!, if (e.room != null) 'Room ${e.room}', if (e.row != null && e.seat != null) 'row ${e.row}, seat ${e.seat}'].join(' · '), style: t.textTheme.bodyMedium)
-            else Text('Date, room and seat not posted yet.', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-          ])),
-          if (e.day != null) Pill('in ${e.day!.difference(today).inDays}d', color: e.day!.difference(today).inDays <= 3 ? Status.bad(b) : null),
-        ])))),
+        );
+
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
+      if (next != null) Reveal(index: 0, child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: t.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(28)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text('NEXT EXAM', style: t.textTheme.labelSmall?.copyWith(letterSpacing: 0.8, fontWeight: FontWeight.w800, color: t.colorScheme.onPrimaryContainer)),
+            const Spacer(),
+            Text(days(next) == 0 ? 'Today' : days(next) == 1 ? 'Tomorrow' : '${days(next)} days', style: t.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, color: t.colorScheme.onPrimaryContainer)),
+          ]),
+          const SizedBox(height: 10),
+          Text(next.title, style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: t.colorScheme.onPrimaryContainer)),
+          Text('${dayLabel(next.day!)}${next.time == null ? '' : ' · ${next.time}'}', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.85))),
+          const SizedBox(height: 14),
+          Row(children: [
+            chip(Icons.meeting_room_outlined, 'Room', next.room ?? '–'),
+            const SizedBox(width: 8),
+            chip(Icons.table_rows_outlined, 'Row', next.row ?? '–'),
+            const SizedBox(width: 8),
+            chip(Icons.event_seat_outlined, 'Seat', next.seat ?? '–'),
+          ]),
+        ]),
+      )),
+      if (rest.isNotEmpty) ...[
+        const SizedBox(height: 20),
+        const SectionTitle('Coming up'),
+        for (final (i, e) in rest.indexed) Reveal(index: i + 1, child: Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(border: Border(left: BorderSide(color: courseColor(e.title), width: 5))),
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              Container(
+                width: 52, height: 52, alignment: Alignment.center,
+                decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(14)),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [Text('${e.day!.day}', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)), Text(months[e.day!.month - 1], style: t.textTheme.labelSmall)]),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(e.title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text([if (e.time != null) e.time!, if (e.room != null) 'Room ${e.room}', if (e.row != null && e.seat != null) 'row ${e.row}, seat ${e.seat}'].join(' · '), style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+              ])),
+              Pill('${days(e)}d', color: days(e) <= 3 ? Status.bad(b) : null),
+            ]),
+          ),
+        ))),
+      ],
+      if (pending.isNotEmpty) ...[
+        const SizedBox(height: 20),
+        SectionTitle('Not scheduled yet', trailing: '${pending.length}'),
+        Card(child: Column(children: [
+          for (final e in pending) ListTile(
+            leading: Icon(Icons.hourglass_empty, color: t.colorScheme.onSurfaceVariant),
+            title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Date, room and seat are not posted yet.'),
+          ),
+        ])),
+      ],
     ]);
   }
 }
 
 // ------------------------------------------------------------------------------------------------ timetable
-class TimetablePage extends StatelessWidget {
+class TimetablePage extends StatefulWidget {
   const TimetablePage({super.key, required this.summary, required this.now});
   final Summary summary;
   final DateTime now;
   @override
+  State<TimetablePage> createState() => _TimetableState();
+}
+
+class _TimetableState extends State<TimetablePage> {
+  late int day = widget.now.weekday - 1;
+
+  int _mins(String s) { final p = s.split(':'); return int.parse(p[0]) * 60 + int.parse(p[1]); }
+
+  @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final today = weekdays[now.weekday - 1];
-    final days = weekdays.where((d) => summary.timetable.any((s) => s.day == d) || weekdays.indexOf(d) < 5).toList();
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      for (final d in days) ...[
-        Padding(padding: const EdgeInsets.only(top: 8, bottom: 6), child: Row(children: [
-          Text(d, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: d == today ? t.colorScheme.primary : null)),
-          if (d == today) Padding(padding: const EdgeInsets.only(left: 8), child: Pill('today', color: t.colorScheme.primary)),
-        ])),
-        if (!summary.timetable.any((s) => s.day == d)) const Muted('Free'),
-        for (final s in (summary.timetable.where((s) => s.day == d).toList()..sort((a, b) => a.start.compareTo(b.start))))
-          Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(child: ListTile(
-            leading: SizedBox(width: 78, child: Text('${s.start}\n${s.end}', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
-            title: Text(s.course, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: s.teacher == null ? null : Text(s.teacher!),
-          ))),
-      ],
+    final tt = widget.summary.timetable;
+    final todayIdx = widget.now.weekday - 1;
+    final slots = tt.where((s) => s.day == weekdays[day]).toList()..sort((a, b) => a.start.compareTo(b.start));
+    final nowMin = widget.now.hour * 60 + widget.now.minute;
+    return Column(children: [
+      SizedBox(
+        height: 74,
+        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 8, 12, 4), children: [
+          for (var i = 0; i < 7; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () => setState(() => day = i),
+                child: Container(
+                  width: 54, alignment: Alignment.center,
+                  decoration: BoxDecoration(color: day == i ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18), border: i == todayIdx && day != i ? Border.all(color: t.colorScheme.primary.withValues(alpha: 0.5)) : null),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(weekdays[i], style: t.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: day == i ? t.colorScheme.onPrimaryContainer : null)),
+                    const SizedBox(height: 4),
+                    Text('${tt.where((s) => s.day == weekdays[i]).length}', style: t.textTheme.labelSmall?.copyWith(color: day == i ? t.colorScheme.onPrimaryContainer : t.colorScheme.onSurfaceVariant)),
+                  ]),
+                ),
+              ),
+            ),
+        ]),
+      ),
+      Expanded(
+        child: slots.isEmpty
+            ? EmptyState(icon: Icons.free_breakfast_outlined, title: day == todayIdx ? 'No classes today' : 'Free day', hint: 'Nothing is scheduled on ${weekdays[day]}.')
+            : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
+                for (final (i, s) in slots.indexed) Reveal(index: i, child: Builder(builder: (_) {
+                  final live = day == todayIdx && nowMin >= _mins(s.start) && nowMin < _mins(s.end);
+                  final cc = courseColor(s.course);
+                  return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    SizedBox(width: 56, child: Padding(padding: const EdgeInsets.only(top: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(s.start, style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(s.end, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+                    ]))),
+                    Column(children: [
+                      const SizedBox(height: 18),
+                      Container(width: 12, height: 12, decoration: BoxDecoration(color: live ? cc : Colors.transparent, shape: BoxShape.circle, border: Border.all(color: cc, width: 2))),
+                      if (i < slots.length - 1) Expanded(child: Container(width: 2, color: t.colorScheme.outlineVariant)),
+                    ]),
+                    const SizedBox(width: 12),
+                    Expanded(child: Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18), border: Border(left: BorderSide(color: cc, width: 5))),
+                        child: Row(children: [
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(s.course, style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                            if (s.teacher != null) Text(s.teacher!, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+                          ])),
+                          if (live) Pill('now', color: Status.good(t.brightness)),
+                        ]),
+                      ),
+                    )),
+                  ]));
+                })),
+              ]),
+      ),
     ]);
   }
 }
@@ -105,12 +222,22 @@ class _ResultsState extends State<ResultsPage> {
       return found ?? '';
     }
     return ListView(padding: const EdgeInsets.all(16), children: [
-      Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Your transcript', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('CGPA'), Text(fmt(widget.summary.cgpa), style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800))]),
-        for (final s in widget.summary.terms.where((s) => s.complete)) Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(s.name), Text('GPA ${fmt(s.gpa)}')]),
-      ]))),
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: t.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(28)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('CUMULATIVE GPA', style: t.textTheme.labelSmall?.copyWith(letterSpacing: 0.8, fontWeight: FontWeight.w800, color: t.colorScheme.onPrimaryContainer)),
+          Text(fmt(widget.summary.cgpa), style: t.textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w800, color: t.colorScheme.onPrimaryContainer)),
+          const SizedBox(height: 10),
+          for (final s in widget.summary.terms.where((s) => s.complete && s.gpa != null))
+            Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [
+              SizedBox(width: 92, child: Text(s.name, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onPrimaryContainer))),
+              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: (s.gpa! / 4).clamp(0, 1).toDouble(), minHeight: 8, backgroundColor: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.15), color: t.colorScheme.onPrimaryContainer))),
+              const SizedBox(width: 10),
+              Text(fmt(s.gpa), style: t.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800, color: t.colorScheme.onPrimaryContainer)),
+            ])),
+        ]),
+      ),
       const SizedBox(height: 16),
       Text('Calculator', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 4),
@@ -163,7 +290,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsState extends State<SettingsPage> {
-  bool weekly = true, digest = false;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context), p = widget.prefs;
@@ -174,13 +300,27 @@ class _SettingsState extends State<SettingsPage> {
         for (final h in [48, 24, 12, 6, 3, 1])
           FilterChip(label: Text(h == 48 ? '2 days' : h == 24 ? '1 day' : '$h h'), selected: p.leads.contains(h), onSelected: (on) => p.update(() { on ? p.leads.add(h) : p.leads.remove(h); p.leads.sort((a, b) => b - a); })),
       ]),
-      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Sunday summary'), subtitle: const Text('What is due next week, exams and attendance to watch'), value: weekly, onChanged: (v) => setState(() => weekly = v)),
-      SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Daily digest'), subtitle: const Text('One morning message instead of many'), value: digest, onChanged: (v) => setState(() => digest = v)),
       const Muted('Reminders are scheduled on this phone from the summary, so they work without a network. Quiet hours: 23:00 to 07:00.'),
       const Divider(height: 32),
       Text('Look', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      Wrap(spacing: 8, children: [for (final pal in palettes) ChoiceChip(label: Text(pal.label), selected: p.palette.key == pal.key, onSelected: (_) => p.update(() => p.palette = pal))]),
+      Row(children: [
+        for (final pal in palettes)
+          Expanded(child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => p.update(() => p.palette = pal),
+            child: Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Column(children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 48, height: 48,
+                decoration: BoxDecoration(color: pal.seed, shape: BoxShape.circle, border: Border.all(color: p.palette.key == pal.key ? t.colorScheme.onSurface : Colors.transparent, width: 3)),
+                child: p.palette.key == pal.key ? const Icon(Icons.check, color: Colors.white) : null,
+              ),
+              const SizedBox(height: 6),
+              Text(pal.label, style: t.textTheme.labelMedium),
+            ])),
+          )),
+      ]),
       const SizedBox(height: 12),
       SegmentedButton<ThemeMode>(
         segments: const [ButtonSegment(value: ThemeMode.system, label: Text('System')), ButtonSegment(value: ThemeMode.light, label: Text('Light')), ButtonSegment(value: ThemeMode.dark, label: Text('Dark'))],

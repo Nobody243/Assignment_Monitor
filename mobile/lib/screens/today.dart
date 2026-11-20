@@ -42,13 +42,15 @@ class TodayScreen extends StatelessWidget {
       const SizedBox(height: 16),
       Reveal(index: 1, child: _WeekStrip(summary: summary, now: now, prefs: prefs)),
       const SizedBox(height: 12),
-      Reveal(index: 2, child: Row(children: [
-        Expanded(child: _Stat(value: '${open.length}', label: 'to do', color: null, onTap: onOpenWork)),
+      Reveal(index: 2, child: SizedBox(height: 184, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(flex: 5, child: _Bento(value: '${open.length}', label: 'to do', caption: open.isEmpty ? 'all clear' : 'tap to see them', big: true, bg: t.colorScheme.secondaryContainer, fg: t.colorScheme.onSecondaryContainer, onTap: onOpenWork)),
         const SizedBox(width: 10),
-        Expanded(child: _Stat(value: '$overdue', label: 'overdue', color: overdue > 0 ? Status.bad(b) : null, onTap: onOpenWork)),
-        const SizedBox(width: 10),
-        Expanded(child: _Stat(value: overall == null ? '–' : '${overall.toStringAsFixed(0)}%', label: 'attendance', color: overall != null && overall < summary.minimum ? Status.bad(b) : null, onTap: onOpenAttendance)),
-      ])),
+        Expanded(flex: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(child: _Bento(value: '$overdue', label: 'overdue', bg: overdue > 0 ? Status.bad(b).withValues(alpha: 0.16) : t.colorScheme.surfaceContainerHigh, fg: overdue > 0 ? Status.bad(b) : t.colorScheme.onSurface, onTap: onOpenWork)),
+          const SizedBox(height: 10),
+          Expanded(child: _Bento(value: overall == null ? '–' : '${overall.toStringAsFixed(0)}%', label: 'attendance', bg: overall != null && overall < summary.minimum ? Status.bad(b).withValues(alpha: 0.16) : t.colorScheme.tertiaryContainer, fg: overall != null && overall < summary.minimum ? Status.bad(b) : t.colorScheme.onTertiaryContainer, onTap: onOpenAttendance)),
+        ])),
+      ]))),
       const SizedBox(height: 20),
       SectionTitle('Today\'s classes', trailing: classes.isEmpty ? null : '${classes.length}'),
       if (classes.isEmpty)
@@ -212,23 +214,31 @@ class _WeekStrip extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, required this.color, required this.onTap});
+/// A tonal tile for the bento grid on Today: a big number and what it counts.
+class _Bento extends StatelessWidget {
+  const _Bento({required this.value, required this.label, required this.bg, required this.fg, required this.onTap, this.caption, this.big = false});
   final String value, label;
-  final Color? color;
+  final String? caption;
+  final Color bg, fg;
+  final bool big;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Material(
-      color: t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(20),
+      color: bg, borderRadius: BorderRadius.circular(28),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20), onTap: onTap,
+        borderRadius: BorderRadius.circular(28), onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Column(children: [
-            Text(value, style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: color, fontFeatures: const [FontFeature.tabularFigures()])),
-            Text(label, style: t.textTheme.labelMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+          padding: EdgeInsets.all(big ? 20 : 14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: big ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center, children: [
+            if (big) Icon(Icons.north_east, size: 20, color: fg.withValues(alpha: 0.7)),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(value, style: (big ? t.textTheme.displayLarge : t.textTheme.headlineMedium)?.copyWith(fontWeight: FontWeight.w800, color: fg, height: 1.0, fontFeatures: const [FontFeature.tabularFigures()])),
+              const SizedBox(height: 2),
+              Text(label, style: t.textTheme.titleSmall?.copyWith(color: fg, fontWeight: FontWeight.w600)),
+              if (caption != null) Text(caption!, style: t.textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.7))),
+            ]),
           ]),
         ),
       ),

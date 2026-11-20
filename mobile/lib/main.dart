@@ -170,15 +170,23 @@ class _ShellState extends State<Shell> {
           ),
         ]),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: goto,
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: 'Today'),
-          NavigationDestination(icon: Badge(isLabelVisible: todo > 0, label: Text('$todo'), child: const Icon(Icons.checklist_outlined)), selectedIcon: const Icon(Icons.checklist), label: 'Work'),
-          const NavigationDestination(icon: Icon(Icons.event_available_outlined), selectedIcon: Icon(Icons.event_available), label: 'Attendance'),
-          const NavigationDestination(icon: Icon(Icons.school_outlined), selectedIcon: Icon(Icons.school), label: 'Exams'),
-        ],
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Container(
+          height: 68,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: t.colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(99),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: t.brightness == Brightness.dark ? 0.45 : 0.12), blurRadius: 24, offset: const Offset(0, 8))],
+          ),
+          child: Row(children: [
+            _NavItem(icon: Icons.today_outlined, selectedIcon: Icons.today, label: 'Today', selected: tab == 0, onTap: () => goto(0)),
+            _NavItem(icon: Icons.checklist_outlined, selectedIcon: Icons.checklist, label: 'Work', selected: tab == 1, badge: todo, onTap: () => goto(1)),
+            _NavItem(icon: Icons.event_available_outlined, selectedIcon: Icons.event_available, label: 'Attendance', selected: tab == 2, onTap: () => goto(2)),
+            _NavItem(icon: Icons.school_outlined, selectedIcon: Icons.school, label: 'Exams', selected: tab == 3, onTap: () => goto(3)),
+          ]),
+        ),
       ),
     );
   }
@@ -206,6 +214,42 @@ class _Banner extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: Text(text, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onErrorContainer))),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// One slot of the floating bar: the selected one grows into a pill with its name.
+class _NavItem extends StatelessWidget {
+  const _NavItem({required this.icon, required this.selectedIcon, required this.label, required this.selected, required this.onTap, this.badge = 0});
+  final IconData icon, selectedIcon;
+  final String label;
+  final bool selected;
+  final int badge;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Expanded(
+      flex: selected ? 3 : 1,
+      child: Semantics(
+        button: true, selected: selected, label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(color: selected ? t.colorScheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(99)),
+            alignment: Alignment.center,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Badge(isLabelVisible: badge > 0 && !selected, label: Text('$badge'), child: Icon(selected ? selectedIcon : icon, size: 24, color: selected ? t.colorScheme.onPrimary : t.colorScheme.onSurfaceVariant)),
+              if (selected) ...[
+                const SizedBox(width: 6),
+                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.fade, softWrap: false, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onPrimary, fontWeight: FontWeight.w700))),
+              ],
+            ]),
+          ),
         ),
       ),
     );
