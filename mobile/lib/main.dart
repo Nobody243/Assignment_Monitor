@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart' show SpringDescription, SpringSimulation;
 import 'package:flutter/services.dart' show HapticFeedback;
 
 import 'data.dart' show Clock;
@@ -83,7 +82,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   late Clock clock = widget.model.clock;
   Timer? tick;
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
-  late final Animation<double> _t = CurvedAnimation(parent: _menu, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+  Animation<double> get _t => _menu;
 
   static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams'];
   int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
@@ -99,9 +98,17 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
 
   void goto(int i) => setState(() { _dir = i >= tab ? 1 : -1; tab = i; });
 
-  /// Settles the menu open or shut with a spring that carries on from the speed of the finger.
-  TickerFuture _settle(bool open, [double velocity = 0]) => _menu.animateWith(SpringSimulation(const SpringDescription(mass: 1, stiffness: 320, damping: 36), _menu.value, open ? 1 : 0, velocity));
-  void _toggleMenu() => _menu.value < 0.5 ? _settle(true) : _settle(false);
+  /// Settles the menu open or shut. `fling` runs a spring from wherever the menu is right now, keeps the speed of the
+  /// finger, can be interrupted by the next tap or drag, and always ends exactly on 0 or 1.
+  TickerFuture _settle(bool open, [double velocity = 0]) => _menu.fling(velocity: open ? (velocity < 1.6 ? 1.6 : velocity) : (velocity > -1.6 ? -1.6 : velocity));
+  /// A tap on the menu button reverses whatever the menu is doing: opening becomes closing and the other way round.
+  void _toggleMenu() => _settle(!(_menu.isAnimating ? _menu.velocity > 0 : _menu.value >= 0.5));
+
+  void _dragUpdate(DragUpdateDetails d, double w) { _menu.stop(); _menu.value = (_menu.value + d.delta.dx / w).clamp(0.0, 1.0); }
+  void _dragEnd(DragEndDetails d, double w) {
+    final v = (d.primaryVelocity ?? 0) / w;   // menu-widths per second
+    _settle(v.abs() > 0.8 ? v > 0 : _menu.value > 0.5, v);
+  }
 
   /// Menu rows: 0..3 are the bottom-bar screens, the rest open over them.
   Future<void> _pick(int i, Summary s, DateTime now) async {
@@ -110,7 +117,11 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       _settle(false);
       return;
     }
-    await _settle(false);
+    try {
+      await _settle(false).orCancel;
+    } on TickerCanceled {
+      return;   // the menu was grabbed again while it was closing
+    }
     if (!mounted) return;
     switch (i) {
       case 4: openPage(context, 'Timetable', TimetablePage(summary: s, now: now));
@@ -125,7 +136,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
     final w = MediaQuery.of(context).size.width;
     final todo = s.work.where((x) => x.todo && x.open && !widget.prefs.done.contains(x.id)).length;
     return PopScope(
-      canPop: _menu.isDismissed,
+      canPop: _menu.value == 0 && !_menu.isAnimating,
       onPopInvokedWithResult: (didPop, _) { if (!didPop) _settle(false); },
       child: ColoredBox(
         color: t.colorScheme.surfaceContainerLowest,
@@ -133,9 +144,9 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
           // the menu sits underneath; the app slides aside to uncover it
           _SideMenu(summary: s, model: m, selected: tab, todo: todo, progress: _t, onPick: (i) => _pick(i, s, now), onSignOut: () { _settle(false); m.signOut(); }),
           AnimatedBuilder(
-            animation: _t,
+            animation: _menu,
             builder: (context, child) {
-              final v = _t.value;
+              final v = _menu.value;
               return Transform(
                 alignment: Alignment.centerLeft,
                 transform: Matrix4.identity()..translateByDouble(w * 0.72 * v, 0, 0, 1)..scaleByDouble(1 - 0.10 * v, 1 - 0.10 * v, 1, 1),
@@ -143,21 +154,25 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(32 * v),
                   child: Stack(children: [
                     child!,
-                    if (v > 0) Positioned.fill(child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _settle(false), child: ColoredBox(color: Colors.black.withValues(alpha: 0.10 * v)))),
+                    // open (or opening): tapping or dragging the app closes the menu
+                    if (v > 0) Positioned.fill(child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _settle(false),
+                      onHorizontalDragUpdate: (d) => _dragUpdate(d, w * 0.72),
+                      onHorizontalDragEnd: (d) => _dragEnd(d, w * 0.72),
+                      child: ColoredBox(color: Colors.black.withValues(alpha: 0.10 * v)),
+                    ))
+                    // closed: only a thin strip on the left edge pulls the menu out, so rows that swipe keep their gestures
+                    else Positioned(left: 0, top: 0, bottom: 0, width: 22, child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onHorizontalDragUpdate: (d) => _dragUpdate(d, w * 0.72),
+                      onHorizontalDragEnd: (d) => _dragEnd(d, w * 0.72),
+                    )),
                   ]),
                 ),
               );
             },
-            child: GestureDetector(
-              // a swipe that starts at the left edge pulls the menu out (rows inside the app keep their own swipes)
-              onHorizontalDragUpdate: (d) { if (d.localPosition.dx < 28 || !_menu.isDismissed) _menu.value += d.delta.dx / (w * 0.72); },
-              onHorizontalDragEnd: (d) {
-                if (_menu.isDismissed) return;
-                final v = (d.primaryVelocity ?? 0) / (w * 0.72);   // menu-widths per second
-                _settle(v > 0.8 || (_menu.value > 0.5 && v > -0.8), v);
-              },
-              child: _body(m, s, now, todo),
-            ),
+            child: _body(m, s, now, todo),
           ),
         ]),
       ),
@@ -214,12 +229,17 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
             borderRadius: BorderRadius.circular(99),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: t.brightness == Brightness.dark ? 0.45 : 0.12), blurRadius: 24, offset: const Offset(0, 8))],
           ),
-          child: Row(children: [
-            _NavItem(icon: Icons.today_outlined, selectedIcon: Icons.today, label: 'Today', selected: tab == 0, onTap: () => goto(0)),
-            _NavItem(icon: Icons.checklist_outlined, selectedIcon: Icons.checklist, label: 'Assignments', selected: tab == 1, badge: todo, onTap: () => goto(1)),
-            _NavItem(icon: Icons.event_available_outlined, selectedIcon: Icons.event_available, label: 'Attendance', selected: tab == 2, onTap: () => goto(2)),
-            _NavItem(icon: Icons.school_outlined, selectedIcon: Icons.school, label: 'Exams', selected: tab == 3, onTap: () => goto(3)),
-          ]),
+          child: LayoutBuilder(builder: (context, c) {
+            final selW = c.maxWidth * 0.43, other = (c.maxWidth - selW) / 3;
+            Widget item(int i, IconData icon, IconData on, String label, {int badge = 0}) =>
+                _NavItem(icon: icon, selectedIcon: on, label: label, selected: tab == i, badge: badge, width: tab == i ? selW : other, onTap: () => goto(i));
+            return Row(children: [
+              item(0, Icons.today_outlined, Icons.today, 'Today'),
+              item(1, Icons.checklist_outlined, Icons.checklist, 'Assignments', badge: todo),
+              item(2, Icons.event_available_outlined, Icons.event_available, 'Attendance'),
+              item(3, Icons.school_outlined, Icons.school, 'Exams'),
+            ]);
+          }),
         ),
       ),
     );
@@ -351,41 +371,40 @@ class _Banner extends StatelessWidget {
   }
 }
 
-/// One slot of the floating bar: the selected one grows into a pill with its name; the icon pops and the name slides in.
+/// One slot of the floating bar. Its width animates, so the selected one grows into a pill (with its name) while the
+/// others give way smoothly; the icon pops a little and the name fades in once there is room.
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.icon, required this.selectedIcon, required this.label, required this.selected, required this.onTap, this.badge = 0});
+  const _NavItem({required this.icon, required this.selectedIcon, required this.label, required this.selected, required this.onTap, required this.width, this.badge = 0});
   final IconData icon, selectedIcon;
   final String label;
   final bool selected;
   final int badge;
+  final double width;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Expanded(
-      flex: selected ? 3 : 1,
-      child: Semantics(
-        button: true, selected: selected, label: label,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () { HapticFeedback.selectionClick(); onTap(); },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 280), curve: Curves.easeOutBack,
-            decoration: BoxDecoration(color: selected ? t.colorScheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(99)),
-            alignment: Alignment.center,
+    return Semantics(
+      button: true, selected: selected, label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () { if (!selected) HapticFeedback.selectionClick(); onTap(); },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic,
+          width: width, height: double.infinity,
+          decoration: BoxDecoration(color: selected ? t.colorScheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(99)),
+          alignment: Alignment.center,
+          child: ClipRect(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              TweenAnimationBuilder<double>(
-                key: ValueKey(selected),
-                tween: Tween(begin: selected ? 0.7 : 1.0, end: 1.0),
-                duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack,
-                builder: (_, v, c) => Transform.scale(scale: v, child: c),
+              AnimatedScale(
+                scale: selected ? 1.08 : 1.0, duration: const Duration(milliseconds: 260), curve: Curves.easeOutBack,
                 child: Badge(isLabelVisible: badge > 0 && !selected, label: Text('$badge'), child: Icon(selected ? selectedIcon : icon, size: 24, color: selected ? t.colorScheme.onPrimary : t.colorScheme.onSurfaceVariant)),
               ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic,
-                child: selected
-                    ? Padding(padding: const EdgeInsets.only(left: 6), child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.fade, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onPrimary, fontWeight: FontWeight.w700)))
-                    : const SizedBox.shrink(),
+              Flexible(
+                child: AnimatedOpacity(
+                  opacity: selected ? 1 : 0, duration: Duration(milliseconds: selected ? 260 : 90), curve: Curves.easeOut,
+                  child: selected ? Padding(padding: const EdgeInsets.only(left: 6), child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onPrimary, fontWeight: FontWeight.w700))) : const SizedBox.shrink(),
+                ),
               ),
             ]),
           ),

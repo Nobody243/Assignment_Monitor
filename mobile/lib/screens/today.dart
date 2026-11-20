@@ -41,7 +41,7 @@ class TodayScreen extends StatelessWidget {
       const SizedBox(height: 16),
       Reveal(index: 0, child: next != null ? _Hero(work: next, now: now, prefs: prefs, onOpen: onOpenWork) : const _AllClear()),
       const SizedBox(height: 12),
-      Reveal(index: 1, child: SizedBox(height: 176, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Reveal(index: 1, child: SizedBox(height: 200, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(flex: 5, child: _Bento(value: '${open.length}', label: open.length == 1 ? 'assignment to do' : 'assignments to do', caption: open.isEmpty ? 'Nothing waiting' : 'See the list', big: true, fg: t.colorScheme.primary, onTap: onOpenWork)),
         const SizedBox(width: 10),
         Expanded(flex: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -197,22 +197,23 @@ class _Bento extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text(value, style: (big ? t.textTheme.displayLarge : t.textTheme.headlineMedium)?.copyWith(fontWeight: FontWeight.w800, color: fg, height: 1.0, fontFeatures: const [FontFeature.tabularFigures()])),
+      const SizedBox(height: 2),
+      Text(label, style: t.textTheme.titleSmall?.copyWith(color: t.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+      if (caption != null) Text(caption!, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+    ]);
     return Material(
       color: tint == null ? t.colorScheme.surfaceContainerHigh : Color.alphaBlend(tint!.withValues(alpha: 0.14), t.colorScheme.surfaceContainerHigh),
       borderRadius: BorderRadius.circular(28),
       child: InkWell(
         borderRadius: BorderRadius.circular(28), onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.all(big ? 20 : 16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: big ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center, children: [
-            if (big) Icon(Icons.north_east, size: 20, color: t.colorScheme.onSurfaceVariant),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(value, style: (big ? t.textTheme.displayLarge : t.textTheme.headlineMedium)?.copyWith(fontWeight: FontWeight.w800, color: fg, height: 1.0, fontFeatures: const [FontFeature.tabularFigures()])),
-              const SizedBox(height: 2),
-              Text(label, style: t.textTheme.titleSmall?.copyWith(color: t.colorScheme.onSurface, fontWeight: FontWeight.w600)),
-              if (caption != null) Text(caption!, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-            ]),
-          ]),
+          padding: EdgeInsets.all(big ? 20 : 14),
+          child: big
+              ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Icon(Icons.north_east, size: 20, color: t.colorScheme.onSurfaceVariant), text])
+              // the small tiles shrink their text a little rather than overflow, whatever the phone's font size
+              : Align(alignment: Alignment.centerLeft, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: text)),
         ),
       ),
     );
