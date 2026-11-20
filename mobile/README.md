@@ -1,37 +1,50 @@
-# Assignment Monitor for phones (prototype)
+# Assignment Monitor for phones
 
-A Flutter prototype of the phone app, running on **fictional data** (`assets/summary.json`, made by
-`python tools/make_summary.py mobile/assets/summary.json`). Read [DESIGN.md](DESIGN.md) first: what the phone is for, the
-data contract (`summary.json`, built by `../summary.py` and served by the desktop engine at `/api/summary`), the screens,
-notifications, security and the roadmap.
+A Flutter app (Android first) that shows a student's deadlines, attendance, exams, timetable, results and announcements,
+and reminds them. It reads one small file, `state/summary.json`, from the student's **own private GitHub repository**
+(the one Cloud checks creates), so there is no server of ours and the portal password never reaches the phone.
+Read [DESIGN.md](DESIGN.md) for the idea and the data contract, and [SECURITY.md](SECURITY.md) for what the phone holds,
+what is checked, and what is still open.
 
-## Look at it
+## What it does
+
+- **Today**: the next deadline with a live countdown (Snooze, Done), a tile grid (to do, overdue, attendance), what is
+  coming up, today's classes, what needs attention, the latest announcements.
+- **Assignments**: filters, groups, swipe right for Done and left for Snooze, a detail sheet.
+- **Attendance**: an overall ring, hours you can still miss per course and for the whole semester, class by class.
+- **Exams**: the next exam with room, row and seat, then the rest.
+- **Announcements**: all of them, filter by course, new ones marked.
+- **Timetable**: a day timeline with the gaps, a week grid, and save or share as PNG, JPG or PDF.
+- **Results and GPA**: the transcript (CGPA, trend, every semester) and a calculator.
+- **Reminders**: before each deadline (24 h, 3 h and 1 h by default), with Snooze and Done on the notification, quiet hours,
+  a Sunday summary, a morning digest, and alerts for news while the app is closed. Calendar file of deadlines and exams.
+- Sign-in with GitHub's device flow, offline cache, a stale-data banner, four palettes, light and dark.
+
+## Run it
 
 ```bash
 cd mobile
-flutter run -d chrome        # in the browser (resize the window narrow, or use DevTools device mode)
-flutter run -d windows       # as a window
-flutter run                  # on a phone or emulator, if one is connected
+flutter pub get
+flutter run -d chrome     # a demo on fictional data, in the browser (no sign-in, no reminders)
+flutter run               # on an Android phone or emulator, with real data
 ```
 
-Screens: **Today** (next deadline with a live countdown, Snooze and Done, today's classes, needs attention, announcements),
-**Work** (filters, groups, detail sheet), **Attendance** (ring, hours you can miss, the whole-semester allowance, class by
-class), **More** (Exams, Timetable, Results with the GPA and target calculator, Settings with reminder lead times, palettes
-and light/dark). Screenshots are in `screenshots/`.
-
-The prototype's clock starts at the moment the fixture was made, so countdowns look right whenever you open it.
-Snooze, Done, palette and theme work; nothing is saved and nothing leaves the app.
+Pick "Look around with demo data" on the first screen to try it without signing in. CI (`.github/workflows/mobile-ci.yml`)
+analyses, tests and builds a debug-signed APK on every change.
 
 ## Checks
 
 ```bash
 flutter analyze
-flutter test                 # the grade and attendance arithmetic, same cases as the desktop app and the website
-python ../tools/shoot_mobile.py out/   # screenshots after `flutter build web --release`
+flutter test --coverage                       # about 100 tests
+python ../tools/dart_coverage.py --min 70     # coverage floor
+python ../tools/dart_osv_check.py             # known vulnerabilities in the locked packages
+python ../tools/make_mobile_icon.py           # redraws the icon and launch mark
+python ../tools/make_mobile_fixtures.py       # rebuilds the awkward summary files the tests read
 ```
 
-## Not built yet (see DESIGN.md, milestones M1 to M3)
+## Not done yet
 
-Reading the real `summary.json` from the student's private repository (GitHub device flow, cache, freshness), local
-scheduled reminders, push for new announcements and results, the desktop "Share with my phone" commit, the home-screen
-widget, iOS.
+Feeding the phone from a PC that does not use Cloud checks ("Share with my phone" on the desktop), a home-screen widget,
+an app lock, iOS, and a store release (signing key). Notifications, the background check and the share sheet have not been
+run on a real phone yet.

@@ -131,27 +131,67 @@ class Reminders {
       scheduledDate: tz.TZDateTime.from(at, tz.local),
       notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: w.id,
+      payload: payloadFor(w),
     );
   }
 
   static int _idFor(String assignmentId, int slot) => (assignmentId.hashCode.abs() % 20000000) * 100 + slot;
+  static const _slots = [48, 24, 12, 6, 3, 1, 99];   // every lead time that can exist, and 99 for a snooze wake-up
+
+  /// What a reminder carries, so a button tapped with the app closed knows which assignment it is about.
+  static String payloadFor(Work w) => jsonEncode({'id': w.id, 'title': w.title, 'course': w.course, 'number': w.number});
+
+  /// Reads a payload (an older build wrote just the id), or null when there is none.
+  static ({String id, String title, String course, String number})? parsePayload(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final d = jsonDecode(raw);
+      if (d is Map && d['id'] is String) return (id: d['id'] as String, title: '${d['title'] ?? 'Assignment'}', course: '${d['course'] ?? ''}', number: '${d['number'] ?? ''}');
+    } catch (_) {/* not JSON: the old format */}
+    return (id: raw, title: 'Assignment', course: '', number: '');
+  }
+
+  /// Done: every reminder still waiting for this assignment is cancelled, not just the one on screen.
+  static Future<void> cancelFor(String assignmentId) async {
+    if (!supported) return;
+    await init();
+    for (final slot in _slots) { await _plugin.cancel(id: _idFor(assignmentId, slot)); }
+  }
+
+  /// Snooze: the notification on screen goes away and a new one comes back at [at].
+  static Future<void> snoozeUntil(({String id, String title, String course, String number}) a, DateTime at, {int? shownId}) async {
+    if (!supported) return;
+    await init();
+    if (shownId != null) await _plugin.cancel(id: shownId);
+    final quiet = at.hour >= 23 || at.hour < 7;
+    await _plugin.zonedSchedule(
+      id: _idFor(a.id, 99), title: '${a.course.isEmpty ? '' : '${a.course}: '}${a.title}', body: 'Assignment ${a.number} is still open.'.replaceAll('  ', ' '),
+      scheduledDate: tz.TZDateTime.from(at, tz.local), notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: jsonEncode({'id': a.id, 'title': a.title, 'course': a.course, 'number': a.number}),
+    );
+  }
 
   static Future<void> _answer(NotificationResponse r) => answerInBackground(r);
 }
 
-/// Snooze or Done tapped on a notification, possibly while the app is closed: write the choice where the app reads it.
+/// Snooze or Done tapped on a notification, possibly while the app is closed. The choice is saved where the app reads it,
+/// and acted on at once: Done cancels every reminder still waiting for that assignment, Snooze brings this one back in
+/// an hour.
 @pragma('vm:entry-point')
 Future<void> answerInBackground(NotificationResponse r) async {
-  final id = r.payload;
-  if (id == null) return;
+  final a = Reminders.parsePayload(r.payload);
+  if (a == null) return;
   final p = await SharedPreferences.getInstance();
   if (r.actionId == 'done') {
-    p.setStringList('done', <String>{...(p.getStringList('done') ?? <String>[]), id}.toList());
+    await p.setStringList('done', <String>{...(p.getStringList('done') ?? <String>[]), a.id}.toList());
+    await Reminders.cancelFor(a.id);
   } else if (r.actionId == 'snooze') {
+    final wake = DateTime.now().add(const Duration(hours: 1));
     final m = Map<String, dynamic>.from(jsonDecode(p.getString('snoozed') ?? '{}') as Map);
-    m[id] = DateTime.now().add(const Duration(hours: 1)).toIso8601String();
-    p.setString('snoozed', jsonEncode(m));
+    m[a.id] = wake.toIso8601String();
+    await p.setString('snoozed', jsonEncode(m));
+    await Reminders.snoozeUntil(a, wake, shownId: r.id);
   }
 }
 

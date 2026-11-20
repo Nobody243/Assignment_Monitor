@@ -21,6 +21,7 @@ AppModel _model(MemoryStore store, http.Client client, {GithubAuth? auth}) => Ap
     splashMin: Duration.zero, splashMax: const Duration(seconds: 2));
 
 void main() {
+  notificationPayloadTests();
   setUp(() { SharedPreferences.setMockInitialValues({}); Reminders.forceSupported = false; });
 
   group('start', () {
@@ -239,6 +240,23 @@ void main() {
     test('never more than 60 are planned', () {
       final many = [for (var i = 0; i < 40; i++) a('w$i', '2026-12-30T10:00:00')];
       expect(Reminders.plan(withWork(many), leads: [48, 24, 12, 6, 3, 1], done: {}, snoozed: {}, now: now).length, 60);
+    });
+  });
+}
+
+void notificationPayloadTests() {
+  group('notification payload', () {
+    test('carries the assignment so a button tapped with the app closed can act on it', () {
+      final w = Work({'id': 'DB#4#Normalisation', 'course': 'Database Systems', 'title': 'Normalisation worksheet', 'number': '4'});
+      final a = Reminders.parsePayload(Reminders.payloadFor(w))!;
+      expect((a.id, a.title, a.course, a.number), ('DB#4#Normalisation', 'Normalisation worksheet', 'Database Systems', '4'));
+    });
+    test('an older reminder that carried only the id still works', () {
+      expect(Reminders.parsePayload('DB#4#Normalisation')!.id, 'DB#4#Normalisation');
+    });
+    test('nothing, or an empty payload, is ignored', () {
+      expect(Reminders.parsePayload(null), isNull);
+      expect(Reminders.parsePayload(''), isNull);
     });
   });
 }
