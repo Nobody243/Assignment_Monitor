@@ -334,52 +334,60 @@ def save_env(config: dict) -> None:
             if k not in config:
                 current.pop(k, None)
         config = current
-    merged = dict(DEFAULTS)
-    merged.update({k: v for k, v in config.items() if k in DEFAULTS})
-    password = merged.pop("PASSWORD", "") or ""
-    lines = [f"# {APP_NAME} settings. The password is encrypted for this Windows user only."]
-    lines.append(f"ENROLLMENT={merged['ENROLLMENT']}")
-    enc = ""
-    if password:
-        try:
-            from secure_store import encrypt_secret
-            enc = encrypt_secret(password)
-        except Exception as e:
-            enc = ""
-            # never fall back to writing the password as plain text: it is left out and has to be typed again
-            logging.getLogger("bahria.config").warning("The password could not be encrypted, so it was not saved (%s).", type(e).__name__)
-    if enc:
-        lines.append(f"PASSWORD_ENC={enc}")
-    lines.append(f"INSTITUTE_ID={merged['INSTITUTE_ID']}")
-    lines.append(f"NOTIFY_DAYS_AHEAD={int(merged['NOTIFY_DAYS_AHEAD'])}")
-    lines.append(f"THEME={merged['THEME']}")
-    lines.append(f"VOICE_NAME={merged['VOICE_NAME']}")
-    lines.append(f"VOICE_VOLUME={int(merged['VOICE_VOLUME'])}")
-    lines.append(f"VOICE_RATE={int(merged['VOICE_RATE'])}")
-    lines.append(f"ATTENDANCE_MIN={int(merged['ATTENDANCE_MIN'])}")
-    lines.append(f"EXAM_REMIND_DAYS={int(merged['EXAM_REMIND_DAYS'])}")
-    lines.append(f"REMIND_LEADS={merged['REMIND_LEADS']}")
-    if merged.get("LECTURES_DIR"):
-        lines.append(f"LECTURES_DIR={merged['LECTURES_DIR']}")
-    if merged.get("WINDOW_GEOMETRY"):
-        lines.append(f"WINDOW_GEOMETRY={merged['WINDOW_GEOMETRY']}")
-    for key in _TEXT_KEYS:
-        if merged.get(key):
-            lines.append(f"{key}={merged[key]}")
-    lines.append(f"EMAIL_PORT={int(merged['EMAIL_PORT'])}")
-    for key in _SECRET_KEYS[1:]:
-        value = merged.get(key) or ""
-        if value:
-            try:
-                from secure_store import encrypt_secret
-                lines.append(f"{key}_ENC={encrypt_secret(value)}")
-            except Exception as e:
-                logging.getLogger("bahria.config").warning("A secret could not be encrypted, so it was not saved (%s).", type(e).__name__)
-    for key in _BOOL_KEYS:
-        lines.append(f"{key}={'True' if merged[key] else 'False'}")
+    lines = _plain_lines(config) + _secret_lines(config)
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(ENV_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
+
+
+def _setting(config: dict, key: str):
+    """One non-secret setting, or its default. Only ever called with keys that are not in _SECRET_KEYS."""
+    value = config.get(key)
+    return DEFAULTS[key] if value is None else value
+
+
+def _plain_lines(config: dict) -> list:
+    """The settings file lines that are not secret: written as they are. Secrets never pass through here; they are only
+    handled by _secret_lines, which writes them encrypted."""
+    lines = [f"# {APP_NAME} settings. Secrets are encrypted for this Windows user only."]
+    lines.append(f"ENROLLMENT={_setting(config, 'ENROLLMENT')}")
+    lines.append(f"INSTITUTE_ID={_setting(config, 'INSTITUTE_ID')}")
+    lines.append(f"NOTIFY_DAYS_AHEAD={int(_setting(config, 'NOTIFY_DAYS_AHEAD'))}")
+    lines.append(f"THEME={_setting(config, 'THEME')}")
+    lines.append(f"VOICE_NAME={_setting(config, 'VOICE_NAME')}")
+    lines.append(f"VOICE_VOLUME={int(_setting(config, 'VOICE_VOLUME'))}")
+    lines.append(f"VOICE_RATE={int(_setting(config, 'VOICE_RATE'))}")
+    lines.append(f"ATTENDANCE_MIN={int(_setting(config, 'ATTENDANCE_MIN'))}")
+    lines.append(f"EXAM_REMIND_DAYS={int(_setting(config, 'EXAM_REMIND_DAYS'))}")
+    lines.append(f"REMIND_LEADS={_setting(config, 'REMIND_LEADS')}")
+    if config.get("LECTURES_DIR"):
+        lines.append(f"LECTURES_DIR={config.get('LECTURES_DIR')}")
+    if config.get("WINDOW_GEOMETRY"):
+        lines.append(f"WINDOW_GEOMETRY={config.get('WINDOW_GEOMETRY')}")
+    for key in _TEXT_KEYS:
+        if config.get(key):
+            lines.append(f"{key}={config.get(key)}")
+    lines.append(f"EMAIL_PORT={int(_setting(config, 'EMAIL_PORT'))}")
+    for key in _BOOL_KEYS:
+        lines.append(f"{key}={'True' if _setting(config, key) else 'False'}")
+    return lines
+
+
+def _secret_lines(config: dict) -> list:
+    """The secrets, as KEY_ENC lines holding DPAPI-encrypted text. A secret that cannot be encrypted is left out (and has
+    to be entered again); it is never written as plain text and never logged."""
+    lines = []
+    log = logging.getLogger("bahria.config")
+    for key in _SECRET_KEYS:
+        value = config.get(key) or ""
+        if not value:
+            continue
+        try:
+            from secure_store import encrypt_secret
+            lines.append(f"{key}_ENC={encrypt_secret(value)}")
+        except Exception as e:
+            log.warning("A secret could not be encrypted, so it was not saved (%s).", type(e).__name__)
+    return lines
 
 
 def lectures_dir(config: dict = None) -> Path:
