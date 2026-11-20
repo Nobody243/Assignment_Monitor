@@ -156,33 +156,53 @@ class _Detail extends StatelessWidget {
   final Prefs prefs;
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context), w = work, due = w.due;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(w.title, style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        Text('${w.course} · assignment #${w.number}', style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 16),
-        if (due != null) _Fact('Due', '${dayLabel(due)}, ${timeLabel(due)}'),
-        if (due != null && w.open) _Fact('Time left', countdown(due, now)),
-        if (w.extended && w.wasDue != null) _Fact('Extended from', w.wasDue!),
-        _Fact('Status', w.submitted ? 'Submitted' : w.overdue ? 'Overdue, not submitted' : 'Not submitted'),
-        if (w.marks != null) _Fact('Marks', w.marks!),
-        const SizedBox(height: 16),
-        if (w.open) Row(children: [
-          Expanded(child: FilledButton.tonal(onPressed: () {
-            prefs.update(() => prefs.snoozed[w.id] = now.add(const Duration(hours: 1)));
-            Navigator.pop(context);
-          }, child: const Text('Snooze 1 h'))),
-          const SizedBox(width: 10),
-          Expanded(child: FilledButton(onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, child: const Text('Done'))),
+    final t = Theme.of(context), b = t.brightness, w = work, due = w.due;
+    final cc = courseColor(w.course);
+    final left = due?.difference(now);
+    final late = !w.submitted && (w.overdue || (left != null && left.isNegative));
+    final tone = w.submitted ? Status.good(b) : late ? Status.bad(b) : (left != null && left.inHours < 24) ? Status.warn(b) : t.colorScheme.primary;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + MediaQuery.of(context).viewInsets.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: cc, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('${w.course} · assignment #${w.number}', maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+          ]),
+          const SizedBox(height: 6),
+          Text(w.title, style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(24)),
+            child: Row(children: [
+              Icon(w.submitted ? Icons.check_circle : late ? Icons.error : Icons.timer_outlined, color: tone, size: 30),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(w.submitted ? 'Submitted' : late ? 'Overdue' : due == null ? 'No due date' : countdown(due, now), style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: tone)),
+                if (due != null) Text('${dayLabel(due)}, ${timeLabel(due)}', style: t.textTheme.bodyMedium),
+              ])),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          if (w.extended && w.wasDue != null) _Fact('Extended from', w.wasDue!),
+          if (w.marks != null) _Fact('Marks', w.marks!),
+          _Fact('Can submit', w.canSubmit ? 'Yes, on the portal' : 'No'),
+          const SizedBox(height: 16),
+          if (w.open && !w.submitted) Row(children: [
+            Expanded(child: FilledButton.tonalIcon(icon: const Icon(Icons.snooze), onPressed: () {
+              prefs.update(() => prefs.snoozed[w.id] = now.add(const Duration(hours: 1)));
+              Navigator.pop(context);
+            }, label: const Text('Snooze 1 h'))),
+            const SizedBox(width: 10),
+            Expanded(child: FilledButton.icon(icon: const Icon(Icons.check), onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, label: const Text('Done'))),
+          ]),
+          const SizedBox(height: 10),
+          Text('Uploads stay on the PC app and the portal; the phone shows and reminds.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
         ]),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.open_in_new), label: Text(w.canSubmit ? 'Open the portal to submit' : 'Open the portal')),
-        const SizedBox(height: 4),
-        Text('Uploads stay on the PC app and the portal; the phone shows and reminds.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-      ]),
+      ),
     );
   }
 }
