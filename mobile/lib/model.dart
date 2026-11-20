@@ -18,6 +18,7 @@ class Prefs extends ChangeNotifier {
   ThemeMode mode = ThemeMode.system;
   List<int> leads = [24, 3, 1];
   DateTime? annSeen;   // announcements posted after this are new
+  bool weekly = true, digest = false, alerts = true;   // Sunday summary, morning digest, background alerts
   final Set<String> done = {};
   final Map<String, DateTime> snoozed = {};
   void Function()? onChanged;   // the model re-plans reminders when a choice that affects them changes
@@ -28,6 +29,9 @@ class Prefs extends ChangeNotifier {
     mode = ThemeMode.values.firstWhere((x) => x.name == p.getString('mode'), orElse: () => ThemeMode.system);
     leads = (p.getStringList('leads') ?? ['24', '3', '1']).map(int.parse).toList();
     annSeen = DateTime.tryParse(p.getString('annSeen') ?? '');
+    weekly = p.getBool('weekly') ?? true;
+    digest = p.getBool('digest') ?? false;
+    alerts = p.getBool('alerts') ?? true;
     done..clear()..addAll(p.getStringList('done') ?? []);
     snoozed.clear();
     try {
@@ -42,6 +46,9 @@ class Prefs extends ChangeNotifier {
     await p.setString('mode', mode.name);
     await p.setStringList('leads', leads.map((e) => '$e').toList());
     if (annSeen != null) await p.setString('annSeen', annSeen!.toIso8601String());
+    await p.setBool('weekly', weekly);
+    await p.setBool('digest', digest);
+    await p.setBool('alerts', alerts);
     await p.setStringList('done', done.toList());
     await p.setString('snoozed', jsonEncode(snoozed.map((k, v) => MapEntry(k, v.toIso8601String()))));
   }
@@ -196,7 +203,7 @@ class AppModel extends ChangeNotifier {
   Future<void> replan() async {
     final s = summary;
     if (s == null || demo) return;
-    scheduled = await Reminders.schedule(s, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed);
+    scheduled = await Reminders.schedule(s, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest);
     notifyListeners();
   }
 

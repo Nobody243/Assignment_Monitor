@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'alerts.dart';
 import 'data.dart';
 
 /// Deadline reminders scheduled on the phone itself, so they fire with no network and no server.
@@ -27,6 +28,11 @@ class Reminders {
       playSound: false, enableVibration: false,
       actions: [AndroidNotificationAction('snooze', 'Snooze 1 h'), AndroidNotificationAction('done', 'Done')]);
 
+  static const _news = AndroidNotificationDetails('news', 'Updates',
+      channelDescription: 'New announcements, assignments, extensions, marks, exam seats and results', importance: Importance.high, priority: Priority.high);
+  static const _digest = AndroidNotificationDetails('digest', 'Summaries',
+      channelDescription: 'Your morning digest and the Sunday summary', importance: Importance.defaultImportance, priority: Priority.defaultPriority);
+
   static Future<void> init() async {
     if (!supported || _ready) return;
     tzdata.initializeTimeZones();
@@ -36,7 +42,7 @@ class Reminders {
       debugPrint('timezone: $e');
     }
     await _plugin.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/launcher_icon')),
       onDidReceiveNotificationResponse: _answer,
       onDidReceiveBackgroundNotificationResponse: answerInBackground,
     );
@@ -68,16 +74,51 @@ class Reminders {
     return out.take(60).toList();
   }
 
+  /// The Sunday summary (Sunday 18:00) and the morning digest (07:30), each only when switched on and only when there is
+  /// something to say at that time. Pure, like [plan].
+  static List<PlannedMessage> planMessages(Summary s, {required bool weekly, required bool digest, required DateTime now}) {
+    final out = <PlannedMessage>[];
+    if (weekly) {
+      var at = DateTime(now.year, now.month, now.day, 18);
+      at = at.add(Duration(days: (DateTime.sunday - at.weekday) % 7));
+      if (!at.isAfter(now)) at = at.add(const Duration(days: 7));
+      final m = weeklySummary(s, at);
+      if (m != null) out.add(PlannedMessage(9001, at, m, false));
+    }
+    if (digest) {
+      var at = DateTime(now.year, now.month, now.day, 7, 30);
+      if (!at.isAfter(now)) at = at.add(const Duration(days: 1));
+      final m = dailyDigest(s, at);
+      if (m != null) out.add(PlannedMessage(9002, at, m, true));
+    }
+    return out;
+  }
+
   /// Replaces every scheduled reminder with the ones the current summary and settings call for.
-  static Future<int> schedule(Summary s, {required List<int> leads, required Set<String> done, required Map<String, DateTime> snoozed}) async {
+  static Future<int> schedule(Summary s, {required List<int> leads, required Set<String> done, required Map<String, DateTime> snoozed, bool weekly = false, bool digest = false}) async {
     if (!supported) return 0;
     await init();
     await _plugin.cancelAll();
-    final planned = plan(s, leads: leads, done: done, snoozed: snoozed, now: DateTime.now());
+    final now = DateTime.now();
+    final planned = plan(s, leads: leads, done: done, snoozed: snoozed, now: now);
     for (final p in planned) {
       await _show(p.work, p.at, p.hours, _idFor(p.work.id, p.hours ?? 99));
     }
-    return planned.length;
+    final messages = planMessages(s, weekly: weekly, digest: digest, now: now);
+    for (final m in messages) {
+      await _plugin.zonedSchedule(
+        id: m.id, title: m.message.title, body: m.message.body, scheduledDate: tz.TZDateTime.from(m.at, tz.local),
+        notificationDetails: const NotificationDetails(android: _digest), androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+    return planned.length + messages.length;
+  }
+
+  /// Shows a notification now (used by the background check for new announcements, marks, seats and results).
+  static Future<void> showNow(AlertText m, int id) async {
+    if (!supported) return;
+    await init();
+    await _plugin.show(id: id, title: m.title, body: m.body, notificationDetails: const NotificationDetails(android: _news));
   }
 
   static Future<void> _show(Work w, DateTime at, int? hours, int id) {
@@ -121,4 +162,12 @@ class PlannedReminder {
 
   /// Hours before the deadline, or null for a snooze that wakes the reminder up again.
   final int? hours;
+}
+
+class PlannedMessage {
+  const PlannedMessage(this.id, this.at, this.message, this.daily);
+  final int id;
+  final DateTime at;
+  final AlertText message;
+  final bool daily;
 }

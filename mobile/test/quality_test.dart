@@ -116,6 +116,16 @@ void main() {
           for (final section in _sections) {
             await open(tester, section);
             _noException(tester, '$section overflowed at ${(scale * 100).round()}% text in ${b.name}');
+            if (section == 'Settings') {
+              for (final page in ['Reminders', 'Appearance', 'Calendar', 'Account and data', 'About and privacy']) {
+                await tester.ensureVisible(find.text(page));
+                await tester.tap(find.text(page));
+                await tester.pumpAndSettle();
+                _noException(tester, 'Settings, $page overflowed at ${(scale * 100).round()}% text in ${b.name}');
+                await tester.pageBack();
+                await tester.pumpAndSettle();
+              }
+            }
             if (section == 'Results & GPA') {
               await tester.tap(find.text('Calculator'));
               await tester.pumpAndSettle();

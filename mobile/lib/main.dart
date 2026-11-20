@@ -19,11 +19,13 @@ import 'screens/today.dart';
 import 'screens/work.dart';
 import 'theme.dart';
 import 'logic.dart' show agoLabel;
+import 'background.dart';
 import 'reminders.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Reminders.init();
+  await BackgroundCheck.applySaved();   // keeps the two-hourly check in step with the setting (Android only)
   runApp(const AssignmentMonitorApp());
 }
 

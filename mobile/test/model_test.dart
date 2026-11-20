@@ -9,20 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Keeps the sign-in and the last summary in memory, so the model runs without a phone's keystore.
-class MemoryStore extends Store {
-  String? _token, _login, _etag;
-  Summary? _summary;
-  DateTime? _fetched;
-  bool cleared = false;
-  @override Future<String?> token() async => _token;
-  @override Future<String?> login() async => _login;
-  @override Future<void> saveSession(String token, String login) async { _token = token; _login = login; }
-  @override Future<({Summary? summary, String? etag, DateTime? fetchedAt})> cached() async => (summary: _summary, etag: _etag, fetchedAt: _fetched);
-  @override Future<void> saveSummary(Summary s, String? etag) async { _summary = s; _etag = etag; _fetched = DateTime.now(); }
-  @override Future<void> touchFetched() async => _fetched = DateTime.now();
-  @override Future<void> clear() async { _token = _login = _etag = null; _summary = null; cleared = true; }
-}
+import 'helpers.dart';
 
 Map<String, dynamic> _summary({String name = 'Alex', List<Map<String, dynamic>> announcements = const []}) => {
       'schema': 1, 'generated_at': '2026-11-20T10:00:00', 'student': {'name': name}, 'assignments': [], 'attendance': [],
@@ -45,8 +32,8 @@ void main() {
     });
 
     test('signed in with a saved summary: opens on it and refreshes from GitHub', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex'.._summary = Summary(_summary(name: 'Old'))
-        .._etag = 'W/"1"';
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary(name: 'Old'))
+        ..etagV = 'W/"1"';
       final m = _model(store, MockClient((r) async {
         expect(r.headers['If-None-Match'], 'W/"1"');
         return http.Response(jsonEncode(_summary(name: 'New')), 200, headers: {'etag': 'W/"2"'});
@@ -59,7 +46,7 @@ void main() {
     });
 
     test('signed in but GitHub has no summary yet: waits, without an error', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex';
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex';
       final m = _model(store, MockClient((_) async => http.Response('{}', 404)));
       await m.start();
       expect(m.phase, Phase.waiting);
@@ -75,7 +62,7 @@ void main() {
     }
 
     test('unchanged (304) keeps the summary and only refreshes the time', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex'.._summary = Summary(_summary()).._etag = 'e';
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary())..etagV = 'e';
       final m = await ready(store, MockClient((_) async => http.Response('', 304)));
       final before = m.fetchedAt;
       await Future.delayed(const Duration(milliseconds: 5));
@@ -86,7 +73,7 @@ void main() {
     });
 
     test('offline: the old summary stays on screen and the problem is said plainly', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex'.._summary = Summary(_summary());
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary());
       var online = true;
       final m = await ready(store, MockClient((_) async { if (online) return http.Response('', 304); throw http.ClientException('down'); }));
       online = false;
@@ -97,7 +84,7 @@ void main() {
     });
 
     test('a rejected token says to sign in again and keeps the data', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex'.._summary = Summary(_summary());
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary());
       var bad = false;
       final m = await ready(store, MockClient((_) async => bad ? http.Response('{}', 401) : http.Response('', 304)));
       bad = true;
@@ -108,7 +95,7 @@ void main() {
 
     test('a refresh already running is not started twice', () async {
       var calls = 0;
-      final store = MemoryStore().._token = 't'.._login = 'alex'.._summary = Summary(_summary());
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary());
       final m = await ready(store, MockClient((_) async { calls++; await Future.delayed(const Duration(milliseconds: 30)); return http.Response('', 304); }));
       calls = 0;
       await Future.wait([m.refresh(), m.refresh(), m.refresh()]);
@@ -128,7 +115,7 @@ void main() {
       final store = MemoryStore();
       final m = _model(store, MockClient((_) async => http.Response(jsonEncode(_summary()), 200, headers: {'etag': 'e'})), auth: auth);
       await m.signIn();
-      expect(store._token, 'tok');
+      expect(store.tokenV, 'tok');
       expect(m.login, 'alex');
       expect(m.phase, Phase.ready);
       expect(polls, 3);
@@ -157,7 +144,7 @@ void main() {
     });
 
     test('sign out forgets the sign-in, the summary and the data on screen', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex'.._summary = Summary(_summary());
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary());
       final m = _model(store, MockClient((_) async => http.Response('', 304)));
       await m.start();
       await m.signOut();
@@ -170,8 +157,8 @@ void main() {
 
   group('announcements and the intro', () {
     test('the first summary sets the starting point, later posts count as new', () async {
-      final store = MemoryStore().._token = 't'.._login = 'alex'
-        .._summary = Summary(_summary(announcements: [{'id': 'a', 'title': 'A', 'course': 'C', 'posted_at': '2026-11-18T09:00:00'}]));
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'
+        ..summaryV = Summary(_summary(announcements: [{'id': 'a', 'title': 'A', 'course': 'C', 'posted_at': '2026-11-18T09:00:00'}]));
       final m = _model(store, MockClient((_) async => http.Response('', 304)));
       await m.start();
       expect(m.newAnnouncements, 0);   // a new install does not start with a pile of "new"

@@ -1,6 +1,14 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:share_plus/share_plus.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../alerts.dart';
+import '../background.dart';
 import '../data.dart';
 import '../logic.dart';
 import '../model.dart';
@@ -38,9 +46,11 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.palette, 'Appearance', '${prefs.palette.label} · ${switch (prefs.mode) { ThemeMode.system => 'follows the phone', ThemeMode.light => 'light', ThemeMode.dark => 'dark' }}', () => AppearanceSettings(prefs: prefs)),
         const Divider(height: 1, indent: 76),
+        row(LucideIcons.calendarPlus, 'Calendar', 'Add deadlines and exams to your calendar', () => CalendarSettings(summary: summary)),
+        const Divider(height: 1, indent: 76),
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
         const Divider(height: 1, indent: 76),
-        row(LucideIcons.shieldCheck, 'About and privacy', 'What this app stores and sends', () => const AboutSettings()),
+        row(LucideIcons.shieldCheck, 'About and privacy', 'What this app stores and sends', () => AboutSettings(summary: summary, model: model)),
       ])),
       const SizedBox(height: 28),
       OutlinedButton.icon(
@@ -103,8 +113,25 @@ class _RemindersState extends State<RemindersSettings> {
       const SizedBox(height: 8),
       const Muted('Reminders are scheduled on this phone from the latest summary, so they work without a network.'),
       const Divider(height: 32),
+      const _Head('Summaries and alerts'),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero, title: const Text('Sunday summary'),
+        subtitle: const Text('Sunday at 18:00: what is due next week, exams, and attendance to watch'),
+        value: p.weekly, onChanged: (v) => setState(() => p.update(() => p.weekly = v)),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero, title: const Text('Morning digest'),
+        subtitle: const Text('Every day at 07:30: what is due today, today\'s classes, an exam in the next three days'),
+        value: p.digest, onChanged: (v) => setState(() => p.update(() => p.digest = v)),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero, title: const Text('Updates while the app is closed'),
+        subtitle: const Text('About every two hours the phone checks GitHub and tells you about a new announcement, assignment, extension, mark, exam seat or result. Android may delay a check to save battery.'),
+        value: p.alerts, onChanged: (v) { setState(() => p.update(() => p.alerts = v)); BackgroundCheck.apply(on: v); },
+      ),
+      const Divider(height: 32),
       const _Head('Quiet hours'),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.moon), title: Text('23:00 to 07:00'), subtitle: Text('Reminders in this window arrive silently, with no sound or vibration.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.moon), title: Text('23:00 to 07:00'), subtitle: Text('Deadline reminders in this window arrive silently, with no sound or vibration.')),
       const Divider(height: 32),
       const _Head('Permission'),
       if (m.demo || !Reminders.supported)
@@ -181,20 +208,72 @@ class AccountSettings extends StatelessWidget {
 
 // ---------------------------------------------------------------------------------------------- about
 class AboutSettings extends StatelessWidget {
-  const AboutSettings({super.key});
+  const AboutSettings({super.key, required this.summary, required this.model});
+  final Summary summary;
+  final AppModel model;
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(16), children: const [
-      _Head('What the phone holds'),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('No portal password'), subtitle: Text('The phone never sees it and never contacts the portal.')),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
-      Divider(height: 32),
-      _Head('Sharing'),
-      Muted('No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
-      Divider(height: 32),
-      _Head('App'),
-      ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.smartphone), title: Text('Assignment Monitor for phones'), subtitle: Text('Version 1.0.0')),
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      const _Head('What the phone holds'),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('No portal password'), subtitle: Text('The phone never sees it and never contacts the portal.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
+      const Divider(height: 32),
+      const _Head('Sharing'),
+      const Muted('No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
+      const Divider(height: 32),
+      const _Head('App'),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.smartphone), title: Text('Assignment Monitor for phones'), subtitle: Text('Version $appVersion')),
+      ListTile(
+        contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.clipboardCopy), title: const Text('Copy support info'),
+        subtitle: const Text('Versions, freshness and counts for a bug report. No name, grades or sign-in.'),
+        onTap: () async {
+          final text = supportInfo(summary, platform: kIsWeb ? 'web' : defaultTargetPlatform.name, lastRead: model.fetchedAt, error: model.error, reminders: model.scheduled);
+          await Clipboard.setData(ClipboardData(text: text));
+          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied. Paste it into your message.')));
+        },
+      ),
+    ]);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------- calendar
+/// Hands the deadlines and exams to the phone's calendar as an .ics file (the share sheet offers the calendar app).
+class CalendarSettings extends StatelessWidget {
+  const CalendarSettings({super.key, required this.summary});
+  final Summary summary;
+
+  Future<void> _share(BuildContext context) async {
+    final ics = calendarIcs(summary, DateTime.now());
+    try {
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile.fromData(Uint8List.fromList(utf8.encode(ics)), mimeType: 'text/calendar', name: 'Assignment Monitor.ics')],
+        fileNameOverrides: const ['Assignment Monitor.ics'],
+        subject: 'Assignment Monitor: deadlines and exams',
+      ));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not make the calendar file. $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final deadlines = summary.work.where((w) => w.todo && w.open && w.due != null).length;
+    final exams = summary.exams.where((e) => e.scheduled && e.day != null).length;
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      const _Head('Add to your calendar'),
+      Text('Makes one calendar file with $deadlines open deadline${deadlines == 1 ? '' : 's'} and $exams exam${exams == 1 ? '' : 's'}. Each deadline is a 30 minute block ending at the due time, with an alarm an hour before; exams carry the room and seat. Open the file in your calendar app to add them.',
+          style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant, height: 1.4)),
+      const SizedBox(height: 16),
+      FilledButton.icon(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+        onPressed: deadlines + exams == 0 ? null : () => _share(context),
+        icon: const Icon(LucideIcons.calendarPlus, size: 20),
+        label: const Text('Make the calendar file'),
+      ),
+      const SizedBox(height: 12),
+      const Muted('The file is a snapshot. Deadlines that change later (an extension, say) need a new file; the desktop app can keep a calendar feed up to date.'),
     ]);
   }
 }

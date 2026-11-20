@@ -13,8 +13,14 @@ What the app holds, what it sends, what is checked, and what is still open. Upda
 
 Network: HTTPS only (`usesCleartextTraffic=false`, a network-security config with cleartext refused), and only to
 `github.com` (device-flow sign-in) and `api.github.com` (read `state/summary.json` from the student's own private
-repository). No analytics, no crash reporting, no third party. The link opened during sign-in is checked to be
+repository). That also holds in the background: about every two hours Android runs a short check (WorkManager) that
+reads the same file with the same sign-in to look for news; it needs no extra permission beyond the network. No analytics,
+no crash reporting, no third party. The link opened during sign-in is checked to be
 `https://github.com` before it is launched.
+
+Exports: the calendar file and the timetable picture are made on the phone and handed to Android's share sheet; the
+app does not send them anywhere itself. "Copy support info" puts versions, freshness and counts on the clipboard, with no
+name, course, grade or token (a test asserts it).
 
 ## Checks that run (CI: `.github/workflows/mobile-ci.yml`, and locally)
 
@@ -26,6 +32,8 @@ repository). No analytics, no crash reporting, no third party. The link opened d
   - **layout**: every screen on a 360 x 740 phone at 100, 150 and 200 percent text, light and dark, with a real font,
     must not overflow; the side menu must scroll rather than hide Sign out;
   - **contrast**: text, secondary text, accent and status colours at least 4.5 to 1 in all four palettes, light and dark;
+  - **alerts**: the Sunday summary, morning digest, what-changed comparison, calendar file (escaping, folding, times) and
+    the background check (new, unchanged, alerts off, first run, signed out, offline);
   - **behaviour**: sign-in (device flow, declined, expired), refresh (304, offline, 401, no double refresh), sign out,
     reminder planning, swipe to done and snooze, calculator, announcements, settings, the intro, and fast taps on the
     menu and bar.
@@ -44,5 +52,5 @@ repository). No analytics, no crash reporting, no third party. The link opened d
    lock is planned.
 4. **Announcement text** is copied from the portal as is (clipped to 600 characters) and may contain whatever a teacher
    wrote, including links or contact details. It lives only in the student's private repository and the phone.
-5. **Not yet tried on a device.** Notifications, the share sheet for the timetable, the keystore and the launcher icon
+5. **Not yet tried on a device.** Notifications, the background check, the share sheet (timetable and calendar), the keystore and the launcher icon
    need a run on a real Android phone.
