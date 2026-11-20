@@ -15,6 +15,7 @@ import '../model.dart';
 import '../reminders.dart';
 import '../source.dart' show repoName;
 import '../theme.dart';
+import 'cloud_setup_screens.dart' show CloudSettingsPage;   // phone-only Cloud checks
 import 'widgets.dart';
 
 /// Settings is a short list of sections; each one opens its own page, so a page only ever holds one kind of choice.
@@ -50,6 +51,10 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
+        if (!model.demo) ...[
+          row(LucideIcons.cloud, 'Cloud checks', 'Run, change the portal login, or turn off', () => CloudSettingsPage(model: model)),
+          const Divider(height: 1, indent: 76),
+        ],
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
         const Divider(height: 1, indent: 76),
         row(LucideIcons.info, 'About and privacy', 'What this app stores and sends', () => AboutSettings(summary: summary, model: model)),

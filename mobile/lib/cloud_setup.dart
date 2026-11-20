@@ -398,7 +398,7 @@ class CloudSetup {
   CloudSetup(this.client);
   final CloudClient client;
 
-  /// Creates or refreshes the repository, the workflow and the two secrets, then starts a first check ("verify": sign in,
+  /// Creates or refreshes the repository, the workflow and the two secrets, then starts a first full check ("check"; the desktop starts "verify": sign in,
   /// count, send a test alert). Every step can run again: what already exists is kept or rewritten the same.
   Future<CloudSetupResult> run({required String enrollment, required String password, required String campusId, CloudProgress? progress}) async {
     void say(CloudStep s, bool done) => progress?.call(s, done);
@@ -425,7 +425,7 @@ class CloudSetup {
 
       step = CloudStep.check;
       say(step, false);
-      await client.dispatch(repo, branch, mode: 'verify');
+      await client.dispatch(repo, branch, mode: 'check');
       say(step, true);
       return CloudSetupResult(repo, login, 'https://github.com/$repo/actions');
     } on CloudError catch (e) {

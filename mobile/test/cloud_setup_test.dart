@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:assignment_monitor_mobile/cloud_setup.dart';
 import 'package:assignment_monitor_mobile/source.dart';
@@ -84,7 +83,7 @@ void main() {
   });
 
   group('setup against a fake GitHub', () {
-    test('runs the whole sequence with the exact calls, sealed secrets and a verify run', () async {
+    test('runs the whole sequence with the exact calls, sealed secrets and a first check', () async {
       final gh = FakeGithub();
       final steps = <String>[];
       final r = await setupFor(gh).run(enrollment: fakeEnrollment, password: fakePassword, campusId: '3', progress: (s, d) => steps.add('${s.name}${d ? ' done' : ''}'));
@@ -105,7 +104,7 @@ void main() {
       expect(gh.files['README.md'], contains("student1's Assignment Monitor setup"));
 
       expect(gh.secrets, {secretEnrollment: fakeEnrollment, secretPassword: fakePassword});
-      expect(gh.dispatches.single, {'ref': 'main', 'inputs': {'mode': 'verify'}});
+      expect(gh.dispatches.single, {'ref': 'main', 'inputs': {'mode': 'check'}});
     });
 
     test('the password only ever leaves the phone sealed', () async {

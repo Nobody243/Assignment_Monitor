@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../model.dart';
 import 'intro.dart' show BrandMark;
 import '../source.dart' show DeviceCode, repoName;
+import 'cloud_setup_screens.dart' show CloudSetupWizard;   // phone-only setup
 
 /// First run: sign in to GitHub (device flow) or look at the demo. Also shown while the first summary is awaited.
 class SignInScreen extends StatelessWidget {
@@ -69,6 +70,11 @@ class SignInScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
           child: const Text('Use a read-only token instead'),
         ),
+        // phone-only setup: no desktop app needed (lib/screens/cloud_setup_screens.dart)
+        TextButton(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model))),
+          child: const Text('I only use the phone'),
+        ),
         const SizedBox(height: 12),
         Text('In the desktop app, switch on Share with my phone (or Cloud checks). That puts the summary in your own private repository, which this app reads.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
@@ -104,11 +110,13 @@ class SignInScreen extends StatelessWidget {
     return [
       Text('Signed in as ${model.login ?? ''}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      Text('No summary yet in ${model.login ?? 'your'}/$repoName. It appears after the next cloud check (they run twice a day). To get it now, open the repository on GitHub, Actions, run the check by hand.',
+      Text(model.cloudFirstCheck
+              ? 'Your first check is running on GitHub. It takes about three minutes. Your deadlines appear here when it is done; you can close the app meanwhile.'
+              : 'No summary yet in ${model.login ?? 'your'}/$repoName. It appears after the next cloud check (they run twice a day). To get it now, open the repository on GitHub, Actions, run the check by hand.',
           style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
       if (model.error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(model.error!, style: TextStyle(color: t.colorScheme.error))),
       const SizedBox(height: 16),
-      FilledButton.icon(onPressed: model.refreshing ? null : model.refresh, icon: const Icon(LucideIcons.refreshCw), label: Text(model.refreshing ? 'Checking' : 'Check again')),
+      FilledButton.icon(onPressed: model.refreshing ? null : model.refresh, icon: const Icon(LucideIcons.refreshCw), label: Text(model.refreshing ? 'Checking' : (model.cloudFirstCheck ? 'Check now' : 'Check again'))),
       const SizedBox(height: 8),
       TextButton(onPressed: model.signOut, child: const Text('Sign out')),
     ];
