@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../data.dart';
 import '../logic.dart';
-import '../model.dart';
-import '../reminders.dart';
-import '../source.dart' show repoName;
 import '../theme.dart';
 import 'widgets.dart';
 
@@ -277,68 +274,4 @@ class _Fig extends StatelessWidget {
   final String label, value;
   @override
   Widget build(BuildContext context) => Column(children: [Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)), Text(label, style: Theme.of(context).textTheme.labelSmall)]);
-}
-
-// ------------------------------------------------------------------------------------------------ settings
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.summary, required this.prefs, required this.model});
-  final Summary summary;
-  final Prefs prefs;
-  final AppModel model;
-  @override
-  State<SettingsPage> createState() => _SettingsState();
-}
-
-class _SettingsState extends State<SettingsPage> {
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context), p = widget.prefs;
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Reminders', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, children: [
-        for (final h in [48, 24, 12, 6, 3, 1])
-          FilterChip(label: Text(h == 48 ? '2 days' : h == 24 ? '1 day' : '$h h'), selected: p.leads.contains(h), onSelected: (on) => p.update(() { on ? p.leads.add(h) : p.leads.remove(h); p.leads.sort((a, b) => b - a); })),
-      ]),
-      const Muted('Reminders are scheduled on this phone from the summary, so they work without a network. Quiet hours: 23:00 to 07:00.'),
-      const Divider(height: 32),
-      Text('Look', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 8),
-      Row(children: [
-        for (final pal in palettes)
-          Expanded(child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () => p.update(() => p.palette = pal),
-            child: Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Column(children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 48, height: 48,
-                decoration: BoxDecoration(color: pal.seed, shape: BoxShape.circle, border: Border.all(color: p.palette.key == pal.key ? t.colorScheme.onSurface : Colors.transparent, width: 3)),
-                child: p.palette.key == pal.key ? const Icon(Icons.check, color: Colors.white) : null,
-              ),
-              const SizedBox(height: 6),
-              Text(pal.label, style: t.textTheme.labelMedium),
-            ])),
-          )),
-      ]),
-      const SizedBox(height: 12),
-      SegmentedButton<ThemeMode>(
-        segments: const [ButtonSegment(value: ThemeMode.system, label: Text('System')), ButtonSegment(value: ThemeMode.light, label: Text('Light')), ButtonSegment(value: ThemeMode.dark, label: Text('Dark'))],
-        selected: {p.mode},
-        onSelectionChanged: (s) => p.update(() => p.mode = s.first),
-      ),
-      const Divider(height: 32),
-      Text('Account', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-      const SizedBox(height: 8),
-      ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(widget.summary.studentName),
-          subtitle: Text(widget.model.demo ? 'Demo data, nothing is read from GitHub' : 'GitHub: ${widget.model.login ?? '–'} · ${widget.model.login ?? ''}/$repoName')),
-      if (!widget.model.demo) ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.sync), title: const Text('Last read from GitHub'),
-          subtitle: Text(widget.model.fetchedAt == null ? 'Not yet' : '${agoLabel(widget.model.age!)} · summary made ${agoLabel(DateTime.now().difference(widget.summary.generatedAt))}')),
-      if (!widget.model.demo && Reminders.supported) ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.notifications_active_outlined), title: const Text('Reminders on this phone'),
-          subtitle: Text('${widget.model.scheduled} scheduled'), trailing: TextButton(onPressed: () async { await Reminders.allowed(); await widget.model.replan(); setState(() {}); }, child: const Text('Allow'))),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.lock_outline), title: Text('No portal password on this phone'), subtitle: Text('Only a GitHub sign-in for your own repository, kept in the phone\'s keystore')),
-      const SizedBox(height: 8),
-      OutlinedButton.icon(onPressed: () async { Navigator.of(context).popUntil((r) => r.isFirst); await widget.model.signOut(); }, icon: const Icon(Icons.logout), label: Text(widget.model.demo ? 'Leave the demo' : 'Sign out and forget this phone')),
-    ]);
-  }
 }

@@ -24,18 +24,18 @@ class SignInScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [t.colorScheme.primary, t.colorScheme.tertiary]),
+                  color: t.colorScheme.primaryContainer,
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Container(
                     width: 56, height: 56,
-                    decoration: BoxDecoration(color: t.colorScheme.onPrimary.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(18)),
-                    child: Icon(Icons.assignment_turned_in_outlined, size: 30, color: t.colorScheme.onPrimary),
+                    decoration: BoxDecoration(color: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(18)),
+                    child: Icon(Icons.assignment_turned_in_outlined, size: 30, color: t.colorScheme.onPrimaryContainer),
                   ),
                   const SizedBox(height: 18),
-                  Text('Assignment\nMonitor', style: t.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.05, color: t.colorScheme.onPrimary)),
+                  Text('Assignment\nMonitor', style: t.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.05, color: t.colorScheme.onPrimaryContainer)),
                   const SizedBox(height: 8),
-                  Text('Never miss a deadline again.', style: t.textTheme.titleMedium?.copyWith(color: t.colorScheme.onPrimary.withValues(alpha: 0.9))),
+                  Text('Never miss a deadline again.', style: t.textTheme.titleMedium?.copyWith(color: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.85))),
                 ]),
               ),
               const SizedBox(height: 22),

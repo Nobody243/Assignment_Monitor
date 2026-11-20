@@ -59,10 +59,10 @@ class Pill extends StatelessWidget {
   }
 }
 
-/// A stable colour per course, so a subject looks the same on Today, Work, Attendance and the timetable.
+/// A stable, muted colour per course (low saturation, so it marks a subject without competing with the status colours).
 const _courseColors = [
-  Color(0xFFE8552B), Color(0xFF3558D9), Color(0xFF2F8F4E), Color(0xFF8E44AD),
-  Color(0xFFD39A00), Color(0xFF0F8B8D), Color(0xFFC2185B), Color(0xFF5D6D7E),
+  Color(0xFFB46A55), Color(0xFF7E9275), Color(0xFF6F86A3), Color(0xFFB39A5C),
+  Color(0xFF8C7089), Color(0xFF5F8A89), Color(0xFF8A8478), Color(0xFFA4766F),
 ];
 Color courseColor(String name) => _courseColors[name.codeUnits.fold<int>(7, (a, b) => (a * 31 + b) & 0x7fffffff) % _courseColors.length];
 
