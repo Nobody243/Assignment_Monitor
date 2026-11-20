@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Bell, Cloud, HardDrive, History, Info, ListChecks, Palette, User } from 'lucide-react'
-import type { State } from '@/api'
+import { setAutomation, type State } from '@/api'
+import { ConfirmDialog } from '@/components/feedback'
 import { Alert } from '@/components/inline-alert'
 import { PageHeader } from '@/components/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from '@/lib/notify'
 import { SETTINGS_TABS, type SettingsTab } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import type { Outcome, Running } from '@/useEngine'
@@ -41,6 +43,12 @@ type Props = {
 export function SettingsPage(p: Props) {
   const { view, error, load, save } = useSettings(p.demo)
   const busy = !!p.running
+  const [offerAuto, setOfferAuto] = useState(false)
+  const turnOnAuto = async () => {
+    const r = await p.run('automation', () => setAutomation(true))
+    if (r.ok) toast.success(r.message); else toast.error(r.message)
+    await load()
+  }
   const loading = !view && !p.demo
   const wait = <Skeleton className="h-64 w-full rounded-2xl" />
   const two = (children: ReactNode) => <div className="grid items-start gap-5 2xl:grid-cols-2">{children}</div>
@@ -49,7 +57,8 @@ export function SettingsPage(p: Props) {
     profile: view ? (
       <>
         <ProfileCard view={view} state={p.state} now={p.now} />
-        <AccountSection key={view.account.enrollment + view.account.institute_id + String(view.account.password_set)} view={view} save={save} run={p.run} busy={busy} />
+        <AccountSection key={view.account.enrollment + view.account.institute_id + String(view.account.password_set)} view={view} save={save} run={p.run} busy={busy}
+          onSignedIn={() => { if (!view.background.automatic_checks && !view.background.owned_by_installed_app) setOfferAuto(true) }} />
       </>
     ) : loading ? wait : null,
     appearance: <AppearanceSection dark={p.dark} onTheme={p.onTheme} palette={p.palette} onPalette={p.onPalette} motion={p.motion}
@@ -65,6 +74,9 @@ export function SettingsPage(p: Props) {
 
   return (
     <div className="flex w-full flex-col gap-5">
+      <ConfirmDialog open={offerAuto} onOpenChange={setOfferAuto} title="Turn on automatic checks?"
+        description="Signed in. Windows can now check for you every evening and shortly after you sign in, and remind you hourly while something is due, even when the app is closed."
+        yes="Yes, turn on" no="Not now" onYes={() => void turnOnAuto()} />
       <PageHeader title="Settings" description={BLURB[p.tab]} />
       {p.demo && <Alert tone="info">Sample data: start the engine to see and change your real settings.</Alert>}
       {error && !p.demo && <Alert tone="danger">{error}</Alert>}

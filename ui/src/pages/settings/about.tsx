@@ -47,6 +47,9 @@ export function AboutSection({ view, version, demo, run, busy: running }: {
       <ConfirmDialog open={confirm} onOpenChange={setConfirm} title={`Install version ${info?.version ?? ''}?`}
         description="The app downloads the update, checks it against the checksum published with the release, then closes and reopens by itself. Your data and settings are kept."
         yes="Yes, install" no="Not now" onYes={() => void install()} />
+      <Row label="Setup walkthrough" hint="Go through the first-run steps again: sign in, look, reminders, automatic checks, files">
+        <Button variant="outline" size="sm" disabled={demo} onClick={() => window.dispatchEvent(new Event('am:setup'))}>Run setup again</Button>
+      </Row>
       <div className="flex flex-wrap gap-2 pt-3">
         {links.map(([label, href]) => <Button key={label} variant="outline" size="sm" asChild><a href={href} target="_blank" rel="noreferrer">{label}<ExternalLink className="size-3" /></a></Button>)}
       </div>

@@ -77,7 +77,7 @@ def main(axe_path: Path) -> int:
             browser.close()
     finally:
         srv.shutdown()
-        engine.terminate()
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(engine.pid)], capture_output=True) if os.name == "nt" else engine.terminate()   # the whole tree: the launcher spawns the real engine
     seen = sorted(set(problems))
     print(json.dumps(seen, indent=1) if seen else "No violations")
     print(f"{len(problems)} findings, {len(seen)} distinct")

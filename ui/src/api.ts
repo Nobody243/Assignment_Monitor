@@ -104,12 +104,13 @@ export const openFolder = (kind: 'lectures' | 'data' | 'timetable') => call<{ ok
 export type SettingsView = {
   account: { enrollment: string; institute_id: string; campus: string; password_set: boolean }
   appearance: { animations: boolean }
+  setup_done?: boolean
   about: { version: string; tagline: string; installed: boolean; repo: string; site: string; author: string; license: string }
   campuses: { id: string; name: string }[]
   alerts: { voice: boolean; toast: boolean; notify_days_ahead: number; voice_name: string; voice_volume: number; voice_rate: number }
   tracking: {
     track_attendance: boolean; track_exams: boolean; track_announcements: boolean; track_lectures: boolean; track_timetable: boolean; track_results: boolean
-    attendance_min: number; exam_remind_days: number
+    attendance_min: number; exam_remind_days: number; remind_leads: number[]
   }
   background: { close_to_tray: boolean; check_updates: boolean; lectures_dir: string; downloads_default: string; starts_with_windows: boolean; automatic_checks: boolean; owned_by_installed_app: boolean }
   channels: {

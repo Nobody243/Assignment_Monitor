@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
-import { CircleAlert, Info, TriangleAlert } from 'lucide-react'
+import { CircleAlert, Info, TriangleAlert, CircleCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TONES = {
+  success: { icon: CircleCheck, box: 'bg-success/10 text-foreground', icn: 'text-success' },
   info: { icon: Info, box: 'bg-muted/50 text-foreground', icn: 'text-muted-foreground' },
   warning: { icon: TriangleAlert, box: 'bg-warning/10 text-foreground', icn: 'text-warning' },
   danger: { icon: CircleAlert, box: 'bg-destructive/10 text-foreground', icn: 'text-destructive' },

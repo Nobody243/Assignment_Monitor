@@ -187,6 +187,58 @@ def find_due_today_pending(assignments: dict) -> list:
             if is_open_pending(item) and classify(item, now)["key"] == "today"]
 
 
+def lead_reminders(env: dict, assignments: dict, now: datetime = None) -> list:
+    """Reminders owed now: for each open, unsubmitted assignment, the smallest configured lead time (hours) it has reached
+    and has not been reminded about. A reminder for a smaller lead also settles the larger ones, so a PC that was off
+    through the 24 h mark does not announce "24 hours" when only 2 are left. Returns [(item, lead, hours_left, keys)]."""
+    from config import remind_leads
+    from deadlines import deadline_of
+    now = now or datetime.now()
+    leads = remind_leads(env.get("REMIND_LEADS"))
+    owed = []
+    for item in assignments.values():
+        if not is_open_pending(item):
+            continue
+        due = deadline_of(item)
+        if due is None or due <= now:
+            continue
+        left = (due - now).total_seconds() / 3600
+        reached = [lead for lead in leads if left <= lead]
+        if not reached:
+            continue
+        lead = min(reached)
+        stem = f"lead:{item.get('id')}:{due.isoformat(timespec='minutes')}"     # a moved deadline starts a fresh set of reminders
+        if reminder_sent(f"{stem}:{lead}"):
+            continue
+        owed.append((item, lead, left, [f"{stem}:{n}" for n in reached]))
+    return owed
+
+
+def _lead_phrase(hours_left: float) -> str:
+    if hours_left < 1:
+        return f"{max(1, round(hours_left * 60))} minutes"
+    h = round(hours_left)
+    return f"{h} hour{'s' if h != 1 else ''}"
+
+
+def run_lead_reminders(env: dict) -> int:
+    """Toast, voice, phone and email for each assignment that has reached a lead time. Returns how many were sent."""
+    from notifier import _notify
+    sent = 0
+    for item, _lead, left, keys in lead_reminders(env, load_stored_assignments()):
+        phrase = _lead_phrase(left)
+        title = f"{item['title'][:40]} is due in {phrase}"
+        body = f"{item['course']}\n{item.get('due_date', '')}"
+        log.info("Lead reminder: %s (%s left)", item["title"], phrase)
+        quiet = not 7 <= datetime.now().hour < 23                       # a reminder may pop up at night, but never speaks
+        voice = f"Reminder: {item['title']} for {item['course']} is due in {phrase}." if env.get("ENABLE_VOICE", True) and not quiet else ""
+        _notify(title, body, voice=voice)
+        for k in keys:
+            mark_reminder(k)
+        sent += 1
+    return sent
+
+
 def run_reminder(test: bool = False) -> int:
     """Hourly job: voice + toast while an unsubmitted assignment is due today, plus a once-a-day
     morning reminder on exam days."""
@@ -199,6 +251,7 @@ def run_reminder(test: bool = False) -> int:
         due_items = find_due_today_pending(load_stored_assignments())
         if env.get("TRACK_EXAMS", True):
             _exam_day_reminders()
+        run_lead_reminders(env)
 
     if not due_items:
         log.info("Hourly check: nothing due today.")

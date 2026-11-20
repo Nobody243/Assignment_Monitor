@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { byDue, dueParts } from '@/format'
+import { toast } from '@/lib/notify'
 import { cn } from '@/lib/utils'
 
 export type Filter = 'todo' | 'extended' | 'overdue' | 'submitted' | 'all'
@@ -24,11 +25,13 @@ const hasMarks = (a: Assignment) => !!a.marks && !/not marked/i.test(a.marks)
 
 type Group = { title: string; items: Assignment[] }
 
-export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCourse, selectedId, onSelect, onDownload, busy, demo }: {
+export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCourse, selectedId, onSelect, onDownload, onDropFile, busy, demo }: {
+  onDropFile: (a: Assignment, file: File) => void
   all: Assignment[]; now: number; colors: Record<string, string>; tab: Filter; setTab: (t: Filter) => void; course: string; setCourse: (c: string) => void
   selectedId: string | null; onSelect: (id: string | null) => void; onDownload: (a: Assignment[], kind: FileKind) => void; busy: boolean; demo: boolean
 }) {
   const [query, setQuery] = useState('')
+  const [dropId, setDropId] = useState<string | null>(null)       // the row a file is being dragged over
   const [sort, setSort] = useState<'due' | 'due-desc' | 'course'>('due')
   const courses = useMemo(() => [...new Set(all.map(a => a.course))].sort(), [all])
   const counts = { todo: all.filter(isTodo).length, extended: all.filter(a => a.is_extended && !a.is_submitted && a.open).length, overdue: all.filter(isOverdue).length, submitted: all.filter(a => a.is_submitted).length, all: all.length }
@@ -71,7 +74,7 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs value={tab} onValueChange={v => setTab(v as Filter)}>
+        <Tabs value={tab} onValueChange={v => setTab(v as Filter)} className="max-w-full overflow-x-auto">
           <TabsList>
             {([['todo', 'To do'], ['extended', 'Extended'], ['overdue', 'Overdue'], ['submitted', 'Submitted'], ['all', 'All']] as const).map(([k, l]) => (
               <TabsTrigger key={k} value={k}>{l}<span className="num text-muted-foreground ml-1.5 text-xs">{counts[k]}</span></TabsTrigger>
@@ -118,7 +121,17 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
                   {g.items.map(a => {
                     const d = dueParts(a.due_at)
                     return (
-                      <TableRow key={a.id} id={`row-${a.id}`} tabIndex={0} data-state={a.id === selectedId ? 'selected' : undefined} className="group cursor-pointer"
+                      <TableRow key={a.id} id={`row-${a.id}`} tabIndex={0} data-state={a.id === selectedId ? 'selected' : undefined} className={cn('group cursor-pointer', dropId === a.id && 'bg-primary/10 outline-primary outline-2 -outline-offset-2')}
+                        onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = (a.can_upload || a.can_replace) && !demo && !busy ? 'copy' : 'none'; setDropId(a.id) } }}
+                        onDragLeave={() => setDropId(cur => (cur === a.id ? null : cur))}
+                        onDrop={e => {
+                          e.preventDefault(); setDropId(null)
+                          const file = e.dataTransfer.files[0]
+                          if (!file) return
+                          if (demo || busy) return void toast.info(demo ? 'Sample data: start the engine to upload.' : 'Another action is still running.')
+                          if (!a.can_upload && !a.can_replace) return void toast.error(`${a.title} cannot be submitted now`, { description: 'The portal is not accepting a submission for it (deadline passed or already closed).' })
+                          onDropFile(a, file)
+                        }}
                         onClick={() => onSelect(a.id === selectedId ? null : a.id)} onKeyDown={e => { if (e.key === 'Enter') onSelect(a.id) }}>
                         <TableCell className="max-w-0 pl-4">
                           <div className="flex items-center gap-2.5">

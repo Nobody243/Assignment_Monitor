@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Outcome } from '@/useEngine'
 import { Section } from './parts'
 
-export function AccountSection({ view, save, run, busy }: {
-  view: SettingsView; save: (p: Record<string, unknown>) => Promise<boolean>
+export function AccountSection({ view, save, run, busy, onSignedIn }: {
+  onSignedIn?: () => void; view: SettingsView; save: (p: Record<string, unknown>) => Promise<boolean>
   run: (kind: string, begin: () => Promise<{ job: string }>) => Promise<Outcome>; busy: boolean
 }) {
   const a = view.account
@@ -32,7 +32,7 @@ export function AccountSection({ view, save, run, busy }: {
     setStatus({ ok: true, text: 'Saved. Checking the sign-in with the portal…' })
     const r = await run('verify', verifyAccount)
     setStatus({ ok: r.ok, text: r.ok ? 'Signed in successfully.' : r.message })
-    if (r.ok) toast.success('Sign-in verified.'); else toast.error(r.message)
+    if (r.ok) { toast.success('Sign-in verified.'); onSignedIn?.() } else toast.error(r.message)
   }
 
   return (

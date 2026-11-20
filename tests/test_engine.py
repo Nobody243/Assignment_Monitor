@@ -340,3 +340,56 @@ def test_the_timetable_is_saved_as_a_picture(api, monkeypatch, tmp_path):
     assert call("POST", "/api/timetable/save?format=exe")[0] == 400
     monkeypatch.setattr(tracker, "load_timetable", lambda: {})
     assert call("POST", "/api/timetable/save?format=pdf")[0] == 409
+
+
+# ---------------------------------------------------------------------------- lead-time reminders
+def _due(hours_from_now, now):
+    from datetime import timedelta
+    d = now + timedelta(hours=hours_from_now)
+    return f"{d.day} {d:%B %Y}-{d:%I:%M} {d:%p}".lower()
+
+
+def test_remind_leads_parse_and_default():
+    assert config.remind_leads("24,3,1") == [24, 3, 1]
+    assert config.remind_leads("1, 24;3") == [24, 3, 1]
+    assert config.remind_leads("off") == []
+    assert config.remind_leads("nonsense") == [24, 3, 1]
+    assert config.remind_leads("500,0") == [24, 3, 1]
+
+
+def test_a_reminder_is_owed_once_per_lead_and_a_smaller_lead_settles_the_larger(monkeypatch, tmp_path):
+    from datetime import datetime
+
+    import jobs
+    monkeypatch.setattr(tracker, "REMINDERS_PATH", tmp_path / "rem.json")
+    monkeypatch.setattr(jobs, "reminder_sent", lambda k: k in sent)
+    sent = set()
+    now = datetime(2026, 11, 20, 12, 0)
+    due = _due(2.5, now)                                    # inside the 3 h lead, long past the 24 h one
+    items = {"a": {"id": "a", "title": "T", "course": "C", "due_date": due, "is_submitted": False, "action": "Submit", "status": "Pending"}}
+    owed = jobs.lead_reminders({"REMIND_LEADS": "24,3,1"}, items, now)
+    assert len(owed) == 1 and owed[0][1] == 3
+    assert [k.rsplit(":", 1)[1] for k in owed[0][3]] == ["24", "3"]        # the 24 h mark is settled with it
+    sent.update(owed[0][3])
+    assert jobs.lead_reminders({"REMIND_LEADS": "24,3,1"}, items, now) == []
+    assert jobs.lead_reminders({"REMIND_LEADS": "off"}, items, now) == []
+
+
+def test_no_reminder_for_submitted_or_past_or_far_off_deadlines():
+    from datetime import datetime
+
+    import jobs
+    now = datetime(2026, 11, 20, 12, 0)
+    base = {"title": "T", "course": "C", "is_submitted": False, "action": "Submit", "status": "Pending"}
+    items = {"far": dict(base, id="far", due_date=_due(100, now)), "past": dict(base, id="past", due_date=_due(-2, now)),
+            "done": dict(base, id="done", due_date=_due(2, now), is_submitted=True, action="Delete", status="Submitted")}
+    assert jobs.lead_reminders({"REMIND_LEADS": "24,3,1"}, items, now) == []
+
+
+def test_lead_settings_are_validated(monkeypatch):
+    import settings_api
+    assert settings_api.coerce("remind_leads", "1, 24 ,3") == "24,3,1"
+    assert settings_api.coerce("remind_leads", "") == "off"
+    for bad in ("0", "9999", "a,b", "1,2,3,4,5,6,7"):
+        with pytest.raises(ValueError):
+            settings_api.coerce("remind_leads", bad)

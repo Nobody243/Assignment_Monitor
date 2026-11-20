@@ -4,6 +4,13 @@
 
 - Dragging the mouse no longer highlights the whole window. Only text worth copying can be selected: what you type, announcements, activity log lines, file and folder names and error details. Buttons, menus, cards and tables stay clean.
 - Back from the old app: F5 checks now, Ctrl+1…9 switch pages, Ctrl+F jumps to the page's filter box; an Extended filter on Assignments; Attendance can be filtered to below the minimum, close to the limit or on track; the tray menu has Check now.
+- Attendance shows, next to the current percentage, how much you can miss over the WHOLE semester: 25% of the planned hours for the course's credit hours (a one-credit-hour lab of three hours a week, or 2 credit hours: 8 h, 3 credit hours: 12 h at a 75% minimum), with the hours used and left. If fewer classes are held, the limit is 25% of the hours actually held.
+- A first-run setup like a code editor's walkthrough: welcome, sign in, look, reminders, automatic checks, files and finish, each step explained and skippable, and the whole setup skippable. It never appears for an existing sign-in; Settings, About can run it again.
+- After the first successful sign-in the app offers (Yes/No) to turn on automatic checks.
+- Deadline reminders at the lead times you choose (1 day, 12, 6, 3, 1 hour before; default 24, 3 and 1) as notification, voice (not between 23:00 and 07:00), phone and email, once per deadline, from the hourly background check.
+- The tray icon and the taskbar button show a red dot when something is due within a day, and the tray tooltip says how many and what is next.
+- Drop a file on an assignment row to upload it (with the usual confirmation); rows that cannot take a submission say why.
+- Home shows the latest announcements again.
 
 - A Timetable page: your week as a grid with a colour per course, today and the current time marked, and Save as PNG, JPG or PDF (to Documents / Assignment Monitor).
 - First run: a welcome with three steps (sign in, first check, automatic checks) instead of a dashboard that says you are all caught up.

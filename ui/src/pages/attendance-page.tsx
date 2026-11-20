@@ -5,6 +5,7 @@ import { PageHeader, Stat } from '@/components/page-header'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { semesterAllowance } from '@/lib/attendance'
 import { cn } from '@/lib/utils'
 
 type Level = 'bad' | 'risk' | 'ok' | 'none'
@@ -30,6 +31,7 @@ function Ring({ pct, level: lv }: { pct: number; level: Level }) {
 function CourseCard({ c, minimum }: { c: AttendanceCourse; minimum: number }) {
   const [open, setOpen] = useState(false)
   const lv = level(c)
+  const allow = semesterAllowance(c.credit_hours, minimum, c.absent, c.present + c.absent, (c.sessions ?? []).map(x => x.hours ?? 0))
   const total = c.present + c.absent
   const sessions = [...(c.sessions ?? [])].reverse()
   return (
@@ -55,6 +57,20 @@ function CourseCard({ c, minimum }: { c: AttendanceCourse; minimum: number }) {
             <div className="bg-foreground/60 absolute -top-1 h-4 w-px" style={{ left: `${minimum}%` }} title={`Minimum ${minimum}%`} aria-hidden />
           </div>
           <div className="text-muted-foreground num mt-2 flex justify-between text-xs"><span>Present {hours(c.present)}</span><span>Absent {hours(c.absent)}</span><span>Total {hours(total)}</span></div>
+        </div>
+      )}
+
+      {allow && (
+        <div className="bg-muted/50 rounded-xl border p-3 text-sm" aria-label="Whole semester">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <span className="font-medium">Whole semester: you can miss {hours(allow.max)} in total</span>
+            <span className={cn('num text-xs', allow.left === 0 ? 'text-destructive' : 'text-muted-foreground')}>{hours(allow.used)} used · {hours(allow.left)} left</span>
+          </div>
+          <div className="bg-muted mt-2 h-1.5 overflow-hidden rounded-full"><div className={cn('h-full rounded-full', allow.left === 0 ? 'bg-destructive' : allow.left <= allow.classLen ? 'bg-warning' : 'bg-success')} style={{ width: `${Math.min(100, (allow.used / allow.max) * 100)}%` }} /></div>
+          <p className="text-muted-foreground mt-2 text-xs">
+            Based on {c.credit_hours} credit hour{Number(c.credit_hours) === 1 ? '' : 's'}: {hours(allow.planned)} planned over the semester, so about {allow.classes} classes of {hours(allow.classLen)}.
+            {' '}If the teacher ends up holding fewer classes than planned, the limit is {100 - minimum}% of the hours actually held (for example {hours(42 * (100 - minimum) / 100)} out of 42 h).
+          </p>
         </div>
       )}
 
@@ -103,7 +119,7 @@ export function AttendancePage({ state }: { state: State }) {
         <Stat label="Close to the limit" value={risk} sub="can miss under 2 hours" tone={risk ? 'warning' : undefined} />
         <Stat label="Classes recorded" value={classes} sub={`across ${att.courses.filter(c => c.recorded).length} courses`} />
       </div>
-      <Tabs value={filter} onValueChange={v => setFilter(v as typeof filter)}>
+      <Tabs value={filter} onValueChange={v => setFilter(v as typeof filter)} className="max-w-full overflow-x-auto">
         <TabsList>
           {([['all', 'All courses'], ['bad', 'Below the minimum'], ['risk', 'Close to the limit'], ['ok', 'On track']] as const).map(([k, l]) => (
             <TabsTrigger key={k} value={k}>{l}</TabsTrigger>

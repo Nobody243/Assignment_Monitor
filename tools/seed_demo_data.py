@@ -110,6 +110,10 @@ def seed(folder: Path, today: datetime | None = None) -> Path:
     data.mkdir(parents=True, exist_ok=True)
     for name, payload in build(today).items():
         (data / f"{name}.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    # a signed-in profile (a made-up enrolment and password, nothing real) so the interface shows its normal screens, not the first-run setup
+    env = Path(folder) / "settings.env"
+    if not env.exists():
+        env.write_text("ENROLLMENT=01-000000-000\nPASSWORD=demo-password\nSETUP_DONE=True\n", encoding="utf-8")
     return data
 
 

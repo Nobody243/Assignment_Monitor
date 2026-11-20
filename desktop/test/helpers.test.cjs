@@ -2,7 +2,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
-const { hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen } = require('../lib/helpers.cjs')
+const { paintBadge, trayStatus, hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen } = require('../lib/helpers.cjs')
 
 test('the engine ready line is parsed, and anything else is ignored', () => {
   assert.deepEqual(parseReadyLine('{"port": 51234, "token": "abc123"}\n'), { port: 51234, token: 'abc123' })
@@ -68,4 +68,34 @@ test('--view names map to the interface pages', () => {
   assert.equal(hashForView('dashboard'), '')
   assert.equal(hashForView('activity'), '#/settings/activity')
   assert.equal(hashForView(null, true), '#/settings/profile')
+})
+
+test('the tray tells what is due within a day and what is next', () => {
+  const now = Date.parse('2026-11-20T10:00:00')
+  const at = h => new Date(now + h * 3600e3).toISOString()
+  const a = [
+    { title: 'Report', open: true, is_submitted: false, due_at: at(5) },
+    { title: 'Lab', open: true, is_submitted: false, due_at: at(20) },
+    { title: 'Later', open: true, is_submitted: false, due_at: at(100) },
+    { title: 'Done', open: true, is_submitted: true, due_at: at(2) },
+    { title: 'Past', open: true, is_submitted: false, due_at: at(-3) },
+  ]
+  const s = trayStatus(a, now)
+  assert.equal(s.count, 2)
+  assert.match(s.tooltip, /2 due within a day/)
+  assert.match(s.tooltip, /Next: Report in 5 h/)
+  const none = trayStatus([a[2]], now)
+  assert.equal(none.count, 0)
+  assert.match(none.tooltip, /Next: Later in 4 days/)
+  assert.match(trayStatus([], now).tooltip, /Nothing due soon/)
+})
+
+test('the badge paints a red dot in the corner and leaves the rest alone', () => {
+  const w = 32, h = 32
+  const base = Buffer.alloc(w * h * 4, 0x80)
+  const out = paintBadge(base, w, h)
+  assert.equal(base[0], 0x80)                                         // the input is untouched
+  assert.equal(out[0], 0x80)                                          // top-left unchanged
+  const i = ((h - 9) * w + (w - 9)) * 4
+  assert.deepEqual([out[i], out[i + 1], out[i + 2]], [51, 51, 220])   // the dot: red in BGR
 })

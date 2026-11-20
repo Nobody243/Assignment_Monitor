@@ -3,7 +3,7 @@ const path = require('node:path')
 const fs = require('node:fs')
 const { pathToFileURL } = require('node:url')
 const { app, BrowserWindow, Menu, Tray, dialog, nativeImage, net, protocol, screen, session, shell } = require('electron')
-const { CSP, boundsOnScreen, hashForView, isSafeExternalUrl, mimeFor, parseCli, resolveAppPath } = require('./lib/helpers.cjs')
+const { CSP, boundsOnScreen, hashForView, isSafeExternalUrl, mimeFor, paintBadge, parseCli, resolveAppPath, trayStatus } = require('./lib/helpers.cjs')
 const { engineCommand, runJob, startEngine } = require('./lib/engine.cjs')
 
 const CLI = parseCli(process.argv.slice(app.isPackaged ? 1 : 2))      // the command line the app has always understood
@@ -25,6 +25,7 @@ let quitting = false
 let closeToTray = true             // refreshed from the engine's settings
 let restarts = []
 let settingsTimer = null
+let statusTimer = null
 
 // Scheduled tasks and shortcuts must start THIS program, so the engine is told which one it is (an installed build only)
 const engineEnv = () => (app.isPackaged ? { AM_SHELL_EXE: process.execPath } : {})
@@ -100,6 +101,31 @@ async function onEngineGone(code, signal) {
   } catch { /* ensureEngine already told the user */ }
 }
 
+// the tray icon and the taskbar button say what is due without opening the window
+let lastBadge = null
+function updateBadge(status) {
+  if (!tray) return
+  tray.setToolTip(status.tooltip)
+  const on = status.count > 0
+  if (on === lastBadge) return
+  lastBadge = on
+  try {
+    const base = nativeImage.createFromPath(ICON).resize({ width: 32, height: 32 })
+    tray.setImage(on ? nativeImage.createFromBitmap(paintBadge(base.toBitmap(), 32, 32), { width: 32, height: 32 }) : base)
+    if (win && !win.isDestroyed()) {
+      const dot = paintBadge(Buffer.alloc(16 * 16 * 4, 0), 16, 16)       // transparent 16x16 with the dot
+      win.setOverlayIcon(on ? nativeImage.createFromBitmap(dot, { width: 16, height: 16 }) : null, on ? `${status.count} due within a day` : '')
+    }
+  } catch { /* a badge is a nicety, never a failure */ }
+}
+async function pollStatus() {
+  if (!engine) return
+  try {
+    const r = await fetch(`http://127.0.0.1:${engine.port}/api/state`, { headers: { Authorization: `Bearer ${engine.token}` } })
+    if (r.ok) updateBadge(trayStatus((await r.json()).assignments, Date.now()))
+  } catch { /* keep the last tooltip */ }
+}
+
 function pollSettings() {
   const ask = async () => {
     if (!engine) return
@@ -110,6 +136,8 @@ function pollSettings() {
   }
   void ask()
   settingsTimer = setInterval(ask, 30000)
+  void pollStatus()
+  statusTimer = setInterval(pollStatus, 60000)
 }
 
 // ------------------------------------------------------------------------------------------------ window
@@ -229,7 +257,7 @@ if (CLI.headless) {
     showWindow()
     if (win && (cmd.view || cmd.setup)) void win.webContents.executeJavaScript(`location.hash = ${JSON.stringify(hashForView(cmd.view, cmd.setup))}`)
   })
-  app.setAppUserModelId('com.nobody243.assignmentmonitor')
+  app.setAppUserModelId('Nobody243.AssignmentMonitor')      // the same identity the engine's notifications use
 
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(DEV ? Menu.buildFromTemplate([{ label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { role: 'quit' }] }]) : null)
@@ -258,6 +286,7 @@ if (CLI.headless) {
   app.on('window-all-closed', () => { /* the tray keeps the app alive; Quit in the tray menu ends it */ if (!tray) app.quit() })
   app.on('will-quit', e => {
     clearInterval(settingsTimer)
+    clearInterval(statusTimer)
     if (engine) {
       e.preventDefault()
       const eng = engine

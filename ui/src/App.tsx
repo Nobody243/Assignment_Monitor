@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CircleHelp, RefreshCw, Search } from 'lucide-react'
-import { deleteSubmission, downloadAssignmentFiles, downloadLectures, getSettings, getUpdate, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
+import { patchSettings, deleteSubmission, downloadAssignmentFiles, downloadLectures, getSettings, getUpdate, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AssignmentSheet } from '@/components/assignment-sheet'
 import { CommandMenu } from '@/components/command-menu'
@@ -19,6 +19,7 @@ import { useActivity } from '@/lib/activity'
 import { courseColors } from '@/lib/courses'
 import { toast } from '@/lib/notify'
 import { PAGES, PAGE_TITLES, SETTINGS_TABS, usePage, type Page } from '@/lib/router'
+import { SetupWizard } from '@/components/setup-wizard'
 import { AnnouncementsPage } from '@/pages/announcements-page'
 import { AssignmentsPage, type Filter } from '@/pages/assignments-page'
 import { AttendancePage } from '@/pages/attendance-page'
@@ -109,8 +110,29 @@ export default function App() {
     syncToast.current = null
     if (r.ok) toast.success(r.message || 'Checked the portal.', { id }); else toast.error('The check did not finish', { id, description: r.message })
   }, [demo, run])
-  // once per launch, a while after start: tell the student a newer version exists (installed build, and only if they allow update checks)
   const loaded = !!state && !demo
+  // a file dropped anywhere but on a row must not make the window open it
+  useEffect(() => {
+    const stop = (e: DragEvent) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() }
+    window.addEventListener('dragover', stop); window.addEventListener('drop', stop)
+    return () => { window.removeEventListener('dragover', stop); window.removeEventListener('drop', stop) }
+  }, [])
+  // first run: the setup walkthrough, only for a fresh install (an existing sign-in means it was set up before)
+  const [setup, setSetup] = useState(false)
+  useEffect(() => {
+    if (!loaded) return
+    void getSettings().then(s => {
+      if (s.setup_done) return
+      if (s.account.password_set) void patchSettings({ setup_done: true }).catch(() => {})
+      else setSetup(true)
+    }).catch(() => {})
+  }, [loaded])
+  useEffect(() => {
+    const open = () => setSetup(true)
+    window.addEventListener('am:setup', open)
+    return () => window.removeEventListener('am:setup', open)
+  }, [])
+  // once per launch, a while after start: tell the student a newer version exists (installed build, and only if they allow update checks)
   useEffect(() => {
     if (!loaded) return
     const t = setTimeout(() => {
@@ -191,7 +213,7 @@ export default function App() {
       case 'home': return <Home state={state} now={now} onOpen={setSelId} onGo={go} />
       case 'assignments':
         return <AssignmentsPage all={all} colors={colors} now={now} tab={tab} setTab={setTab} course={course} setCourse={setCourse} selectedId={selId} onSelect={setSelId}
-          onDownload={(items, kind) => void doDownload(items, kind)} busy={busy} demo={demo} />
+          onDownload={(items, kind) => void doDownload(items, kind)} onDropFile={(a, file) => setPendingUpload({ a, file, replace: a.can_replace })} busy={busy} demo={demo} />
       case 'attendance': return <AttendancePage state={state} />
       case 'exams': return <ExamsPage state={state} now={now} />
       case 'timetable': return <TimetablePage state={state} now={now} dark={dark} demo={demo} />
@@ -208,6 +230,8 @@ export default function App() {
   return (
     <TooltipProvider>
       <TopProgress active={busy} />
+      {setup && <SetupWizard run={run} busy={busy} dark={dark} onTheme={setDark} palette={palette} onPalette={setPalette} motion={motion} onMotion={setMotion}
+        onClose={checkNow => { setSetup(false); void refresh(); if (checkNow) void doSync() }} />}
       <SidebarProvider>
         <AppSidebar name={meta?.student_name} semester={meta?.semester} badges={badges} dark={dark} onToggleTheme={toggleTheme} page={page === 'notfound' ? 'home' : page} onNavigate={navigate} palette={palette} onPalette={setPalette} />
         <SidebarInset>

@@ -144,6 +144,8 @@ DEFAULTS = {
     "CALENDAR_INVITES": False,
     "LECTURES_DIR": "",
     "ANIMATIONS": True,
+    "REMIND_LEADS": "24,3,1",      # hours before a deadline at which to remind; "off" for none
+    "SETUP_DONE": False,           # the first-run setup has been completed or skipped
     # cloud checks (GitHub Actions in the student's own account); the token is a secret like the password
     "CLOUD_ENABLED": False,
     "CLOUD_REPO": "",
@@ -154,7 +156,8 @@ DEFAULTS = {
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
               "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
-              "TRACK_RESULTS", "ANIMATIONS", "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES", "CLOUD_ENABLED")
+              "TRACK_RESULTS", "ANIMATIONS", "SETUP_DONE",
+              "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES", "CLOUD_ENABLED")
 _SECRET_KEYS = ("PASSWORD", "EMAIL_PASS", "PUSH_SUB", "PUSH_VAPID", "GITHUB_TOKEN")
 
 
@@ -187,6 +190,23 @@ def env_overrides() -> dict:
 _TEXT_KEYS = ("EMAIL_TO", "EMAIL_USER", "EMAIL_HOST", "CLOUD_REPO", "CLOUD_LOGIN", "CLOUD_VERSION", "CLOUD_HASH")
 _INT_KEYS = {"NOTIFY_DAYS_AHEAD": (0, 60), "VOICE_VOLUME": (0, 100), "VOICE_RATE": (-5, 5),
              "ATTENDANCE_MIN": (50, 100), "EXAM_REMIND_DAYS": (0, 14), "EMAIL_PORT": (1, 65535)}
+
+
+def remind_leads(value=None) -> list:
+    """The reminder lead times in hours, largest first: "24,3,1" -> [24, 3, 1]. Anything unreadable gives the default;
+    "off" gives none."""
+    text = str(DEFAULTS["REMIND_LEADS"] if value is None else value).strip().lower()
+    if text in ("off", "none"):
+        return []
+    out = set()
+    for part in text.replace(";", ",").split(","):
+        try:
+            n = int(part.strip())
+        except ValueError:
+            continue
+        if 1 <= n <= 168:
+            out.add(n)
+    return sorted(out, reverse=True) or remind_leads(DEFAULTS["REMIND_LEADS"])
 
 
 def app_command(*args: str) -> list:
@@ -327,6 +347,7 @@ def save_env(config: dict) -> None:
     lines.append(f"VOICE_RATE={int(merged['VOICE_RATE'])}")
     lines.append(f"ATTENDANCE_MIN={int(merged['ATTENDANCE_MIN'])}")
     lines.append(f"EXAM_REMIND_DAYS={int(merged['EXAM_REMIND_DAYS'])}")
+    lines.append(f"REMIND_LEADS={merged['REMIND_LEADS']}")
     if merged.get("LECTURES_DIR"):
         lines.append(f"LECTURES_DIR={merged['LECTURES_DIR']}")
     if merged.get("WINDOW_GEOMETRY"):

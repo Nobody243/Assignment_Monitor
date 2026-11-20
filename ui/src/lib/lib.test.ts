@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Assignment, AttendanceCourse, ResultSemester } from '@/api'
+import { plannedHours, semesterAllowance } from '@/lib/attendance'
 import { attendanceFor, courseColors, courseRows } from '@/lib/courses'
 import { parseExamDate } from '@/lib/exams'
 import { gpaOf, project, totals } from '@/lib/results'
@@ -68,5 +69,34 @@ describe('course summaries', () => {
   it('gives every course its own colour', () => {
     const c = courseColors([asg('a', 'X'), asg('b', 'Y'), asg('c', 'Z')])
     expect(new Set(Object.values(c)).size).toBe(3)
+  })
+})
+
+
+describe('semester attendance allowance', () => {
+  it('plans 16 weeks, with a one-credit lab meeting three hours a week', () => {
+    expect(plannedHours(1)).toBe(48)
+    expect(plannedHours(2)).toBe(32)
+    expect(plannedHours(3)).toBe(48)
+    expect(plannedHours(0)).toBe(0)
+  })
+  it('allows 25% of the planned hours to be missed at a 75% minimum', () => {
+    expect(semesterAllowance('1', 75, 0, 0)?.max).toBe(12)
+    expect(semesterAllowance('2', 75, 0, 0)?.max).toBe(8)
+    expect(semesterAllowance('3', 75, 0, 0)?.max).toBe(12)
+    expect(semesterAllowance('1', 75, 0, 0)?.classes).toBe(4)        // 4 lab classes of 3 h
+    expect(semesterAllowance('2', 75, 0, 0)?.classes).toBe(4)        // 4 classes of 2 h
+  })
+  it('counts what is used and never goes below zero', () => {
+    const a = semesterAllowance('3', 75, 4.5, 20)!
+    expect(a.left).toBe(7.5)
+    expect(semesterAllowance('3', 75, 15, 40)?.left).toBe(0)
+  })
+  it('shows the lower limit when fewer hours were held than planned', () => {
+    expect(semesterAllowance('3', 75, 0, 42)?.heldLimit).toBe(10.5)
+    expect(semesterAllowance('3', 75, 0, 48)?.heldLimit).toBeNull()
+  })
+  it('gives nothing for an unknown credit-hour value', () => {
+    expect(semesterAllowance('', 75, 0, 0)).toBeNull()
   })
 })

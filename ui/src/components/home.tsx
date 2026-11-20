@@ -3,7 +3,7 @@ import { ArrowRight, CalendarClock, CheckCheck, CircleAlert, Flag, GraduationCap
 import type { Assignment, State } from '@/api'
 import { Alert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
-import { byDue, countdown, dueParts } from '@/format'
+import { ago, byDue, countdown, dueParts } from '@/format'
 import { attendanceFor, courseColors, courseRows } from '@/lib/courses'
 import { parseExamDate } from '@/lib/exams'
 import type { Page } from '@/lib/router'
@@ -221,6 +221,26 @@ function CoursesPanel({ state, onGo }: { state: State; onGo: Go }) {
   )
 }
 
+function AnnouncementsPanel({ state, now, onGo }: { state: State; now: number; onGo: Go }) {
+  const latest = [...(state.announcements ?? [])].sort((a, b) => (b.posted_at ?? b.first_seen ?? '').localeCompare(a.posted_at ?? a.first_seen ?? '')).slice(0, 3)
+  return (
+    <Panel title="Announcements" action={<MoreLink onClick={() => onGo('announcements')}>View all</MoreLink>}>
+      {latest.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No announcements yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {latest.map(a => (
+            <li key={a.id} className="text-sm">
+              <div className="flex items-baseline justify-between gap-3"><span className="truncate font-medium">{a.title}</span><span className="text-muted-foreground num shrink-0 text-xs">{a.posted_at || a.first_seen ? ago(a.posted_at ?? a.first_seen ?? '', now) : ''}</span></div>
+              <div className="text-muted-foreground truncate text-xs">{a.course}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  )
+}
+
 function ExamsPanel({ state, now }: { state: State; now: number }) {
   const today = startOfDay(new Date(now))
   const upcoming = (state.exams ?? [])
@@ -391,6 +411,7 @@ export function Home({ state, now, onOpen, onGo }: { state: State; now: number; 
         <NeedsAttention state={state} now={now} onOpen={onOpen} onGo={onGo} />
         <Deadlines all={all} colors={colors} onOpen={onOpen} onGo={onGo} />
         <ExamsPanel state={state} now={now} />
+        <AnnouncementsPanel state={state} now={now} onGo={onGo} />
         <ResultsPanel state={state} />
       </div>
     </div>

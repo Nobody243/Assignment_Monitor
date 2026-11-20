@@ -52,7 +52,7 @@ def main(axe_path, rule, palette="royal", theme="light"):
             browser.close()
     finally:
         srv.shutdown()
-        engine.terminate()
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(engine.pid)], capture_output=True) if os.name == "nt" else engine.terminate()   # the whole tree: the launcher spawns the real engine
 
 
 if __name__ == "__main__":

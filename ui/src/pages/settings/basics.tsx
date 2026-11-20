@@ -12,6 +12,7 @@ import { Row, Section, SwitchRow } from './parts'
 
 type Save = (p: Record<string, unknown>) => Promise<boolean>
 const DAYS = [0, 1, 2, 3, 5, 7, 10, 14]
+const LEADS = [48, 24, 12, 6, 3, 1]
 const RATES = [{ v: -2, l: 'Slow' }, { v: 0, l: 'Normal' }, { v: 2, l: 'Fast' }]
 
 export function AlertsSection({ view, save, demo }: { view: SettingsView; save: Save; demo: boolean }) {
@@ -31,6 +32,15 @@ export function AlertsSection({ view, save, demo }: { view: SettingsView; save: 
           <SelectTrigger size="sm" className="w-44" aria-label="Days ahead"><SelectValue /></SelectTrigger>
           <SelectContent>{(DAYS.includes(al.notify_days_ahead) ? DAYS : [...DAYS, al.notify_days_ahead].sort((a, b) => a - b)).map(d => <SelectItem key={d} value={String(d)}>{d === 0 ? 'Same day only' : d === 1 ? '1 day ahead' : `${d} days ahead`}</SelectItem>)}</SelectContent>
         </Select>
+      </Row>
+      <Row label="Remind me before a deadline" hint="One reminder at each time you pick, for work that is still unsubmitted (phone and email too). Runs with the hourly background check.">
+        <div className="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Reminder lead times">
+          {LEADS.map(h => {
+            const on = view.tracking.remind_leads.includes(h)
+            const next = (on ? view.tracking.remind_leads.filter(x => x !== h) : [...view.tracking.remind_leads, h]).sort((a, b) => b - a)
+            return <Button key={h} size="sm" variant={on ? 'default' : 'outline'} aria-pressed={on} onClick={() => void save({ remind_leads: next.length ? next.join(',') : 'off' })}>{h === 48 ? '2 days' : h === 24 ? '1 day' : `${h} h`}</Button>
+          })}
+        </div>
       </Row>
       <Row label="Voice" hint="A speech voice installed on this PC">
         <Select value={al.voice_name || 'default'} onValueChange={v => void save({ voice_name: v === 'default' ? '' : v })}>

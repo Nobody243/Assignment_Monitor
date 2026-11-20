@@ -85,4 +85,40 @@ function hashForView(view, setup) {
   return `#/${view}`
 }
 
-module.exports = { hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen }
+/**
+ * What the tray icon says: how many unsubmitted, still-open assignments are due within a day, and the next one.
+ * `assignments` are the engine's records ({title, is_submitted, open, due_at}); `now` is a time in milliseconds.
+ */
+function trayStatus(assignments, now) {
+  const soon = (assignments || [])
+    .filter(a => a && a.open && !a.is_submitted && a.due_at && Number.isFinite(Date.parse(a.due_at)))
+    .map(a => ({ title: String(a.title || 'Assignment'), left: Date.parse(a.due_at) - now }))
+    .filter(a => a.left > 0)
+    .sort((x, y) => x.left - y.left)
+  const dueToday = soon.filter(a => a.left <= 24 * 3600e3)
+  const next = soon[0]
+  const phrase = ms => { const h = ms / 3600e3; return h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} days` }
+  const lines = ['Assignment Monitor']
+  if (dueToday.length) lines.push(`${dueToday.length} due within a day`)
+  lines.push(next ? `Next: ${next.title.slice(0, 40)} in ${phrase(next.left)}` : 'Nothing due soon')
+  return { count: dueToday.length, tooltip: lines.join('\n') }
+}
+
+/** Paints a red dot with a white ring in the bottom-right of a BGRA bitmap (a copy is returned), for the tray and taskbar badge. */
+function paintBadge(bitmap, width, height) {
+  const out = Buffer.from(bitmap)
+  const r = Math.max(3, Math.round(Math.min(width, height) * 0.28))
+  const cx = width - r - 1, cy = height - r - 1
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const d = Math.hypot(x - cx + 0.5, y - cy + 0.5)
+      if (d > r + 1.2) continue
+      const i = (y * width + x) * 4
+      const ring = d > r - 1.2
+      out[i] = ring ? 255 : 51; out[i + 1] = ring ? 255 : 51; out[i + 2] = ring ? 255 : 220; out[i + 3] = 255     // B G R A
+    }
+  }
+  return out
+}
+
+module.exports = { paintBadge, trayStatus, hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen }

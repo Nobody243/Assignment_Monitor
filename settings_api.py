@@ -72,6 +72,8 @@ FIELDS: dict[str, tuple[str, str]] = {
     "calendar_invites": ("CALENDAR_INVITES", "bool"),
     "lectures_dir": ("LECTURES_DIR", "path"),
     "animations": ("ANIMATIONS", "bool"),
+    "remind_leads": ("REMIND_LEADS", "leads"),
+    "setup_done": ("SETUP_DONE", "bool"),
 }
 _ENROLLMENT = re.compile(r"^[A-Za-z0-9\-]{3,30}$")
 _HOST = re.compile(r"^[A-Za-z0-9.\-]{0,253}$")
@@ -107,6 +109,14 @@ def coerce(name: str, value):
         if "\n" in v or "\r" in v or len(v) > 300:
             raise ValueError("is not valid")
         return v
+    if kind == "leads":
+        v = _clean_text(value, 40).lower()
+        if v in ("off", "none", ""):
+            return "off"
+        parts = [p.strip() for p in v.split(",")]
+        if not all(p.isdigit() and 1 <= int(p) <= 168 for p in parts) or len(parts) > 6:
+            raise ValueError("must be whole hours between 1 and 168, separated by commas")
+        return ",".join(str(n) for n in sorted({int(p) for p in parts}, reverse=True))
     if kind == "campus":
         v = _clean_text(value, 10)
         if v not in CAMPUS_NAME_BY_ID:
@@ -141,6 +151,7 @@ def view() -> dict:
             "password_set": bool(env["PASSWORD"]),
         },
         "campuses": [{"id": cid, "name": name} for name, cid in CAMPUSES],
+        "setup_done": env["SETUP_DONE"],
         "appearance": {"animations": env["ANIMATIONS"]},
         "alerts": {
             "voice": env["ENABLE_VOICE"],
@@ -159,6 +170,7 @@ def view() -> dict:
             "track_results": env["TRACK_RESULTS"],
             "attendance_min": env["ATTENDANCE_MIN"],
             "exam_remind_days": env["EXAM_REMIND_DAYS"],
+            "remind_leads": config.remind_leads(env["REMIND_LEADS"]),
         },
         "background": {
             "close_to_tray": env["CLOSE_TO_TRAY"],
