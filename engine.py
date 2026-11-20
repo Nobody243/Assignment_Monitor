@@ -181,6 +181,31 @@ def _portal_result(res: dict, record_id: str) -> dict:
     return {"ok": bool(res.get("ok")), "message": res.get("message", ""), "deleted": bool(res.get("deleted"))}
 
 
+_WINDOWS_DEVICE_NAMES = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+
+
+def safe_upload_name(raw: str) -> str:
+    """A file name safe to create: no folders, no control or special characters, never empty, never hidden or '..'."""
+    base = os.path.basename((raw or "").replace("\\", "/"))
+    base = re.sub(r"[^\w.() \-]", "_", base).strip(" .")
+    base = (base or "upload.pdf")[:MAX_FILENAME]
+    if base.split(".")[0].upper() in _WINDOWS_DEVICE_NAMES:        # CON, NUL, COM1 ...: opening one would not make a file
+        base = "_" + base
+    return base
+
+
+def private_upload_path(raw_name: str) -> str:
+    """Makes a private temporary folder and returns where the file named [raw_name] goes inside it (the file itself is
+    not created). The portal sees the name the student chose; the folder is removed with the file."""
+    name = safe_upload_name(raw_name)
+    folder = os.path.realpath(tempfile.mkdtemp(prefix="am-upload-"))
+    path = os.path.normpath(os.path.join(folder, name))
+    if not path.startswith(folder + os.sep):          # cannot happen after the cleaning above; refuse rather than trust it
+        os.rmdir(folder)
+        raise ValueError("unsafe upload name")
+    return path
+
+
 def job_upload(a: dict, path: str, replace: bool):
     def fn(progress):
         try:
@@ -188,6 +213,7 @@ def job_upload(a: dict, path: str, replace: bool):
         finally:
             try:
                 os.unlink(path)
+                os.rmdir(os.path.dirname(path))
             except OSError:
                 pass
     return fn
@@ -279,8 +305,12 @@ class Handler(BaseHTTPRequestHandler):
     # -- plumbing
     def _origin_ok(self) -> str | None:
         origin = self.headers.get("Origin")
-        allowed = self.server.allowed_origins
-        return origin if origin and origin in allowed else None
+        if not origin:
+            return None
+        for allowed in self.server.allowed_origins:
+            if secrets.compare_digest(origin.encode("utf-8", "replace"), allowed.encode("utf-8")):
+                return allowed        # our own string, so nothing the client sent is ever echoed into a header
+        return None
 
     def _send(self, status: int, body: dict | None = None):
         raw = json.dumps(body if body is not None else {}, default=str).encode("utf-8")
@@ -424,19 +454,17 @@ class Handler(BaseHTTPRequestHandler):
             a = self._record(qs)
             if not a:
                 return self._send(404, {"error": "no such assignment"})
-            name = os.path.basename((self.headers.get("X-Filename") or "upload.pdf")[:MAX_FILENAME])
+            name = safe_upload_name(self.headers.get("X-Filename") or "upload.pdf")
             reason = scraper.check_submission_file_bytes(name, len(body))
             if reason:
                 return self._send(422, {"error": reason})
-            fd, path = tempfile.mkstemp(suffix=os.path.splitext(name)[1], prefix=os.path.splitext(name)[0][:40] + "_")
-            with os.fdopen(fd, "wb") as fh:
+            final = private_upload_path(name)
+            with open(final, "xb") as fh:
                 fh.write(body)
-            # the portal sees the name the student chose, not the temp name
-            final = os.path.join(os.path.dirname(path), f"{uuid.uuid4().hex[:6]}-{name}")
-            os.replace(path, final)
             jid = JOBS.start("upload", job_upload(a, final, (qs.get("replace") or ["0"])[0] == "1"))
             if jid is None:
                 os.unlink(final)
+                os.rmdir(os.path.dirname(final))
         else:
             return self._send(404, {"error": "not found"})
         if jid is None:
