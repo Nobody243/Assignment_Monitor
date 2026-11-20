@@ -33,6 +33,8 @@ jobs:
           cache-dependency-path: website/package-lock.json
       - name: Install
         run: npm ci --no-audit --no-fund
+      - name: Calculator arithmetic tests
+        run: npm test
       - name: Build
         run: npm run build
       - name: Smoke test the built site

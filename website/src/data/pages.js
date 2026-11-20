@@ -95,6 +95,17 @@ export const PAGES = {
       ] },
     ],
   },
+  "/gpa-calculator": {
+    title: "Bahria GPA and CGPA calculator",
+    description: "Free GPA and CGPA calculator for Bahria University students: add your courses, credit hours and grades, see your semester GPA and CGPA, and set a target to see what grades you need. Runs in your browser; nothing is sent or saved.",
+    h1: "Bahria GPA and CGPA calculator",
+    lede: "Add your courses, pick the grades, and see your semester GPA and your CGPA. Set a target to see what grades get you there. It runs in your browser: nothing you type is sent or saved.",
+    sections: [
+      { h: "How it is worked out", p: ["Each course contributes its credit hours times its grade points. The GPA is the total of those divided by the total credit hours. The CGPA is the same sum carried across every graded semester, so it needs your earlier CGPA and credit hours. Zero-credit courses weigh nothing."] },
+      { h: "The grade scale", p: ["A 4.00, A- 3.67, B+ 3.33, B 3.00, B- 2.67, C+ 2.33, C 2.00, C- 1.67, D+ 1.33, D 1.00, F 0.00, as the CMS result page prints it. Confirm the scale and any pass marks with your department; this is an independent student tool, not an official Bahria University calculator."] },
+      { h: "Do it automatically", p: ["Assignment Monitor reads your real transcript from the CMS, keeps every semester, lets you try grades on the running one, and tells you the moment a result is posted."] },
+    ],
+  },
   "/faq": {
     title: "FAQ",
     description: "Answers about SmartScreen, accounts, Chrome, schedules, phone and email alerts, cloud checks, uninstalling and running Assignment Monitor from source.",

@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
-    "preview": "vite preview --port 4173 --strictPort"
+    "preview": "vite preview --port 4173 --strictPort",
+    "test": "node --test scripts/"
   },
   "dependencies": {
     "framer-motion": "11.15.0",

@@ -18,6 +18,7 @@ import Faq from "./pages/Faq.jsx";
 import Phone from "./pages/Phone.jsx";
 import Cloud from "./pages/Cloud.jsx";
 import Guide from "./pages/Guide.jsx";
+import GpaCalculator from "./pages/GpaCalculator.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 /* Every route change starts at the top (unless the URL carries a hash, which the page scrolls to itself). */
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/phone" element={<Page><Phone /></Page>} />
                 <Route path="/cloud" element={<Page><Cloud /></Page>} />
                 <Route path="/guide/:slug" element={<Page><Guide /></Page>} />
+                <Route path="/gpa-calculator" element={<Page><GpaCalculator /></Page>} />
                 <Route path="*" element={<Page><NotFound /></Page>} />
               </Routes>
             </AnimatePresence>

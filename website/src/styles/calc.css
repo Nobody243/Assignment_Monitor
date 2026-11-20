@@ -1,0 +1,55 @@
+/* The GPA and CGPA calculator page. Same glass card as the guides, so the planet behind never fights the form. */
+.calc { padding-top: 0; }
+.calc-wrap { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr); gap: clamp(20px, 3vw, 36px); align-items: start; }
+.calc-card { padding: var(--card-pad); border-radius: var(--card-r); background: var(--glass-2); border: 1px solid var(--line); min-width: 0; }
+.calc-card .h-md { margin: 0 0 14px; }
+.calc-wide { grid-column: 1 / -1; }
+.calc-wide p { max-width: 78ch; color: var(--ink-2); font-size: var(--t-sm); line-height: 1.65; margin: 0 0 12px; }
+.calc-wide a, .calc-note a { color: var(--accent-3); text-decoration: underline; text-underline-offset: 3px; }
+
+.calc-rows { display: grid; gap: 10px; }
+.calc-head, .calc-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 128px 36px; gap: 10px; align-items: center; }
+.calc-head { font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); padding: 0 2px; }
+.calc input, .calc select {
+  width: 100%; min-height: 44px; padding: 10px 12px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-1); font: inherit; font-size: var(--t-sm);
+}
+.calc select option { color: #111; background: #fff; }
+.calc input::placeholder { color: var(--ink-3); }
+.calc input:focus-visible, .calc select:focus-visible, .calc-btn:focus-visible, .calc-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.calc input[aria-invalid="true"] { border-color: #ff8a8a; }
+.calc-x { min-height: 44px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); font-size: 20px; line-height: 1; cursor: pointer; }
+.calc-x:hover:not(:disabled) { color: var(--ink-1); border-color: var(--line-3); }
+.calc-x:disabled { opacity: 0.4; cursor: default; }
+.calc-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.calc-btn { min-height: 44px; padding: 10px 18px; border-radius: var(--r-2); border: 1px solid var(--accent-6); background: var(--accent-a3); color: var(--ink-1); font: inherit; font-weight: 600; font-size: var(--t-sm); cursor: pointer; }
+.calc-btn:hover { background: var(--accent-a4); }
+.calc-btn-quiet { border-color: var(--line-2); background: transparent; color: var(--ink-2); font-weight: 500; }
+.calc-sub { margin-top: 30px !important; }
+.calc-opt { font-size: var(--t-xs); font-weight: 400; color: var(--ink-3); margin-left: 8px; }
+.calc-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.calc label { display: grid; gap: 6px; font-size: var(--t-sm); color: var(--ink-2); }
+.calc-one { max-width: 320px; }
+
+.calc-result { position: sticky; top: 92px; }
+.calc-figs { display: grid; gap: 12px; margin: 12px 0 0; }
+.calc-figs div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.calc-figs dt { color: var(--ink-2); font-size: var(--t-sm); }
+.calc-figs dd { margin: 0; font-size: clamp(26px, 3vw, 34px); font-weight: 700; color: var(--ink-1); font-variant-numeric: tabular-nums; }
+.calc-note { color: var(--ink-3); font-size: var(--t-xs); line-height: 1.55; margin: 4px 0 0; }
+.calc-goal { margin-top: 16px; padding: 14px; border-radius: var(--r-3); background: var(--accent-a2); border: 1px solid var(--accent-a4); }
+.calc-goal p { margin: 0 0 8px; font-size: var(--t-sm); color: var(--ink-1); line-height: 1.55; }
+.calc-goal p:last-child { margin: 0; }
+.calc-cta { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.calc-cta p { margin: 0 0 14px; font-size: var(--t-sm); color: var(--ink-2); line-height: 1.6; }
+
+@media (max-width: 900px) {
+  .calc-wrap { grid-template-columns: minmax(0, 1fr); }
+  .calc-result { position: static; }
+}
+@media (max-width: 560px) {
+  .calc-head { display: none; }
+  .calc-row { grid-template-columns: 72px minmax(0, 1fr) 40px; }
+  .calc-row input[type="text"] { grid-column: 1 / -1; }
+  .calc-two { grid-template-columns: 1fr; }
+}
