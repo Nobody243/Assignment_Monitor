@@ -64,19 +64,23 @@ def main(argv) -> int:
         return verify()
     from jobs import run_check
     code = run_check(headless=True)
-    write_summary()
+    if code == 0:   # a failed check must not stamp old numbers with a fresh time
+        write_summary()
     return code
 
 
 def write_summary() -> None:
-    """state/summary.json for the phone app. Never lets a failure here turn a good check red."""
+    """state/summary.json for the phone app. Never lets a failure here turn a good check red; written to a temporary
+    file and swapped in, so the phone can never read a half-written file."""
     try:
         import json
         from config import BASE_DIR
         import engine
         import summary
-        (BASE_DIR / "summary.json").write_text(json.dumps(summary.build(engine.build_state()), ensure_ascii=False, indent=1),
-                                               encoding="utf-8")
+        target = BASE_DIR / "summary.json"
+        tmp = BASE_DIR / "summary.json.tmp"
+        tmp.write_text(json.dumps(summary.build(engine.build_state()), ensure_ascii=False, indent=1), encoding="utf-8")
+        os.replace(tmp, target)
         log.info("Wrote summary.json for the phone app.")
     except Exception as e:
         log.warning("Could not write summary.json: %s", str(e)[:200])

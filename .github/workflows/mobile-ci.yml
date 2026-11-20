@@ -2,7 +2,7 @@ name: Phone app
 
 on:
   push:
-    paths: ["mobile/**", "summary.py", ".github/workflows/mobile-ci.yml"]
+    paths: ["mobile/**", "summary.py", "tools/dart_*.py", "tools/make_mobile_*.py", ".github/workflows/mobile-ci.yml"]
   pull_request:
     paths: ["mobile/**", "summary.py"]
   workflow_dispatch:
@@ -28,7 +28,17 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test
+      - name: Tests with coverage (contract, layout at large text, contrast, screens, model)
+        run: flutter test --coverage
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Coverage floor
+        working-directory: .
+        run: python tools/dart_coverage.py --min 70
+      - name: Known vulnerabilities in the locked packages (osv.dev)
+        working-directory: .
+        run: python tools/dart_osv_check.py
       - name: Build a debug-signed APK (a test build, not for the Play Store)
         run: flutter build apk --release
       - uses: actions/upload-artifact@v4

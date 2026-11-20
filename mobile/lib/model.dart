@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_initializing_formals
 import 'dart:async';
 import 'dart:convert';
 
@@ -16,6 +17,7 @@ class Prefs extends ChangeNotifier {
   Palette palette = palettes.first;
   ThemeMode mode = ThemeMode.system;
   List<int> leads = [24, 3, 1];
+  DateTime? annSeen;   // announcements posted after this are new
   final Set<String> done = {};
   final Map<String, DateTime> snoozed = {};
   void Function()? onChanged;   // the model re-plans reminders when a choice that affects them changes
@@ -25,6 +27,7 @@ class Prefs extends ChangeNotifier {
     palette = palettes.firstWhere((x) => x.key == p.getString('palette'), orElse: () => palettes.first);
     mode = ThemeMode.values.firstWhere((x) => x.name == p.getString('mode'), orElse: () => ThemeMode.system);
     leads = (p.getStringList('leads') ?? ['24', '3', '1']).map(int.parse).toList();
+    annSeen = DateTime.tryParse(p.getString('annSeen') ?? '');
     done..clear()..addAll(p.getStringList('done') ?? []);
     snoozed.clear();
     try {
@@ -38,6 +41,7 @@ class Prefs extends ChangeNotifier {
     await p.setString('palette', palette.key);
     await p.setString('mode', mode.name);
     await p.setStringList('leads', leads.map((e) => '$e').toList());
+    if (annSeen != null) await p.setString('annSeen', annSeen!.toIso8601String());
     await p.setStringList('done', done.toList());
     await p.setString('snoozed', jsonEncode(snoozed.map((k, v) => MapEntry(k, v.toIso8601String()))));
   }
@@ -52,11 +56,14 @@ class Prefs extends ChangeNotifier {
 
 /// Signed in or not, what was last read, and how fresh it is. The screens only read from here.
 class AppModel extends ChangeNotifier {
-  AppModel(this.prefs) { prefs.onChanged = replan; }
+  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500)})
+      : _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax {
+    prefs.onChanged = replan;
+  }
   final Prefs prefs;
-  final _store = Store();
-  final _auth = GithubAuth();
-  final _source = SummarySource();
+  final Store _store;
+  final GithubAuth _auth;
+  final SummarySource _source;
 
   Phase phase = Phase.loading;
   bool demo = false;
@@ -68,6 +75,19 @@ class AppModel extends ChangeNotifier {
   int scheduled = 0;
   bool introSeen = true;   // the first-run intro is shown once, only to someone who is signed out
 
+  /// Announcements posted since the Announcements screen was last looked at. The first summary ever read sets the
+  /// starting point, so a new install does not start with a pile of "new".
+  int get newAnnouncements {
+    final s = summary;
+    if (s == null) return 0;
+    if (prefs.annSeen == null) {
+      final latest = s.announcements.map((n) => n.postedAt).whereType<DateTime>().fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
+      if (latest != null) prefs.annSeen = latest;
+      return 0;
+    }
+    return s.announcements.where((n) => n.postedAt != null && n.postedAt!.isAfter(prefs.annSeen!)).length;
+  }
+
   Clock get clock => demo ? Clock(summary!.generatedAt) : Clock.real();
 
   /// Hours since the phone last heard from the repository.
@@ -75,8 +95,7 @@ class AppModel extends ChangeNotifier {
 
   /// The launch screen stays at least this long, and at most [_splashMax]: long enough to read the saved data, look for
   /// anything new on GitHub and plan the reminders before the first screen shows, so the app opens already filled in.
-  static const _splashMin = Duration(milliseconds: 1800);
-  static const _splashMax = Duration(milliseconds: 3500);
+  final Duration _splashMin, _splashMax;
   String loadingStep = 'Starting';
 
   void _step(String s) { loadingStep = s; notifyListeners(); }
@@ -148,9 +167,10 @@ class AppModel extends ChangeNotifier {
 
   Future<void> refresh() async {
     if (demo || refreshing) return;
+    refreshing = true;   // claimed before the first await, so a pull-to-refresh and a resume together cannot both run
     final token = await _store.token();
-    if (token == null || login == null) return;
-    refreshing = true; error = null;
+    if (token == null || login == null) { refreshing = false; return; }
+    error = null;
     notifyListeners();
     try {
       final f = await _source.fetch(token, login!, etag: etag);

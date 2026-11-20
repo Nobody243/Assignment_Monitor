@@ -22,8 +22,11 @@ class DeviceCode {
 
 /// GitHub device flow: show a short code, the student approves it in a browser (or on their other phone), we get a token.
 class GithubAuth {
-  GithubAuth([http.Client? client]) : _http = client ?? http.Client();
+  GithubAuth([http.Client? client, this.unit = const Duration(seconds: 1)]) : _http = client ?? http.Client();
   final http.Client _http;
+
+  /// One second of GitHub's polling interval; tests shrink it.
+  final Duration unit;
   static const _json = {'Accept': 'application/json'};
 
   Future<DeviceCode> start() async {
@@ -40,7 +43,7 @@ class GithubAuth {
     var wait = c.interval;
     final until = DateTime.now().add(Duration(seconds: c.expiresIn));
     while (DateTime.now().isBefore(until)) {
-      await Future.delayed(Duration(seconds: wait));
+      await Future.delayed(unit * wait);
       if (cancelled?.call() ?? false) throw SourceError('Cancelled.');
       final r = await _http.post(Uri.https('github.com', '/login/oauth/access_token'), headers: _json, body: {
         'client_id': githubClientId, 'device_code': c.deviceCode, 'grant_type': 'urn:ietf:params:oauth:grant-type:device_code'});
@@ -86,7 +89,7 @@ class SummarySource {
   final http.Client _http;
 
   Future<Fetched> fetch(String token, String login, {String? etag}) async {
-    final uri = Uri.https('api.github.com', '/repos/$login/$repoName/contents/$summaryPath');
+    final uri = Uri.https('api.github.com', '/repos/${Uri.encodeComponent(login)}/$repoName/contents/$summaryPath');
     final h = {..._api(token), 'Accept': 'application/vnd.github.raw+json', 'If-None-Match': ?etag};
     final http.Response r;
     try {

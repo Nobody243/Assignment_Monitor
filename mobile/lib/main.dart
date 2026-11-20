@@ -6,10 +6,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'data.dart' show Clock;
 import 'model.dart';
+import 'screens/announcements.dart';
 import 'screens/attendance.dart';
 import 'screens/intro.dart';
 import 'data.dart' show Summary;
 import 'screens/more.dart';
+import 'screens/results.dart';
 import 'screens/settings.dart';
 import 'screens/signin.dart';
 import 'screens/timetable.dart';
@@ -92,7 +94,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
   Animation<double> get _t => _menu;
 
-  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Timetable', 'Results & GPA', 'Settings'];
+  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Announcements', 'Timetable', 'Results & GPA', 'Settings'];
   int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
 
   @override
@@ -179,10 +181,11 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   Widget _body(AppModel m, Summary s, DateTime now, int todo) {
     final t = Theme.of(context);
     final pages = [
-      TodayScreen(summary: s, now: now, prefs: widget.prefs, onOpenWork: () => goto(1), onOpenAttendance: () => goto(2)),
+      TodayScreen(summary: s, now: now, prefs: widget.prefs, onOpenWork: () => goto(1), onOpenAttendance: () => goto(2), onOpenAnnouncements: () => goto(4)),
       WorkScreen(summary: s, now: now, prefs: widget.prefs),
       AttendanceScreen(summary: s),
       ExamsPage(summary: s, now: now),
+      AnnouncementsScreen(summary: s, prefs: widget.prefs, now: now),
       TimetableScreen(summary: s, now: now),
       ResultsPage(summary: s),
       SettingsHub(summary: s, prefs: widget.prefs, model: m),
@@ -267,9 +270,10 @@ class _SideMenu extends StatelessWidget {
       (1, LucideIcons.clipboardList, 'Assignments'),
       (2, LucideIcons.userCheck, 'Attendance'),
       (3, LucideIcons.graduationCap, 'Exams'),
-      (4, LucideIcons.calendarRange, 'Timetable'),
-      (5, LucideIcons.chartNoAxesColumn, 'Results & GPA'),
-      (6, LucideIcons.settings, 'Settings'),
+      (4, LucideIcons.megaphone, 'Announcements'),
+      (5, LucideIcons.calendarRange, 'Timetable'),
+      (6, LucideIcons.chartNoAxesColumn, 'Results & GPA'),
+      (7, LucideIcons.settings, 'Settings'),
     ];
     // row i is fully in by the time the app has moved (0.25 + 0.06 i) of the way; it starts at 0.06 i
     Widget staggered(int i, Widget child) => AnimatedBuilder(
@@ -283,7 +287,8 @@ class _SideMenu extends StatelessWidget {
     return SafeArea(
       child: SizedBox(
         width: w * 0.74,
-        child: Padding(
+        // scrollable, so a large text size or a short screen never pushes Sign out off the bottom
+        child: LayoutBuilder(builder: (context, box) => SingleChildScrollView(child: ConstrainedBox(constraints: BoxConstraints(minHeight: box.maxHeight), child: IntrinsicHeight(child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 8, 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             staggered(0, Row(children: [
@@ -300,7 +305,7 @@ class _SideMenu extends StatelessWidget {
             for (final (i, it) in items.indexed)
               staggered(i + 1, Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: _MenuRow(icon: it.$2, label: it.$3, count: it.$1 == 1 && todo > 0 ? todo : 0, selected: selected == it.$1, onTap: () => onPick(it.$1)),
+                child: _MenuRow(icon: it.$2, label: it.$3, count: it.$1 == 1 ? todo : it.$1 == 4 ? model.newAnnouncements : 0, selected: selected == it.$1, onTap: () => onPick(it.$1)),
               )),
             const Spacer(),
             staggered(items.length + 1, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -308,7 +313,7 @@ class _SideMenu extends StatelessWidget {
               Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text('Your portal password is never stored on this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
             ])),
           ]),
-        ),
+        ))))),
       ),
     );
   }
@@ -418,7 +423,7 @@ class _NavItem extends StatelessWidget {
                 AnimatedSize(
                   duration: const Duration(milliseconds: 240), curve: Curves.easeOutCubic,
                   child: selected
-                      ? Padding(padding: const EdgeInsets.only(top: 1), child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: TextStyle(fontSize: 11, height: 1.1, fontWeight: FontWeight.w700, color: fg)))
+                      ? Padding(padding: const EdgeInsets.only(top: 1), child: Text(label, maxLines: 1, softWrap: false, overflow: TextOverflow.clip, textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.1), style: TextStyle(fontSize: 11, height: 1.1, fontWeight: FontWeight.w700, color: fg)))
                       : const SizedBox(width: 0, height: 0),
                 ),
               ]),

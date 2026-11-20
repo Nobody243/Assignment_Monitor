@@ -1,0 +1,191 @@
+{
+ "schema": 1,
+ "generated_at": "2026-11-20T15:54:12",
+ "app_version": null,
+ "student": {
+  "name": "",
+  "semester": null,
+  "campus": null
+ },
+ "last_check": null,
+ "minimum_attendance": null,
+ "assignments": [
+  {
+   "id": null,
+   "course": null,
+   "title": null,
+   "number": null,
+   "due_at": null,
+   "extended": false,
+   "was_due": null,
+   "submitted": false,
+   "open": false,
+   "urgency": null,
+   "marks": null,
+   "can_submit": false,
+   "has_brief": false
+  },
+  {
+   "id": "a#1#t",
+   "course": "C",
+   "title": "T",
+   "number": null,
+   "due_at": "not a date",
+   "extended": false,
+   "was_due": null,
+   "submitted": false,
+   "open": true,
+   "urgency": null,
+   "marks": null,
+   "can_submit": false,
+   "has_brief": false
+  },
+  {
+   "id": "a#2#t",
+   "course": "C",
+   "title": "Late",
+   "number": null,
+   "due_at": "2026-11-18T10:00:00",
+   "extended": false,
+   "was_due": null,
+   "submitted": false,
+   "open": false,
+   "urgency": "missed",
+   "marks": 7,
+   "can_submit": false,
+   "has_brief": false
+  }
+ ],
+ "attendance": [
+  {
+   "code": "X1",
+   "title": "Never attended",
+   "credit_hours": null,
+   "teacher": null,
+   "present": null,
+   "absent": null,
+   "percent": null,
+   "ok": false,
+   "can_miss": null,
+   "need": null,
+   "classes": []
+  },
+  {
+   "code": null,
+   "title": null,
+   "credit_hours": null,
+   "teacher": null,
+   "present": 1,
+   "absent": 1,
+   "percent": 50,
+   "ok": false,
+   "can_miss": null,
+   "need": null,
+   "classes": [
+    {
+     "date": null,
+     "hours": null,
+     "present": null,
+     "absent": null
+    }
+   ]
+  }
+ ],
+ "exams": [
+  {
+   "title": null,
+   "type": null,
+   "date": null,
+   "time": null,
+   "room": null,
+   "row": null,
+   "seat": null,
+   "scheduled": false
+  },
+  {
+   "title": "Odd date",
+   "type": null,
+   "date": "31/02/2026",
+   "time": null,
+   "room": null,
+   "row": null,
+   "seat": null,
+   "scheduled": true
+  },
+  {
+   "title": "Half",
+   "type": null,
+   "date": "5/12",
+   "time": null,
+   "room": 12,
+   "row": null,
+   "seat": null,
+   "scheduled": false
+  }
+ ],
+ "timetable": [
+  {
+   "day": "Mon",
+   "start": null,
+   "end": null,
+   "course": null,
+   "teacher": null
+  },
+  {
+   "day": "Fun",
+   "start": "9:00",
+   "end": "10:00",
+   "course": "Bad day",
+   "teacher": null
+  },
+  {
+   "day": "Tue",
+   "start": "09:00",
+   "end": "10:30",
+   "course": "Fine",
+   "teacher": null
+  }
+ ],
+ "results": {
+  "cgpa": "n/a",
+  "semesters": [
+   {
+    "name": null,
+    "gpa": null,
+    "cgpa": null,
+    "complete": false,
+    "courses": []
+   },
+   {
+    "name": "S2",
+    "gpa": "3.5",
+    "cgpa": null,
+    "complete": false,
+    "courses": [
+     {
+      "code": null,
+      "title": null,
+      "credits": "3",
+      "grade": 4
+     }
+    ]
+   }
+  ]
+ },
+ "announcements": [
+  {
+   "id": null,
+   "course": null,
+   "title": "",
+   "text": "",
+   "posted_at": "yesterday"
+  },
+  {
+   "id": 7,
+   "course": null,
+   "title": "5",
+   "text": "['a']",
+   "posted_at": null
+  }
+ ]
+}

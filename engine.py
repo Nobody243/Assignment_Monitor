@@ -334,7 +334,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, build_state())
         if url.path == "/api/summary":
             import summary
-            return self._send(200, summary.build(build_state()))
+            try:
+                return self._send(200, summary.build(build_state()))
+            except Exception:   # never hand the app a half-built file; the log has the detail
+                log.exception("Could not build summary.json")
+                return self._send(500, {"error": "Could not build the summary."})
         if url.path == "/api/support":
             import support
             return self._send(200, {"text": support.build_report()})

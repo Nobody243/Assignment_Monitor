@@ -7,11 +7,12 @@ import '../theme.dart';
 import 'widgets.dart';
 
 class TodayScreen extends StatelessWidget {
-  const TodayScreen({super.key, required this.summary, required this.now, required this.prefs, required this.onOpenWork, required this.onOpenAttendance});
+  const TodayScreen({super.key, required this.summary, required this.now, required this.prefs, required this.onOpenWork, required this.onOpenAttendance, this.onOpenAnnouncements});
   final Summary summary;
   final DateTime now;
   final Prefs prefs;
   final VoidCallback onOpenWork, onOpenAttendance;
+  final VoidCallback? onOpenAnnouncements;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +43,7 @@ class TodayScreen extends StatelessWidget {
       const SizedBox(height: 16),
       Reveal(index: 0, child: next != null ? _Hero(work: next, now: now, prefs: prefs, onOpen: onOpenWork) : const _AllClear()),
       const SizedBox(height: 12),
-      Reveal(index: 1, child: SizedBox(height: 200, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Reveal(index: 1, child: SizedBox(height: 200 + (MediaQuery.textScalerOf(context).scale(1) - 1).clamp(0.0, 1.2) * 150, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(flex: 5, child: _Bento(value: '${open.length}', label: open.length == 1 ? 'assignment to do' : 'assignments to do', caption: open.isEmpty ? 'Nothing waiting' : 'See the list', big: true, fg: t.colorScheme.primary, onTap: onOpenWork)),
         const SizedBox(width: 10),
         Expanded(flex: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -82,8 +83,8 @@ class TodayScreen extends StatelessWidget {
           for (final c in low) AttentionRow(icon: LucideIcons.calendarX, color: Status.bad(b), title: '${c.title}: ${c.percent.toStringAsFixed(0)}% attendance', detail: 'Below the ${summary.minimum}% minimum. Attend the next ${c.need.ceil()} hours.', onTap: onOpenAttendance),
         ])),
       const SizedBox(height: 20),
-      const SectionTitle('Latest announcements'),
-      Card(child: Column(children: [for (final n in summary.announcements.take(3)) ListTile(dense: true, title: Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(n.course, maxLines: 1, overflow: TextOverflow.ellipsis))])),
+      SectionTitle('Latest announcements', trailing: summary.announcements.length > 3 ? 'See all ${summary.announcements.length}' : null),
+      Card(child: Column(children: [for (final n in summary.announcements.take(3)) ListTile(dense: true, onTap: onOpenAnnouncements, title: Text(n.title, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(n.course, maxLines: 1, overflow: TextOverflow.ellipsis))])),
     ]);
   }
 }
@@ -112,8 +113,8 @@ class _HeroState extends State<_Hero> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: fg.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(99)), child: Text(urgent ? 'DUE SOON' : 'NEXT UP', style: t.textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w700, letterSpacing: 0.6))),
-          const Spacer(),
-          Text(countdown(due, widget.now), style: t.textTheme.headlineMedium?.copyWith(color: fg, fontWeight: FontWeight.w800, fontFeatures: const [FontFeature.tabularFigures()])),
+          const SizedBox(width: 8),
+          Expanded(child: Align(alignment: Alignment.centerRight, child: FittedBox(fit: BoxFit.scaleDown, child: Text(countdown(due, widget.now), style: t.textTheme.headlineMedium?.copyWith(color: fg, fontWeight: FontWeight.w800, fontFeatures: const [FontFeature.tabularFigures()]))))),
         ]),
         const SizedBox(height: 14),
         Text(w.title, style: t.textTheme.titleLarge?.copyWith(color: fg, fontWeight: FontWeight.w700)),

@@ -10,9 +10,9 @@ class SectionTitle extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(children: [
-        Text(text, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        const Spacer(),
-        if (trailing != null) Text(trailing!, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+        Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+        const SizedBox(width: 12),
+        if (trailing != null) Expanded(child: Text(trailing!, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant))) else const Spacer(),
       ]),
     );
   }

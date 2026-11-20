@@ -109,7 +109,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
     final total = slots.fold<int>(0, (n, s) => n + mins(s.end) - mins(s.start));
     return Column(children: [
       SizedBox(
-        height: 84,
+        height: 84 + (MediaQuery.textScalerOf(context).scale(1) - 1).clamp(0.0, 1.0) * 52,   // taller when the text is larger
         child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), children: [
           for (final i in dayIdx)
             Padding(

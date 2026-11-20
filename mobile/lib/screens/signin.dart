@@ -83,7 +83,7 @@ class SignInScreen extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 14),
-      FilledButton.icon(onPressed: () => launchUrl(Uri.parse(c.uri), mode: LaunchMode.externalApplication), icon: const Icon(LucideIcons.externalLink), label: const Text('Open GitHub')),
+      FilledButton.icon(onPressed: () { final u = Uri.tryParse(c.uri); if (u != null && u.scheme == 'https' && u.host == 'github.com') launchUrl(u, mode: LaunchMode.externalApplication); }, icon: const Icon(LucideIcons.externalLink), label: const Text('Open GitHub')),
       const SizedBox(height: 10),
       Row(children: [
         const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),

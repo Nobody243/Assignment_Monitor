@@ -1,0 +1,18 @@
+{
+ "schema": 1,
+ "generated_at": "2026-11-20T15:54:12",
+ "app_version": null,
+ "student": {
+  "name": null,
+  "semester": null,
+  "campus": null
+ },
+ "last_check": null,
+ "minimum_attendance": 75,
+ "assignments": [],
+ "attendance": [],
+ "exams": [],
+ "timetable": [],
+ "results": null,
+ "announcements": []
+}

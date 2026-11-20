@@ -83,7 +83,7 @@ class _CourseCardState extends State<_CourseCard> {
     final color = !c.recorded ? t.colorScheme.onSurfaceVariant : !c.ok ? Status.bad(b) : risk ? Status.warn(b) : Status.good(b);
     final allow = semesterAllowance(c.credit, widget.minimum, c.absent, c.classHours);
     final sentence = !c.recorded ? 'No classes recorded yet' : !c.ok ? 'Attend the next ${c.need.ceil()} h to get back' : risk ? 'Close: you can miss only ${hoursText(c.canMiss)} more' : 'You can miss ${hoursText(c.canMiss)} more';
-    final classes = (c.m['classes'] as List).cast<Map>().reversed.toList();
+    final classes = c.classes.reversed.toList();
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(

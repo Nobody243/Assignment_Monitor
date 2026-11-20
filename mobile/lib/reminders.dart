@@ -14,7 +14,10 @@ import 'data.dart';
 class Reminders {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _ready = false;
-  static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  /// Tests set this to false so scheduling never reaches the notification plugin.
+  @visibleForTesting
+  static bool? forceSupported;
+  static bool get supported => forceSupported ?? (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
 
   static const _loud = AndroidNotificationDetails('deadlines', 'Deadlines',
       channelDescription: 'Reminders before an assignment is due', importance: Importance.high, priority: Priority.high,
@@ -48,28 +51,33 @@ class Reminders {
     return await a?.requestNotificationsPermission() ?? false;
   }
 
+  /// The reminders the summary and settings call for, soonest first, at most 60 (Android keeps a limited number).
+  /// Pure: no notification plugin involved, so it is tested without a phone.
+  static List<PlannedReminder> plan(Summary s, {required List<int> leads, required Set<String> done, required Map<String, DateTime> snoozed, required DateTime now}) {
+    final out = <PlannedReminder>[];
+    for (final w in s.work) {
+      if (!w.todo || !w.open || w.due == null || done.contains(w.id)) continue;
+      for (final h in leads) {
+        final at = w.due!.subtract(Duration(hours: h));
+        if (at.isAfter(now)) out.add(PlannedReminder(w, at, h));
+      }
+      final wake = snoozed[w.id];
+      if (wake != null && wake.isAfter(now) && wake.isBefore(w.due!)) out.add(PlannedReminder(w, wake, null));
+    }
+    out.sort((a, b) => a.at.compareTo(b.at));
+    return out.take(60).toList();
+  }
+
   /// Replaces every scheduled reminder with the ones the current summary and settings call for.
   static Future<int> schedule(Summary s, {required List<int> leads, required Set<String> done, required Map<String, DateTime> snoozed}) async {
     if (!supported) return 0;
     await init();
     await _plugin.cancelAll();
-    final now = DateTime.now();
-    var n = 0;
-    for (final w in s.work) {
-      if (!w.todo || !w.open || w.due == null || done.contains(w.id)) continue;
-      for (final h in leads) {
-        final at = w.due!.subtract(Duration(hours: h));
-        if (!at.isAfter(now) || n >= 60) continue;
-        await _show(w, at, h, _idFor(w.id, h));
-        n++;
-      }
-      final wake = snoozed[w.id];
-      if (wake != null && wake.isAfter(now) && wake.isBefore(w.due!)) {
-        await _show(w, wake, null, _idFor(w.id, 99));
-        n++;
-      }
+    final planned = plan(s, leads: leads, done: done, snoozed: snoozed, now: DateTime.now());
+    for (final p in planned) {
+      await _show(p.work, p.at, p.hours, _idFor(p.work.id, p.hours ?? 99));
     }
-    return n;
+    return planned.length;
   }
 
   static Future<void> _show(Work w, DateTime at, int? hours, int id) {
@@ -104,4 +112,13 @@ Future<void> answerInBackground(NotificationResponse r) async {
     m[id] = DateTime.now().add(const Duration(hours: 1)).toIso8601String();
     p.setString('snoozed', jsonEncode(m));
   }
+}
+
+class PlannedReminder {
+  const PlannedReminder(this.work, this.at, this.hours);
+  final Work work;
+  final DateTime at;
+
+  /// Hours before the deadline, or null for a snooze that wakes the reminder up again.
+  final int? hours;
 }
