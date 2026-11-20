@@ -334,7 +334,7 @@ def save_env(config: dict) -> None:
             if k not in config:
                 current.pop(k, None)
         config = current
-    lines = _plain_lines(config) + _secret_lines(config)
+    lines = _plain_lines(config) + _sealed_lines(config)
     ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(ENV_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
@@ -348,7 +348,7 @@ def _setting(config: dict, key: str):
 
 def _plain_lines(config: dict) -> list:
     """The settings file lines that are not secret: written as they are. Secrets never pass through here; they are only
-    handled by _secret_lines, which writes them encrypted."""
+    handled by _sealed_lines, which writes them encrypted."""
     lines = [f"# {APP_NAME} settings. Secrets are encrypted for this Windows user only."]
     lines.append(f"ENROLLMENT={_setting(config, 'ENROLLMENT')}")
     lines.append(f"INSTITUTE_ID={_setting(config, 'INSTITUTE_ID')}")
@@ -373,7 +373,7 @@ def _plain_lines(config: dict) -> list:
     return lines
 
 
-def _secret_lines(config: dict) -> list:
+def _sealed_lines(config: dict) -> list:
     """The secrets, as KEY_ENC lines holding DPAPI-encrypted text. A secret that cannot be encrypted is left out (and has
     to be entered again); it is never written as plain text and never logged."""
     lines = []
