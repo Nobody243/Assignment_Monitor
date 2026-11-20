@@ -1,10 +1,15 @@
-"""Draws the phone app's icon and launch mark: a clipboard with a tick, white on the Ember orange.
+"""Draws the phone app's icon and launch mark: the countdown ring. A ring that is nearly closed (time running out) with a
+tick inside (the deadline met) and a small dot where the ring is still open. White on the Ember orange.
 
-    python tools/make_mobile_icon.py            writes mobile/assets/icon/icon.png and mark.png
+    python tools/make_mobile_icon.py            writes mobile/assets/icon/icon.png, mark.png and mark_splash.png
 
-icon.png is the full launcher icon (orange square); mark.png is the white mark alone on a transparent background, used
-as the launch screen image and as the foreground of Android's adaptive icon.
+The same geometry is drawn in Flutter by `BrandLogo` in mobile/lib/screens/intro.dart (all numbers are in a 512-unit
+square), so the icon, the launch screen and the in-app mark are one drawing. Change both together.
+
+icon.png is the full launcher icon (orange square); mark.png is the mark alone on a transparent background, scaled into
+Android's adaptive-icon safe circle; mark_splash.png is the same, larger, for the Android 12 launch screen.
 """
+import math
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -12,38 +17,55 @@ from PIL import Image, ImageDraw
 OUT = Path(__file__).resolve().parent.parent / "mobile" / "assets" / "icon"
 ORANGE = (232, 85, 43, 255)
 WHITE = (255, 250, 246, 255)
-S = 1024
+SAND = (255, 224, 205, 255)
+
+# geometry, in a 512-unit square (keep in step with BrandLogo in intro.dart)
+CENTER = (256, 256)
+RING_R = 138          # radius of the ring's centre line
+STROKE = 44
+ARC = (-60, 210)      # degrees, clockwise from 3 o'clock: a 270 degree ring with the gap at the top right
+TICK = [(196, 262), (240, 306), (322, 214)]
+DOT = (220, 123, 20)  # x, y, radius: the middle of the ring's gap
 
 
-def mark(size: int = S, safe: float = 1.0) -> Image.Image:
-    """The clipboard-and-tick on a transparent canvas; `safe` shrinks it into the adaptive-icon safe zone."""
-    big = size * 4
+def mark(size: int = 1024, safe: float = 1.0) -> Image.Image:
+    """The ring, tick and dot on a transparent canvas; `safe` < 1 shrinks it toward the centre."""
+    k = 4
+    big = size * k
+    u = big / 512 * safe
+    off = (big - 512 * u) / 2
     img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    u = big / 1024 * safe
-    ox = oy = (big - 1024 * u) / 2
 
     def p(x, y):
-        return (ox + x * u, oy + y * u)
+        return (off + x * u, off + y * u)
 
-    # board
-    d.rounded_rectangle([*p(262, 250), *p(762, 830)], radius=90 * u, outline=WHITE, width=int(56 * u))
-    # clip at the top
-    d.rounded_rectangle([*p(392, 190), *p(632, 320)], radius=56 * u, fill=WHITE)
-    # tick
-    d.line([p(380, 560), p(468, 650), p(650, 450)], fill=WHITE, width=int(60 * u), joint="curve")
-    for x, y in ((380, 560), (650, 450)):
-        d.ellipse([*p(x - 30, y - 30), *p(x + 30, y + 30)], fill=WHITE)
+    def cap(x, y, fill):
+        r = STROKE * u / 2
+        cx, cy = p(x, y)
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
+
+    cx, cy = p(*CENTER)
+    outer = (RING_R + STROKE / 2) * u
+    d.arc([cx - outer, cy - outer, cx + outer, cy + outer], ARC[0], ARC[1], fill=WHITE, width=int(STROKE * u))
+    for a in ARC:
+        cap(CENTER[0] + RING_R * math.cos(math.radians(a)), CENTER[1] + RING_R * math.sin(math.radians(a)), WHITE)
+    d.line([p(*q) for q in TICK], fill=WHITE, width=int(STROKE * u), joint="curve")
+    for q in (TICK[0], TICK[-1]):
+        cap(*q, WHITE)
+    x, y, r = DOT
+    d.ellipse([*p(x - r, y - r), *p(x + r, y + r)], fill=SAND)
     return img.resize((size, size), Image.LANCZOS)
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    icon = Image.new("RGBA", (S, S), ORANGE)
-    icon.alpha_composite(mark(S, 0.92))
+    s = 1024
+    icon = Image.new("RGBA", (s, s), ORANGE)
+    icon.alpha_composite(mark(s, 0.86))
     icon.save(OUT / "icon.png")
-    mark(S, 0.62).save(OUT / "mark.png")        # smaller: it sits inside the adaptive icon's safe circle
-    mark(S, 0.9).save(OUT / "mark_splash.png")
+    mark(s, 0.60).save(OUT / "mark.png")         # inside the adaptive icon's safe circle
+    mark(s, 0.86).save(OUT / "mark_splash.png")
     print("wrote", OUT)
 
 

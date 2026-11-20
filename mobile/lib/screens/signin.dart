@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../model.dart';
+import 'intro.dart' show BrandMark;
 import '../source.dart' show DeviceCode, repoName;
 
 /// First run: sign in to GitHub (device flow) or look at the demo. Also shown while the first summary is awaited.
@@ -28,11 +29,7 @@ class SignInScreen extends StatelessWidget {
                   color: t.colorScheme.primaryContainer,
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(color: t.colorScheme.onPrimaryContainer.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(18)),
-                    child: Icon(LucideIcons.clipboardCheck, size: 30, color: t.colorScheme.onPrimaryContainer),
-                  ),
+                  const BrandMark(size: 60),
                   const SizedBox(height: 18),
                   Text('Assignment\nMonitor', style: t.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.05, color: t.colorScheme.onPrimaryContainer)),
                   const SizedBox(height: 8),

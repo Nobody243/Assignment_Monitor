@@ -9,14 +9,58 @@ import 'widgets.dart';
 /// The first thing a new user sees: the launch mark that matches the native launch screen, then (after a beat) a short
 /// intro, shown once. Both are drawn in the app's own colours and icons.
 class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.size = 96});
+  const BrandMark({super.key, this.size = 96, this.progress = 1});
   final double size;
+
+  /// 0 to 1: how much of the logo is drawn. 1 is the finished logo; the launch screen animates it from 0.
+  final double progress;
   @override
   Widget build(BuildContext context) => Container(
         width: size, height: size,
-        decoration: BoxDecoration(color: const Color(0xFFE8552B), borderRadius: BorderRadius.circular(size * 0.28)),
-        child: Icon(LucideIcons.clipboardCheck, size: size * 0.54, color: const Color(0xFFFFFAF6)),
+        decoration: BoxDecoration(color: BrandLogo.orange, borderRadius: BorderRadius.circular(size * 0.23)),
+        child: CustomPaint(painter: BrandLogo(progress)),
       );
+}
+
+/// The logo: a ring that is nearly closed (time running out) with a tick inside (the deadline met) and a dot in the
+/// gap. The numbers are in a 512-unit square and match tools/make_mobile_icon.py, which draws the app icon, so the
+/// icon, the launch screen and this mark are one drawing. [progress] draws it in: the ring first, then the tick, then
+/// the dot.
+class BrandLogo extends CustomPainter {
+  const BrandLogo(this.progress);
+  final double progress;
+
+  static const orange = Color(0xFFE8552B);
+  static const _white = Color(0xFFFFFAF6);
+  static const _sand = Color(0xFFFFE0CD);
+  static const _stroke = 44.0, _ringR = 138.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final k = size.width / 512 * 0.86;                 // 0.86 keeps the mark clear of the tile's edge, as in the icon
+    canvas.translate(size.width * 0.07, size.height * 0.07);
+    canvas.scale(k, k);
+    double part(double from, double to) => ((progress - from) / (to - from)).clamp(0.0, 1.0);
+
+    final ringT = Curves.easeInOut.transform(part(0.0, 0.55));
+    final tickT = Curves.easeOut.transform(part(0.45, 0.85));
+    final dotT = Curves.easeOutBack.transform(part(0.78, 1.0));
+
+    final pen = Paint()..color = _white..style = PaintingStyle.stroke..strokeWidth = _stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    if (ringT > 0) {
+      canvas.drawArc(Rect.fromCircle(center: const Offset(256, 256), radius: _ringR), -60 * 3.141592653589793 / 180, 270 * 3.141592653589793 / 180 * ringT, false, pen);
+    }
+    if (tickT > 0) {
+      final path = Path()..moveTo(196, 262)..lineTo(240, 306)..lineTo(322, 214);
+      for (final m in path.computeMetrics()) {
+        canvas.drawPath(m.extractPath(0, m.length * tickT), pen);
+      }
+    }
+    if (dotT > 0) canvas.drawCircle(const Offset(220, 123), 20 * dotT, Paint()..color = _sand);
+  }
+
+  @override
+  bool shouldRepaint(BrandLogo old) => old.progress != progress;
 }
 
 /// Shown while the app starts. It continues the native launch screen (same colours, same mark), then says what it is
@@ -31,10 +75,12 @@ class BrandSplash extends StatelessWidget {
       body: Center(
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.easeOutBack,
-          builder: (_, v, _) => Column(mainAxisSize: MainAxisSize.min, children: [
-            Transform.scale(scale: 0.86 + 0.14 * v, child: const BrandMark()),
+          duration: const Duration(milliseconds: 1300),
+          curve: Curves.linear,
+          builder: (_, p, _) {
+           final v = Curves.easeOutBack.transform((p * 1.4).clamp(0.0, 1.0));   // the tile settles first, the logo draws in after
+           return Column(mainAxisSize: MainAxisSize.min, children: [
+            Transform.scale(scale: 0.86 + 0.14 * v, child: BrandMark(size: 104, progress: Curves.easeInOut.transform(((p - 0.1) / 0.9).clamp(0.0, 1.0)))),
             const SizedBox(height: 22),
             Opacity(opacity: (v * 1.4 - 0.4).clamp(0, 1), child: Text('Assignment Monitor', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.3))),
             const SizedBox(height: 28),
@@ -60,7 +106,8 @@ class BrandSplash extends StatelessWidget {
                 ]),
               ),
             ),
-          ]),
+          ]);
+          },
         ),
       ),
     );
