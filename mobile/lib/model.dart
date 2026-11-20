@@ -63,8 +63,8 @@ class Prefs extends ChangeNotifier {
 
 /// Signed in or not, what was last read, and how fresh it is. The screens only read from here.
 class AppModel extends ChangeNotifier {
-  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500)})
-      : _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax {
+  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission})
+      : _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed {
     prefs.onChanged = replan;
   }
   final Prefs prefs;
@@ -103,6 +103,18 @@ class AppModel extends ChangeNotifier {
   /// The launch screen stays at least this long, and at most [_splashMax]: long enough to read the saved data, look for
   /// anything new on GitHub and plan the reminders before the first screen shows, so the app opens already filled in.
   final Duration _splashMin, _splashMax;
+  final Future<bool> Function() _askPermission;
+
+  /// Android 13 and later show no notification until the user allows it, so the app asks once, as soon as there is
+  /// something to remind about. The Allow button in Settings stays for anyone who said no.
+  Future<void> askForNotificationsOnce() async {
+    if (!Reminders.supported || demo) return;
+    final p = await SharedPreferences.getInstance();
+    if (p.getBool('askedNotifications') ?? false) return;
+    await p.setBool('askedNotifications', true);
+    await _askPermission();
+    await replan();
+  }
   String loadingStep = 'Starting';
 
   void _step(String s) { loadingStep = s; notifyListeners(); }
@@ -132,6 +144,7 @@ class AppModel extends ChangeNotifier {
     phase = summary == null ? Phase.waiting : Phase.ready;
     notifyListeners();
     if (summary == null) unawaited(refresh());
+    if (summary != null) unawaited(askForNotificationsOnce());
   }
 
   Future<void> finishIntro() async {
@@ -161,6 +174,7 @@ class AppModel extends ChangeNotifier {
       phase = Phase.waiting;
       notifyListeners();
       await refresh();
+      if (summary != null) unawaited(askForNotificationsOnce());
     } on SourceError catch (e) {
       error = e.message; code = null; phase = Phase.signedOut;
       notifyListeners();

@@ -155,6 +155,35 @@ void main() {
     });
   });
 
+  group('notification permission', () {
+    test('is asked once, when there is something to remind about, and not again', () async {
+      Reminders.forceSupported = true;
+      var asked = 0;
+      final store = MemoryStore()..tokenV = 't'..loginV = 'alex'..summaryV = Summary(_summary());
+      AppModel make() => AppModel(Prefs(), store: store, source: SummarySource(MockClient((_) async => http.Response('', 304))),
+          splashMin: Duration.zero, splashMax: const Duration(seconds: 2), askPermission: () async { asked++; return true; });
+      try {
+        final m = make();
+        await m.askForNotificationsOnce();
+        await m.askForNotificationsOnce();
+        expect(asked, 1);
+        await make().askForNotificationsOnce();   // a later launch
+        expect(asked, 1);
+      } finally {
+        Reminders.forceSupported = false;
+      }
+    });
+
+    test('is not asked in the demo, and not where reminders are unsupported', () async {
+      var asked = 0;
+      final m = AppModel(Prefs(), store: MemoryStore(), splashMin: Duration.zero, askPermission: () async { asked++; return true; })..demo = true;
+      await m.askForNotificationsOnce();
+      Reminders.forceSupported = false;
+      await AppModel(Prefs(), store: MemoryStore(), splashMin: Duration.zero, askPermission: () async { asked++; return true; }).askForNotificationsOnce();
+      expect(asked, 0);
+    });
+  });
+
   group('announcements and the intro', () {
     test('the first summary sets the starting point, later posts count as new', () async {
       final store = MemoryStore()..tokenV = 't'..loginV = 'alex'
