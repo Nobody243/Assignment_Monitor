@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../data.dart';
 import '../logic.dart';
-import '../main.dart' show Prefs;
+import '../model.dart';
+import '../reminders.dart';
+import '../source.dart' show repoName;
 import '../theme.dart';
 import 'widgets.dart';
 
 class MoreScreen extends StatelessWidget {
-  const MoreScreen({super.key, required this.summary, required this.now, required this.prefs});
+  const MoreScreen({super.key, required this.summary, required this.now, required this.prefs, required this.model});
   final Summary summary;
   final DateTime now;
   final Prefs prefs;
+  final AppModel model;
 
   void _open(BuildContext context, String title, Widget body) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: SafeArea(child: body))));
 
@@ -27,9 +30,9 @@ class MoreScreen extends StatelessWidget {
       const SizedBox(height: 10),
       tile(Icons.calculate_outlined, 'Results and GPA calculator', 'CGPA ${summary.cgpa?.toStringAsFixed(2) ?? '–'} · try grades, set a target', ResultsPage(summary: summary)),
       const SizedBox(height: 10),
-      tile(Icons.tune, 'Settings', 'Reminders, look, account', SettingsPage(summary: summary, prefs: prefs)),
+      tile(Icons.tune, 'Settings', 'Reminders, look, account', SettingsPage(summary: summary, prefs: prefs, model: model)),
       const SizedBox(height: 18),
-      Text('Assignment Monitor for phones · prototype with fictional data.\nThe phone reads a summary file from your own private repository; your portal password never leaves the PC.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+      Text('Assignment Monitor for phones${model.demo ? ' · demo with fictional data' : ''}.\nThe phone reads a summary file from your own private repository; your portal password never leaves the PC.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
     ]);
   }
 }
@@ -176,9 +179,10 @@ class _Fig extends StatelessWidget {
 
 // ------------------------------------------------------------------------------------------------ settings
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.summary, required this.prefs});
+  const SettingsPage({super.key, required this.summary, required this.prefs, required this.model});
   final Summary summary;
   final Prefs prefs;
+  final AppModel model;
   @override
   State<SettingsPage> createState() => _SettingsState();
 }
@@ -211,8 +215,15 @@ class _SettingsState extends State<SettingsPage> {
       const Divider(height: 32),
       Text('Account', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(widget.summary.studentName), subtitle: const Text('Reading summary.json from your private repository (fixture in this prototype)')),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.lock_outline), title: Text('No portal password on this phone'), subtitle: Text('Only a read-only token for one repository, kept in the phone\'s keystore')),
+      ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.person_outline), title: Text(widget.summary.studentName),
+          subtitle: Text(widget.model.demo ? 'Demo data, nothing is read from GitHub' : 'GitHub: ${widget.model.login ?? '–'} · ${widget.model.login ?? ''}/$repoName')),
+      if (!widget.model.demo) ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.sync), title: const Text('Last read from GitHub'),
+          subtitle: Text(widget.model.fetchedAt == null ? 'Not yet' : '${agoLabel(widget.model.age!)} · summary made ${agoLabel(DateTime.now().difference(widget.summary.generatedAt))}')),
+      if (!widget.model.demo && Reminders.supported) ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.notifications_active_outlined), title: const Text('Reminders on this phone'),
+          subtitle: Text('${widget.model.scheduled} scheduled'), trailing: TextButton(onPressed: () async { await Reminders.allowed(); await widget.model.replan(); setState(() {}); }, child: const Text('Allow'))),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(Icons.lock_outline), title: Text('No portal password on this phone'), subtitle: Text('Only a GitHub sign-in for your own repository, kept in the phone\'s keystore')),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(onPressed: () async { Navigator.of(context).popUntil((r) => r.isFirst); await widget.model.signOut(); }, icon: const Icon(Icons.logout), label: Text(widget.model.demo ? 'Leave the demo' : 'Sign out and forget this phone')),
     ]);
   }
 }

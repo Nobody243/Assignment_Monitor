@@ -63,7 +63,23 @@ def main(argv) -> int:
     if mode == "verify":
         return verify()
     from jobs import run_check
-    return run_check(headless=True)
+    code = run_check(headless=True)
+    write_summary()
+    return code
+
+
+def write_summary() -> None:
+    """state/summary.json for the phone app. Never lets a failure here turn a good check red."""
+    try:
+        import json
+        from config import BASE_DIR
+        import engine
+        import summary
+        (BASE_DIR / "summary.json").write_text(json.dumps(summary.build(engine.build_state()), ensure_ascii=False, indent=1),
+                                               encoding="utf-8")
+        log.info("Wrote summary.json for the phone app.")
+    except Exception as e:
+        log.warning("Could not write summary.json: %s", str(e)[:200])
 
 
 if __name__ == "__main__":

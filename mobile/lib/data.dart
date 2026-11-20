@@ -30,9 +30,10 @@ class Summary {
 /// from there, so countdowns look right whenever the prototype is opened.
 class Clock {
   Clock(DateTime base) : _base = base, _start = DateTime.now();
-  final DateTime _base;
+  Clock.real() : _base = null, _start = DateTime.now();
+  final DateTime? _base;
   final DateTime _start;
-  DateTime now() => _base.add(DateTime.now().difference(_start));
+  DateTime now() => _base == null ? DateTime.now() : _base.add(DateTime.now().difference(_start));
 }
 
 class Work {

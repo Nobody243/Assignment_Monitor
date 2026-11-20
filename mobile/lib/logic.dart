@@ -56,3 +56,11 @@ Allowance? semesterAllowance(double credit, int minimum, double absent, List<dou
 }
 
 String hoursText(double h) => '${h == h.roundToDouble() ? h.round() : h.toStringAsFixed(1)} h';
+
+/// "just now", "12 min ago", "5 h ago", "3 days ago".
+String agoLabel(Duration d) {
+  if (d.inMinutes < 1) return 'just now';
+  if (d.inMinutes < 60) return '${d.inMinutes} min ago';
+  if (d.inHours < 48) return '${d.inHours} h ago';
+  return '${d.inDays} days ago';
+}

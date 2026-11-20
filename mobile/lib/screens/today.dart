@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data.dart';
-import '../main.dart' show Prefs;
+import '../model.dart';
 import '../theme.dart';
 import 'widgets.dart';
 
