@@ -9,7 +9,9 @@ plugins {
 
 android {
     namespace = "com.nobody243.assignment_monitor_mobile"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_local_notifications needs to be compiled against Android SDK 37 (newer than Flutter's default); the plugins are
+    // backward compatible, so this does not change which Android versions the app runs on
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
