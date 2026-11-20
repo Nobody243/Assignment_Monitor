@@ -36,9 +36,13 @@ jobs:
           pip install bandit
           bandit -q -r . -x ./tests,./website,./build,./dist -ll
       - name: Unit tests
+        shell: bash
         env:
           AM_GUI_TESTS: "1"
-        run: pytest
+        run: |
+          # a red run explains itself: the failing tests become annotations on the run summary
+          pytest -ra --tb=short > pytest.log 2>&1 || { python .github/scripts/annotate_failures.py pytest.log; tail -n 80 pytest.log; exit 1; }
+          tail -n 5 pytest.log
       - name: Dependency audit (advisory)
         continue-on-error: true
         run: |
