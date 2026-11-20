@@ -22,6 +22,7 @@ from typing import Callable
 import automation
 import channels
 import cloud
+import phone_share
 import config
 import tracker
 import updater
@@ -212,6 +213,7 @@ def view() -> dict:
             "repo": env["CLOUD_REPO"],
             "login": env["CLOUD_LOGIN"],
         },
+        "phone_share": phone_share.status(env),
     }
 
 
@@ -476,6 +478,80 @@ def cloud_disable(qs, body):
     return job
 
 
+# -- share with my phone (a PC without cloud checks writes the phone's summary file to the student's private repository)
+_pflow: dict | None = None
+_ptoken: str | None = None
+
+
+def phone_start(qs, body):
+    global _pflow, _ptoken
+    try:
+        _pflow, _ptoken = phone_share.device_start(), None
+    except cloud.CloudError as e:
+        return 400, {"error": str(e)}
+    return 200, {
+        "user_code": _pflow["user_code"],
+        "verification_uri": _pflow["verification_uri"],
+        "interval": int(_pflow.get("interval", 5)),
+        "expires_in": int(_pflow.get("expires_in", 900)),
+    }
+
+
+def phone_poll(qs, body):
+    global _ptoken
+    if not _pflow:
+        return 409, {"error": "Start the sign-in first."}
+    try:
+        token = cloud.device_poll(_pflow)
+    except cloud.CloudError as e:
+        return 400, {"error": str(e)}
+    if token:
+        _ptoken = token
+        return 200, {"status": "ready"}
+    return 200, {"status": "pending", "interval": int(_pflow.get("interval", 5))}
+
+
+def phone_enable(qs, body):
+    token = _ptoken
+    if not token:
+        return 409, {"error": "Sign in to GitHub first."}
+
+    def job(progress):
+        global _ptoken, _pflow
+        try:
+            info = phone_share.enable(token, progress)
+        except cloud.CloudError as e:
+            return {"ok": False, "message": str(e)}
+        _ptoken = _pflow = None
+        if info["covered_by_cloud"]:
+            return {"ok": True, "message": f"Already shared through Cloud checks, as {info['login']}.", "repo": info["repo"]}
+        return {"ok": True, "message": f"Sharing with your phone is on, as {info['login']}.", "repo": info["repo"]}
+
+    return job
+
+
+def phone_disable(qs, body):
+    phone_share.disable()
+    return 200, {"ok": True, "status": phone_share.status()}
+
+
+def phone_push(qs, body):
+    """Share now: sends the summary at once, even if it looks unchanged."""
+    env = load_env()
+    if not phone_share.is_on(env):
+        return 409, {"error": "Sharing with the phone is off."}
+    if phone_share.covered_by_cloud(env):
+        return 200, {"ok": True, "pushed": False, "message": "Cloud checks already shares it.", "status": phone_share.status()}
+    out = phone_share.push(force=True)
+    if out.get("pushed"):
+        return 200, {"ok": True, "pushed": True, "message": "Sent.", "status": phone_share.status()}
+    return 502, {"error": out.get("error") or "The summary could not be sent.", "status": phone_share.status()}
+
+
+def phone_status(qs=None, body=None):
+    return 200, phone_share.status()
+
+
 def cloud_run(qs, body):
     try:
         cloud.run_now(load_env())
@@ -556,6 +632,7 @@ GET: dict[str, Route] = {
     "/api/settings": lambda qs, body: (200, view()),
     "/api/voices": voices,
     "/api/cloud/status": cloud_status,
+    "/api/phone/status": phone_status,
     "/api/update": update_check,
 }
 POST: dict[str, tuple[str, Route]] = {
@@ -577,6 +654,11 @@ POST: dict[str, tuple[str, Route]] = {
     "/api/cloud/setup": ("cloud", cloud_setup),
     "/api/cloud/disable": ("cloud", cloud_disable),
     "/api/cloud/run": ("cloud", cloud_run),
+    "/api/phone/start": ("phone", phone_start),
+    "/api/phone/poll": ("phone", phone_poll),
+    "/api/phone/enable": ("phone", phone_enable),
+    "/api/phone/disable": ("phone", phone_disable),
+    "/api/phone/push": ("phone", phone_push),
     "/api/data/clear": ("data", clear_data),
 }
 

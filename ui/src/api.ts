@@ -118,7 +118,9 @@ export type SettingsView = {
     push_enabled: boolean; push_paired: boolean; push_device: string; calendar_enabled: boolean; calendar_invites: boolean
   }
   cloud: { available: boolean; enabled: boolean; repo: string; login: string }
+  phone_share: PhoneShareStatus
 }
+export type PhoneShareStatus = { available: boolean; enabled: boolean; covered_by_cloud: boolean; login: string; repo: string; last: string | null; error: string | null }
 export type CloudStatus = { enabled: boolean; login?: string; repo?: string; last?: { when: string; status: string; conclusion: string | null; url: string }; error?: string }
 
 const post = <T,>(path: string, body?: unknown) =>
@@ -145,6 +147,12 @@ export const cloudSetup = () => post<{ job: string }>('/api/cloud/setup')
 export const cloudDisable = () => post<{ job: string }>('/api/cloud/disable')
 export const cloudRun = () => post<{ ok: boolean }>('/api/cloud/run')
 export const getCloudStatus = () => call<CloudStatus>('/api/cloud/status')
+export const phoneStart = () => post<{ user_code: string; verification_uri: string; interval: number; expires_in: number }>('/api/phone/start')
+export const phonePoll = () => post<{ status: 'pending' | 'ready'; interval?: number }>('/api/phone/poll')
+export const phoneEnable = () => post<{ job: string }>('/api/phone/enable')
+export const phoneDisable = () => post<{ ok: boolean; status: PhoneShareStatus }>('/api/phone/disable')
+export const phonePush = () => post<{ ok: boolean; pushed: boolean; message: string; status: PhoneShareStatus }>('/api/phone/push')
+export const getPhoneStatus = () => call<PhoneShareStatus>('/api/phone/status')
 export const clearData = () => post<{ ok: boolean }>('/api/data/clear')
 
 export type LogEntry = { time: string; level: string; text: string }
