@@ -1,0 +1,8 @@
+# Use gitleaks' built-in rules, but ignore the tests: they contain made-up passwords, tokens and secret-looking
+# strings on purpose, to prove the app hides them. Nothing real lives there.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "made-up values in the tests"
+paths = ['''^tests/''']
