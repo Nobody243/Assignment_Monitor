@@ -222,7 +222,7 @@ class AboutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('What the phone holds'),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('No portal password'), subtitle: Text('The phone never sees it and never contacts the portal.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Portal password'), subtitle: Text('Never kept on the phone, which never contacts the portal. With the desktop app it never reaches the phone; in the phone-only setup it is typed once, encrypted and sent to your own GitHub.')),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
       const Divider(height: 32),

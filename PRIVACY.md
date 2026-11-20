@@ -62,8 +62,20 @@ has no server and no account of ours:
   storage), so it opens offline. Cloud and device-to-device backups are switched off for the app. An optional lock asks for
   your fingerprint, face or PIN, using Android's own lock; the app never sees them. Signing out deletes everything it
   kept, including the scheduled reminders.
-- **Where it connects.** Only `github.com` (to sign in) and `api.github.com` (to read that one file), over HTTPS. It never
-  contacts the portal. No analytics, no crash reports, no advertising.
+- **Where it connects.** Only `github.com` (to sign in) and `api.github.com` (to read that one file and, if you use the
+  phone-only setup below, to set up your repository), over HTTPS. It never contacts the portal. No analytics, no crash
+  reports, no advertising.
+- **Phone-only setup (optional).** If you have no desktop app, "I only use the phone" sets up Cloud checks from the phone,
+  the same way the desktop does. You sign in to GitHub with a code (the app asks for the `repo` and `workflow`
+  permissions), then type your portal enrollment number and password **once**. The phone encrypts them with your
+  repository's public key and sends them over HTTPS to GitHub, where they are stored as Actions secrets of your own private
+  repository `assignment-monitor-cloud`; GitHub's machines use them to sign in to the portal twice a day. They go to GitHub
+  and nowhere else, never to us. The phone does **not** keep the password (not on disk, not in secure storage, not in a
+  log) and clears the field when the setup is done. You can replace it (Settings, Cloud checks, Change portal login) or
+  turn Cloud checks off, which deletes the secrets and the workflow from your repository; the repository itself stays until
+  you delete it on GitHub. The statement above that the summary never contains your portal password still holds; what
+  changes is that, in this setup, the password is typed on the phone once and then lives encrypted at GitHub, as described
+  under Cloud checks.
 - **Sign-in choice.** GitHub's normal sign-in lets the app act on all your repositories; the app only reads one file. You can
   instead give it a fine-grained token limited to that one repository, read-only.
 - **Files it makes.** A calendar file and a timetable picture or PDF, made on the phone and handed to Android's share

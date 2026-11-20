@@ -2,7 +2,9 @@
 
 A Flutter app (Android first) that shows a student's deadlines, attendance, exams, timetable, results and announcements,
 and reminds them. It reads one small file, `state/summary.json`, from the student's **own private GitHub repository**
-(the one Cloud checks creates), so there is no server of ours and the portal password never reaches the phone.
+(the one Cloud checks creates), so there is no server of ours. With the desktop app the portal password never reaches the
+phone; with the phone-only setup it is typed once, sealed and sent to the student's own GitHub secrets, and not kept
+(see [SECURITY.md](SECURITY.md)).
 Read [DESIGN.md](DESIGN.md) for the idea and the data contract, and [SECURITY.md](SECURITY.md) for what the phone holds,
 what is checked, and what is still open.
 
@@ -18,6 +20,9 @@ what is checked, and what is still open.
 - **Results and GPA**: the transcript (CGPA, trend, every semester) and a calculator.
 - **Reminders**: before each deadline (24 h, 3 h and 1 h by default), with Snooze and Done on the notification, quiet hours,
   a Sunday summary, a morning digest, and alerts for news while the app is closed. Calendar file of deadlines and exams.
+- **Phone-only setup**: "I only use the phone" on the first screen sets up Cloud checks from the phone (private repository,
+  schedule, encrypted portal login, first check), no desktop app needed. Settings, Cloud checks shows the last run and can
+  run a check now, change the portal login or turn it off.
 - Sign-in with GitHub's device flow, or with a fine-grained read-only token for one repository; offline cache, a stale-data
   banner, four palettes, light and dark, an optional app lock (fingerprint, face or PIN), a home-screen widget with the
   next deadline, a themed icon, and layouts for tablets and a phone on its side.
@@ -38,7 +43,7 @@ analyses, tests and builds a debug-signed APK on every change.
 
 ```bash
 flutter analyze
-flutter test --coverage                       # about 100 tests
+flutter test --coverage                       # about 170 tests
 python ../tools/dart_coverage.py --min 70     # coverage floor
 python ../tools/dart_osv_check.py             # known vulnerabilities in the locked packages
 python ../tools/make_mobile_icon.py           # redraws the icon and launch mark

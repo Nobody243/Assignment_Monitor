@@ -41,7 +41,7 @@ class SignInScreen extends StatelessWidget {
               for (final (icon, text) in const [
                 (LucideIcons.timer, 'Live countdowns and reminders that work offline'),
                 (LucideIcons.calendarCheck, 'Attendance: exactly how many hours you can still miss'),
-                (LucideIcons.lock, 'Reads from your own private GitHub repository. Your portal password never touches the phone.'),
+                (LucideIcons.lock, 'Reads from your own private GitHub repository. Your portal password is never stored here.'),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
