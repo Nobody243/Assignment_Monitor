@@ -18,7 +18,7 @@ import { ago, dueParts, sizeLabel } from '@/format'
 import { useActivity } from '@/lib/activity'
 import { courseColors } from '@/lib/courses'
 import { toast } from '@/lib/notify'
-import { PAGE_TITLES, SETTINGS_TABS, usePage, type Page } from '@/lib/router'
+import { PAGES, PAGE_TITLES, SETTINGS_TABS, usePage, type Page } from '@/lib/router'
 import { AnnouncementsPage } from '@/pages/announcements-page'
 import { AssignmentsPage, type Filter } from '@/pages/assignments-page'
 import { AttendancePage } from '@/pages/attendance-page'
@@ -161,6 +161,14 @@ export default function App() {
       const t = e.target as HTMLElement
       const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t.isContentEditable
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCmdOpen(o => !o); return }
+      if (cmdOpen) return
+      if (e.key === 'F5') { e.preventDefault(); void doSync(); return }                                       // check now, as in the old app
+      if ((e.ctrlKey || e.metaKey) && /^[1-9]$/.test(e.key) && PAGES[Number(e.key) - 1]) { e.preventDefault(); navigate(PAGES[Number(e.key) - 1]); return }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {                                          // jump to the page's own filter box
+        const box = document.querySelector<HTMLInputElement>('input[aria-label^="Filter"], input[aria-label^="Search"]')
+        if (box) { e.preventDefault(); box.focus(); box.select() }
+        return
+      }
       if (typing || cmdOpen || e.ctrlKey || e.metaKey || e.altKey) return
       if (e.key === '/') { e.preventDefault(); setCmdOpen(true) }
       else if (e.key === '?') { e.preventDefault(); setHelpOpen(true) }
@@ -168,7 +176,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [cmdOpen, selId])
+  }, [cmdOpen, selId, doSync, navigate])
 
   const meta = state?.meta
   const render = () => {

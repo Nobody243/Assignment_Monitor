@@ -177,6 +177,7 @@ function createTray() {
   tray.setToolTip('Assignment Monitor')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Assignment Monitor', click: showWindow },
+    { label: 'Check now', click: () => { if (engine) void fetch(`http://127.0.0.1:${engine.port}/api/sync`, { method: 'POST', headers: { Authorization: `Bearer ${engine.token}` } }).catch(() => {}) } },
     { type: 'separator' },
     { label: 'Quit', click: () => { quitting = true; app.quit() } },
   ]))

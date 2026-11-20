@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { byDue, dueParts } from '@/format'
 import { cn } from '@/lib/utils'
 
-export type Filter = 'todo' | 'overdue' | 'submitted' | 'all'
+export type Filter = 'todo' | 'extended' | 'overdue' | 'submitted' | 'all'
 export const isTodo = (a: Assignment) => !a.is_submitted && a.urgency !== 'missed'
 export const isOverdue = (a: Assignment) => !a.is_submitted && a.urgency === 'missed'
 
@@ -31,11 +31,11 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<'due' | 'due-desc' | 'course'>('due')
   const courses = useMemo(() => [...new Set(all.map(a => a.course))].sort(), [all])
-  const counts = { todo: all.filter(isTodo).length, overdue: all.filter(isOverdue).length, submitted: all.filter(a => a.is_submitted).length, all: all.length }
+  const counts = { todo: all.filter(isTodo).length, extended: all.filter(a => a.is_extended && !a.is_submitted && a.open).length, overdue: all.filter(isOverdue).length, submitted: all.filter(a => a.is_submitted).length, all: all.length }
   const week = all.filter(a => a.open && !a.is_submitted && a.due_at && new Date(a.due_at).getTime() - now < 7 * 864e5).length
 
   const rows = useMemo(() => {
-    const pick = ({ todo: isTodo, overdue: isOverdue, submitted: (a: Assignment) => a.is_submitted, all: () => true })[tab]
+    const pick = ({ todo: isTodo, extended: (a: Assignment) => a.is_extended && !a.is_submitted && a.open, overdue: isOverdue, submitted: (a: Assignment) => a.is_submitted, all: () => true })[tab]
     const q = query.trim().toLowerCase()
     const list = all.filter(a => pick(a) && (course === 'all' || a.course === course) && (!q || `${a.title} ${a.course}`.toLowerCase().includes(q)))
     if (sort === 'course') return list.sort((a, b) => a.course.localeCompare(b.course) || byDue(a, b))
@@ -73,7 +73,7 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={tab} onValueChange={v => setTab(v as Filter)}>
           <TabsList>
-            {([['todo', 'To do'], ['overdue', 'Overdue'], ['submitted', 'Submitted'], ['all', 'All']] as const).map(([k, l]) => (
+            {([['todo', 'To do'], ['extended', 'Extended'], ['overdue', 'Overdue'], ['submitted', 'Submitted'], ['all', 'All']] as const).map(([k, l]) => (
               <TabsTrigger key={k} value={k}>{l}<span className="num text-muted-foreground ml-1.5 text-xs">{counts[k]}</span></TabsTrigger>
             ))}
           </TabsList>

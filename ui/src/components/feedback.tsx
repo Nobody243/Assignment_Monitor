@@ -132,6 +132,9 @@ export function PageSkeleton({ kind = 'list' }: { kind?: 'list' | 'home' | 'card
 // ------------------------------------------------------------------------------------------------ help: what every action does
 const SHORTCUTS: [string, string][] = [
   ['Ctrl K  or  /', 'Search assignments, go to any page, run a command'],
+  ['F5', 'Check the portal now'],
+  ['Ctrl 1 … 9', 'Go to Home, Assignments, Attendance, Exams, Timetable, Lectures, Announcements, Results, Settings'],
+  ['Ctrl F', 'Jump to the filter box of the page you are on'],
   ['U', 'Choose a file to upload for the assignment that is open'],
   ['?', 'Show this help'],
   ['Esc', 'Close the open panel or dialog'],

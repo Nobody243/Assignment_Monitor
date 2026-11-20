@@ -368,7 +368,7 @@ function FirstRun({ onGo }: { onGo: Go }) {
           </li>
         ))}
       </ol>
-      <div><Button onClick={() => onGo('settings')}>Set up your account</Button></div>
+      <div className="flex flex-wrap gap-2"><Button onClick={() => onGo('settings')}>Set up your account</Button></div>
     </section>
   )
 }

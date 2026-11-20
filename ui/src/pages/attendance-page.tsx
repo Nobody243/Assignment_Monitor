@@ -4,6 +4,7 @@ import type { AttendanceCourse, State } from '@/api'
 import { PageHeader, Stat } from '@/components/page-header'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 type Level = 'bad' | 'risk' | 'ok' | 'none'
@@ -86,9 +87,10 @@ function CourseCard({ c, minimum }: { c: AttendanceCourse; minimum: number }) {
 }
 
 export function AttendancePage({ state }: { state: State }) {
+  const [filter, setFilter] = useState<'all' | Level>('all')
   const att = state.attendance
   const order: Level[] = ['bad', 'risk', 'ok', 'none']
-  const list = [...att.courses].sort((a, b) => order.indexOf(level(a)) - order.indexOf(level(b)) || a.percent - b.percent)
+  const list = [...att.courses].filter(c => filter === 'all' || level(c) === filter).sort((a, b) => order.indexOf(level(a)) - order.indexOf(level(b)) || a.percent - b.percent)
   const bad = att.courses.filter(c => level(c) === 'bad').length
   const risk = att.courses.filter(c => level(c) === 'risk').length
   const classes = att.courses.reduce((n, c) => n + (c.sessions?.length ?? 0), 0)
@@ -101,6 +103,13 @@ export function AttendancePage({ state }: { state: State }) {
         <Stat label="Close to the limit" value={risk} sub="can miss under 2 hours" tone={risk ? 'warning' : undefined} />
         <Stat label="Classes recorded" value={classes} sub={`across ${att.courses.filter(c => c.recorded).length} courses`} />
       </div>
+      <Tabs value={filter} onValueChange={v => setFilter(v as typeof filter)}>
+        <TabsList>
+          {([['all', 'All courses'], ['bad', 'Below the minimum'], ['risk', 'Close to the limit'], ['ok', 'On track']] as const).map(([k, l]) => (
+            <TabsTrigger key={k} value={k}>{l}</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       {list.length === 0 ? (
         <Empty className="border border-dashed"><EmptyHeader><EmptyTitle>No attendance yet</EmptyTitle><EmptyDescription>Run a check to read it from the portal.</EmptyDescription></EmptyHeader></Empty>
       ) : (
