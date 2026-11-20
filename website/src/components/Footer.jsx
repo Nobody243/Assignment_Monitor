@@ -41,6 +41,8 @@ export default function Footer() {
               <li><Link to="/faq">FAQ</Link></li>
               <li><Link to="/guide/bahria-attendance">The 75% attendance rule</Link></li>
               <li><Link to="/guide/bahria-lms-deadlines">LMS deadlines and extensions</Link></li>
+              <li><Link to="/guide/bahria-cgpa-calculator">GPA and CGPA calculator</Link></li>
+              <li><Link to="/guide/bahria-exam-seating-plan">Exam seating plan</Link></li>
               <li><Ext href={LINKS.releases}>Release notes</Ext></li>
             </ul></div>
             <div><h3>Project</h3><ul>

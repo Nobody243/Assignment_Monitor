@@ -112,6 +112,104 @@ export const GUIDES = {
     ],
     related: [["/guide/bahria-attendance", "The 75% attendance rule, in hours"], ["/download", "Download the app"], ["/cloud", "Cloud checks"]],
   },
+
+  "bahria-cgpa-calculator": {
+    title: "Bahria University GPA and CGPA: how they are worked out, and what grade you need",
+    short: "GPA and CGPA calculator",
+    kicker: "Guide · Results",
+    description: "How Bahria University GPA and CGPA are calculated from credit hours and grade points, worked examples, how to see what grade you need for a target CGPA, and where the CMS shows your results.",
+    lede: "A semester's GPA and your CGPA are the same sum with a different range: grade points times credit hours, divided by credit hours. Once you see that, \"what grade do I need?\" becomes a short calculation.",
+    updated: "2026-11-20",
+    sections: [
+      {
+        h: "The arithmetic",
+        p: [
+          "Each course has credit hours and a letter grade, and each letter grade carries grade points. Multiply the two for each course, add the results, and divide by the total credit hours. That is the GPA for the semester.",
+          "The CGPA is the same calculation carried across every graded semester so far. A course with zero credit hours (some Islamic studies courses, for example) carries a grade but weighs nothing in either figure.",
+        ],
+      },
+      {
+        h: "The grade scale",
+        p: ["As the CMS result page prints it, the letter grades and their points are:"],
+        list: [
+          ["A", "4.00 · A-: 3.67"],
+          ["B+", "3.33 · B: 3.00 · B-: 2.67"],
+          ["C+", "2.33 · C: 2.00 · C-: 1.67"],
+          ["D+", "1.33 · D: 1.00 · F: 0.00"],
+        ],
+        after: "Confirm the scale and the pass marks with your department; the app reads the points from the result page when they are printed there.",
+      },
+      {
+        h: "A worked example",
+        p: ["Four courses in a semester: a 3-credit-hour course with an A, a 3-credit-hour course with a B+, a 2-credit-hour course with a B and a 1-credit-hour lab with an A-."],
+        list: [
+          ["Points", "3 × 4.00 + 3 × 3.33 + 2 × 3.00 + 1 × 3.67 = 12.00 + 9.99 + 6.00 + 3.67 = 31.66"],
+          ["Credit hours", "3 + 3 + 2 + 1 = 9"],
+          ["GPA", "31.66 ÷ 9 = 3.52"],
+        ],
+        after: "If your earlier semesters came to 60 credit hours and 210 points, the new CGPA is (210 + 31.66) ÷ (60 + 9) = 3.50.",
+      },
+      {
+        h: "What grade do I need?",
+        p: [
+          "Work backwards from the CGPA you want. Say you have 69 credit hours graded, 241.66 points, and 15 credit hours this semester. To end on a 3.60 CGPA you need 3.60 × 84 = 302.4 points in total, so 302.4 − 241.66 = 60.74 points from 15 credit hours, which is a semester GPA of 4.05. That is more than an A can give, so 3.60 is not reachable this semester; a lower target is.",
+          "The useful habit is to ask the question before the exams, while there is still a grade to work for, not after the result is posted.",
+        ],
+      },
+      {
+        h: "Where the CMS shows it",
+        p: [
+          "Sign in to cms.bahria.edu.pk and open the provisional result page. Every semester is listed with its courses, credit hours, grades, points and the GPA and CGPA at that time. Courses of the semester still running show N/A until the result is posted.",
+        ],
+      },
+      {
+        h: "How Assignment Monitor helps",
+        p: [
+          "The Results page keeps your whole transcript one semester at a time with the GPA and CGPA worked out the way the portal does. For the running semester you can pick the grade you expect in each course and see the projected GPA and CGPA, try every course at A or A-, or set a target CGPA and see the semester GPA it needs and the lowest grade that gets there. Nothing is saved or sent; Reset puts the real transcript back.",
+          "The moment a result is posted, whole or course by course, you get a notification, and on your phone or by email if you have linked them.",
+        ],
+      },
+    ],
+    related: [["/guide/bahria-attendance", "The 75% attendance rule, in hours"], ["/download", "Download the app"], ["/faq", "FAQ"]],
+  },
+
+  "bahria-exam-seating-plan": {
+    title: "Bahria University exam seating plan: where to find your room and seat",
+    short: "Exam seating plan",
+    kicker: "Guide · Exams",
+    description: "Where the Bahria University CMS shows your exam date, time, room, row and seat, why the seat can appear late, what a fee or survey hold means, and how to get a reminder the day before.",
+    lede: "The seating plan appears on the CMS shortly before the papers, and it can change. Students who check once, early, often walk into the wrong room; the number that matters is the one posted the day before.",
+    updated: "2026-11-20",
+    sections: [
+      {
+        h: "What the plan shows",
+        p: [
+          "For each paper: the date, the session and start time, the room, and your row and seat. Papers that are not scheduled yet are listed without a date, so you know they are coming.",
+          "A paper can show a note instead of a seat: for example a pending course survey or a fee issue. The portal decides that, not the app; settle it with the department or the portal before exam day.",
+        ],
+      },
+      {
+        h: "Where to find it",
+        p: ["Sign in to cms.bahria.edu.pk and open the exam seating plan page for the semester. Choose the exam type (for example mid-term or final) if the page offers more than one."],
+      },
+      {
+        h: "A routine that avoids the wrong room",
+        list: [
+          ["When the plan is posted", "Note the room and seat for every paper and put them in your calendar with the time."],
+          ["The day before", "Open the plan again. Rooms are sometimes changed late; trust the newest one."],
+          ["The morning of the paper", "Check the room and seat once more before you leave, and the start time, since sessions differ between papers."],
+        ],
+      },
+      {
+        h: "How Assignment Monitor helps",
+        p: [
+          "After every check the app reads the seating plan and shows each paper with a countdown, the room, the row and the seat. You get a notification the day the plan appears or changes, one the day before, and one on the morning of each paper (the lead time can be changed in Settings), on your phone or by email as well if you have linked them.",
+          "Deadlines for your assignments are watched the same way, so exam week does not hide a due date.",
+        ],
+      },
+    ],
+    related: [["/guide/bahria-lms-deadlines", "LMS deadlines, and how extensions show up"], ["/download", "Download the app"], ["/faq", "FAQ"]],
+  },
 };
 
 export const GUIDE_SLUGS = Object.keys(GUIDES);

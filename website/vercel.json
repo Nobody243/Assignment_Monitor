@@ -9,7 +9,7 @@
   ],
   "rewrites": [
     { "source": "/:page(download|privacy|faq|phone|cloud)", "destination": "/:page.html" },
-    { "source": "/guide/:slug(bahria-attendance|bahria-lms-deadlines)", "destination": "/guide/:slug.html" }
+    { "source": "/guide/:slug(bahria-attendance|bahria-lms-deadlines|bahria-cgpa-calculator|bahria-exam-seating-plan)", "destination": "/guide/:slug.html" }
   ],
   "headers": [
     {
