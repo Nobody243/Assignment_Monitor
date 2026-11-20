@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import secrets
+import socket
 import sys
 import tempfile
 import threading
@@ -263,6 +264,14 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "AssignmentMonitorEngine"
     protocol_version = "HTTP/1.1"
     timeout = REQUEST_TIMEOUT
+    wbufsize = 64 * 1024            # headers and body leave in one write (small JSON answers; no Nagle / delayed-ACK stall)
+
+    def setup(self):
+        super().setup()
+        try:
+            self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError:
+            pass
 
     def log_message(self, fmt, *args):          # the app log is enough; no per-request noise on the console
         log.debug("%s " + fmt, self.address_string(), *args)

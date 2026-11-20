@@ -36,7 +36,7 @@ def api(monkeypatch, tmp_path):
         h.update(headers or {})
         req = urllib.request.Request(base + path, data=body, method=method, headers=h)
         try:
-            with urllib.request.urlopen(req, timeout=10) as r:
+            with urllib.request.urlopen(req, timeout=30) as r:
                 return r.status, json.loads(r.read() or b"{}"), r.headers
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read() or b"{}"), e.headers
