@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/prerender.mjs",
     "preview": "vite preview --port 4173 --strictPort",
-    "test": "node --test scripts/"
+    "test": "node --test scripts/gpa.test.mjs"
   },
   "dependencies": {
     "framer-motion": "11.15.0",
