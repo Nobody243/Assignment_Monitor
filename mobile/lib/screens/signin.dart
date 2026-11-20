@@ -65,7 +65,11 @@ class SignInScreen extends StatelessWidget {
         Text('Already use the desktop app? Sign in and your deadlines are here. It works on its own too: no PC is needed.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
-        FilledButton.icon(onPressed: model.phase == Phase.signingIn ? null : model.signIn, icon: const Icon(LucideIcons.logIn), label: const Text('Sign in with GitHub')),
+        // the safest way in is the default: a token that can only read the one repository
+        FilledButton.icon(
+          onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
+          icon: const Icon(LucideIcons.shieldCheck), label: const Text('Sign in (read-only, recommended)'),
+        ),
         const SizedBox(height: 10),
         // new here, or no PC: the phone sets up the checks itself (lib/screens/cloud_setup_screens.dart)
         OutlinedButton.icon(
@@ -73,11 +77,8 @@ class SignInScreen extends StatelessWidget {
           icon: const Icon(LucideIcons.smartphone), label: const Text('Set up from this phone'),
         ),
         const SizedBox(height: 4),
+        TextButton(onPressed: model.phase == Phase.signingIn ? null : model.signIn, child: const Text('Sign in with a GitHub code instead')),
         TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
-        TextButton(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
-          child: const Text('Use a read-only token instead'),
-        ),
       ];
 
   List<Widget> _code(BuildContext context, DeviceCode c) {
