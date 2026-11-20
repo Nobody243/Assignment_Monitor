@@ -156,6 +156,50 @@ void main() {
     });
   });
 
+  group('sign in with a read-only token', () {
+    const good = 'github_pat_11ABCDEFG0abcdefghijkl_mnopqrstuvwxyz0123456789';
+    GithubAuth userAnswers(int code, [String body = '{"login":"alex"}']) => GithubAuth(MockClient((r) async {
+          expect(r.url.path, '/user');
+          expect(r.headers['Authorization'], 'Bearer $good');
+          return http.Response(body, code);
+        }), Duration.zero);
+
+    test('a valid token signs in, is saved, and loads the summary', () async {
+      final store = MemoryStore();
+      final m = _model(store, MockClient((_) async => http.Response(jsonEncode(_summary()), 200, headers: {'etag': 'e'})), auth: userAnswers(200));
+      await m.signInWithToken('  $good ');
+      expect(store.tokenV, good);
+      expect(m.login, 'alex');
+      expect(m.phase, Phase.ready);
+    });
+
+    test('something that is not a token is refused before it is sent anywhere', () async {
+      final m = _model(MemoryStore(), MockClient((_) async => http.Response('', 500)), auth: GithubAuth(MockClient((_) async => throw StateError('must not call')), Duration.zero));
+      for (final bad in ['', 'hello', 'github_pat_short', 'my password is hunter2', 'ghp_ has spaces in it xxxxxxxxxxxxxxxxxxxx']) {
+        await m.signInWithToken(bad);
+        expect(m.error, contains('does not look like a GitHub token'), reason: bad);
+        expect(m.phase, isNot(Phase.signingIn));
+      }
+    });
+
+    test('a token GitHub rejects says to check it, and nothing is saved', () async {
+      final store = MemoryStore();
+      final m = _model(store, MockClient((_) async => http.Response('', 500)), auth: userAnswers(401, '{}'));
+      await m.signInWithToken(good);
+      expect(m.phase, Phase.signedOut);
+      expect(m.error, isNotNull);
+      expect(store.tokenV, isNull);
+    });
+
+    test('a token that cannot see the repository waits for the file instead of failing', () async {
+      final store = MemoryStore();
+      final m = _model(store, MockClient((_) async => http.Response('{}', 404)), auth: userAnswers(200));
+      await m.signInWithToken(good);
+      expect(m.phase, Phase.waiting);
+      expect(store.tokenV, good);
+    });
+  });
+
   group('notification permission', () {
     test('is asked once, when there is something to remind about, and not again', () async {
       Reminders.forceSupported = true;

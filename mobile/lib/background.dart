@@ -6,6 +6,7 @@ import 'alerts.dart';
 import 'model.dart';
 import 'reminders.dart';
 import 'source.dart';
+import 'widget.dart';
 
 /// Checking for news while the app is closed. Android runs [backgroundDispatcher] about every two hours (its own minimum
 /// is 15 minutes, and it may delay the run to save battery); the check reads the same summary file with the same sign-in,
@@ -55,6 +56,7 @@ class BackgroundCheck {
       }
     }
     await st.saveSummary(fresh, fetched.etag);
+    await HomeScreenWidget.update(fresh, prefs.done);
     // the saved copy changed, so what is planned changes too (a new deadline needs its reminders)
     await Reminders.schedule(fresh, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest);
     return shown;
@@ -62,7 +64,7 @@ class BackgroundCheck {
 
   /// Starts or stops the periodic check to match the setting. Does nothing off Android.
   static Future<void> apply({required bool on}) async {
-    if (!Reminders.supported) return;
+    if (!Reminders.supported || !Reminders.isAndroid) return;   // the background check is Android only for now
     final wm = Workmanager();
     await wm.initialize(backgroundDispatcher);
     if (on) {

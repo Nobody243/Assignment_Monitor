@@ -5,6 +5,7 @@ import 'package:assignment_monitor_mobile/background.dart';
 import 'package:assignment_monitor_mobile/data.dart';
 import 'package:assignment_monitor_mobile/reminders.dart';
 import 'package:assignment_monitor_mobile/source.dart';
+import 'package:assignment_monitor_mobile/widget.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -205,5 +206,22 @@ void main() {
       await expectLater(BackgroundCheck.run(store: st, source: SummarySource(MockClient((_) async => throw http.ClientException('down')))), throwsA(isA<SourceError>()));
       expect((await st.cached()).summary!.announcements.length, 1);
     });
+  });
+
+  group('home-screen widget', () {
+    final now = DateTime(2026, 11, 20, 12);
+    test('shows the next open deadline, its course, the countdown and how many more', () {
+      final d = HomeScreenWidget.data(make(assignments: [work('late', '2026-11-25T10:00:00'), work('soon', '2026-11-20T23:59:00', course: 'OS'), work('gone', '2026-11-19T10:00:00')]), {}, now);
+      expect(d['headline'], 'Task soon');
+      expect(d['detail'], startsWith('OS · Fri 20 Nov'));
+      expect(d['left'], '11h 59m');
+      expect(d['count'], '1 more to do');
+    });
+    test('skips done work, and says so when nothing is waiting', () {
+      final s = make(assignments: [work('a', '2026-11-21T10:00:00')]);
+      expect(HomeScreenWidget.data(s, {'a'}, now)['headline'], 'All caught up');
+      expect(HomeScreenWidget.data(make(), {}, now)['left'], '');
+    });
+    test('a single deadline says so', () => expect(HomeScreenWidget.data(make(assignments: [work('a', '2026-11-21T10:00:00')]), {}, now)['count'], 'only one to do'));
   });
 }

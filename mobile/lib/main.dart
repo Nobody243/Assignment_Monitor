@@ -9,6 +9,7 @@ import 'model.dart';
 import 'screens/announcements.dart';
 import 'screens/attendance.dart';
 import 'screens/intro.dart';
+import 'screens/lock_screen.dart';
 import 'data.dart' show Summary;
 import 'screens/more.dart';
 import 'screens/results.dart';
@@ -54,6 +55,8 @@ class _AppState extends State<AssignmentMonitorApp> with WidgetsBindingObserver 
   /// Coming back to the app is the moment to look for a newer summary, and to pick up Snooze / Done tapped on a notification.
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.paused) model.noteLeft(DateTime.now());
+    if (s == AppLifecycleState.resumed) model.noteBack(DateTime.now());
     if (s == AppLifecycleState.resumed && model.phase == Phase.ready && !model.demo) {
       prefs.load().then((_) => model.refresh());
     }
@@ -70,7 +73,7 @@ class _AppState extends State<AssignmentMonitorApp> with WidgetsBindingObserver 
       home: AnimatedSwitcher(
         duration: const Duration(milliseconds: 420),
         switchInCurve: Curves.easeOut,
-        child: switch (model.phase) {
+        child: model.locked && model.phase != Phase.loading ? LockScreen(key: const ValueKey('lock'), model: model) : switch (model.phase) {
           Phase.loading => BrandSplash(key: const ValueKey('splash'), model: model),
           Phase.ready => Shell(key: const ValueKey('shell'), model: model, prefs: prefs),
           Phase.signedOut when !model.introSeen => IntroScreen(key: const ValueKey('intro'), model: model),
@@ -80,6 +83,13 @@ class _AppState extends State<AssignmentMonitorApp> with WidgetsBindingObserver 
     );
   }
 }
+
+/// How far the app slides aside to show the menu: most of the width on a phone, a fixed width on anything wider.
+double menuShift(double width) => (width * 0.72).clamp(0.0, 340.0);
+
+/// The widest the screens grow. Wider than this (a tablet, a phone on its side) the content stays a readable column in the
+/// middle instead of stretching edge to edge.
+const maxContentWidth = 680.0;
 
 class Shell extends StatefulWidget {
   const Shell({super.key, required this.model, required this.prefs});
@@ -150,7 +160,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
               final v = _menu.value;
               return Transform(
                 alignment: Alignment.centerLeft,
-                transform: Matrix4.identity()..translateByDouble(w * 0.72 * v, 0, 0, 1)..scaleByDouble(1 - 0.10 * v, 1 - 0.10 * v, 1, 1),
+                transform: Matrix4.identity()..translateByDouble(menuShift(w) * v, 0, 0, 1)..scaleByDouble(1 - 0.10 * v, 1 - 0.10 * v, 1, 1),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(32 * v),
                   child: Stack(children: [
@@ -159,15 +169,15 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
                     if (v > 0) Positioned.fill(child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () => _settle(false),
-                      onHorizontalDragUpdate: (d) => _dragUpdate(d, w * 0.72),
-                      onHorizontalDragEnd: (d) => _dragEnd(d, w * 0.72),
+                      onHorizontalDragUpdate: (d) => _dragUpdate(d, menuShift(w)),
+                      onHorizontalDragEnd: (d) => _dragEnd(d, menuShift(w)),
                       child: ColoredBox(color: Colors.black.withValues(alpha: 0.10 * v)),
                     ))
                     // closed: only a thin strip on the left edge pulls the menu out, so rows that swipe keep their gestures
                     else Positioned(left: 0, top: 0, bottom: 0, width: 22, child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
-                      onHorizontalDragUpdate: (d) => _dragUpdate(d, w * 0.72),
-                      onHorizontalDragEnd: (d) => _dragEnd(d, w * 0.72),
+                      onHorizontalDragUpdate: (d) => _dragUpdate(d, menuShift(w)),
+                      onHorizontalDragEnd: (d) => _dragEnd(d, menuShift(w)),
                     )),
                   ]),
                 ),
@@ -212,7 +222,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
         child: Column(children: [
           if (!m.demo && (m.error != null || stale)) _Banner(model: m),
           Expanded(
-            child: RefreshIndicator(
+            child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxContentWidth), child: RefreshIndicator(
               onRefresh: m.refresh,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 320),
@@ -226,13 +236,13 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
                 },
                 child: KeyedSubtree(key: ValueKey(tab), child: pages[tab]),
               ),
-            ),
+            ))),
           ),
         ]),
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: Container(
+        child: Center(heightFactor: 1, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 480), child: Container(
           height: 68,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -246,7 +256,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
             _NavItem(icon: LucideIcons.userCheck, label: 'Attendance', selected: tab == 2, onTap: () => goto(2)),
             _NavItem(icon: LucideIcons.graduationCap, label: 'Exams', selected: tab == 3, onTap: () => goto(3)),
           ]),
-        ),
+        ))),
       ),
     );
   }
@@ -288,7 +298,7 @@ class _SideMenu extends StatelessWidget {
         );
     return SafeArea(
       child: SizedBox(
-        width: w * 0.74,
+        width: menuShift(w) + 14,
         // scrollable, so a large text size or a short screen never pushes Sign out off the bottom
         child: LayoutBuilder(builder: (context, box) => SingleChildScrollView(child: ConstrainedBox(constraints: BoxConstraints(minHeight: box.maxHeight), child: IntrinsicHeight(child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 8, 16),

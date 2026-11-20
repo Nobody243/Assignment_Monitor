@@ -1,0 +1,96 @@
+name: Phone app release
+
+# A signed Android build of the phone app. Run from the Actions tab (Run workflow) or push a tag named phone-v1.0.0.
+# Needs four repository secrets (see mobile/RELEASE.md): ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD. Without them the run stops with a clear message instead of signing with a
+# debug key. Desktop releases use tags named v*, which this tag pattern does not match.
+on:
+  push:
+    tags: ["phone-v*"]
+  workflow_dispatch:
+    inputs:
+      minify:
+        description: "Shrink the code with R8 (try on a phone before publishing)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      MINIFY: ${{ github.event_name == 'workflow_dispatch' && inputs.minify || 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The signing secrets are there
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for v in KEYSTORE STORE_PASSWORD ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "::error::Missing the secret for $v. See mobile/RELEASE.md."; exit 1; fi
+          done
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Write the signing key (only in this job's temporary workspace)
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > android/app/upload.jks
+          {
+            echo "storeFile=app/upload.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+      - name: Build the signed APK and the Play bundle
+        run: |
+          flutter build apk --release --build-number=${{ github.run_number }} -Pminify=$MINIFY
+          flutter build appbundle --release --build-number=${{ github.run_number }} -Pminify=$MINIFY
+      - name: Remove the signing key
+        if: always()
+        run: rm -f android/key.properties android/app/upload.jks
+      - name: Checksums
+        run: |
+          cd build/app/outputs
+          cp flutter-apk/app-release.apk AssignmentMonitor-phone.apk
+          cp bundle/release/app-release.aab AssignmentMonitor-phone.aab
+          sha256sum AssignmentMonitor-phone.apk AssignmentMonitor-phone.aab > AssignmentMonitor-phone.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assignment-monitor-phone-release
+          path: |
+            mobile/build/app/outputs/AssignmentMonitor-phone.apk
+            mobile/build/app/outputs/AssignmentMonitor-phone.aab
+            mobile/build/app/outputs/AssignmentMonitor-phone.sha256
+          retention-days: 30
+      - name: Attach to a draft release (tags only)
+        if: startsWith(github.ref, 'refs/tags/phone-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          name: Phone app ${{ github.ref_name }}
+          files: |
+            mobile/build/app/outputs/AssignmentMonitor-phone.apk
+            mobile/build/app/outputs/AssignmentMonitor-phone.aab
+            mobile/build/app/outputs/AssignmentMonitor-phone.sha256

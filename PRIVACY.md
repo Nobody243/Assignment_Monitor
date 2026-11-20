@@ -45,3 +45,23 @@ Everything above happens on your PC, so a PC that is switched off checks nothing
 - Nothing passes through a server of ours: your PC talks to api.github.com, and GitHub's machines talk to the portal and to your channels. GitHub's own terms and privacy policy apply to what is stored there.
 
 Turning cloud checks off removes the secrets and the workflow from the repository and the token from your PC; the empty repository is yours to delete on GitHub (the app opens the page for you).
+
+## The phone app (optional, separate from the desktop app)
+
+The Android phone app shows your deadlines, attendance, exams, timetable, results and announcements and reminds you. It
+has no server and no account of ours:
+
+- **What it reads.** One small file, `state/summary.json`, from your own private GitHub repository (written by the desktop
+  app, by Cloud checks, or by Share with my phone). It contains your name, semester, deadlines, attendance, exam seats,
+  timetable, announcements and grades. It never contains your portal password or any token.
+- **What it keeps.** Your GitHub sign-in (in the Android Keystore) and the last summary it read (in the app's private
+  storage), so it opens offline. Cloud and device-to-device backups are switched off for the app. An optional lock asks for
+  your fingerprint, face or PIN, using Android's own lock; the app never sees them. Signing out deletes everything it
+  kept, including the scheduled reminders.
+- **Where it connects.** Only `github.com` (to sign in) and `api.github.com` (to read that one file), over HTTPS. It never
+  contacts the portal. No analytics, no crash reports, no advertising.
+- **Sign-in choice.** GitHub's normal sign-in lets the app act on all your repositories; the app only reads one file. You can
+  instead give it a fine-grained token limited to that one repository, read-only.
+- **Files it makes.** A calendar file and a timetable picture or PDF, made on the phone and handed to Android's share
+  sheet. The app does not send them anywhere itself.
+

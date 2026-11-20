@@ -18,7 +18,9 @@ what is checked, and what is still open.
 - **Results and GPA**: the transcript (CGPA, trend, every semester) and a calculator.
 - **Reminders**: before each deadline (24 h, 3 h and 1 h by default), with Snooze and Done on the notification, quiet hours,
   a Sunday summary, a morning digest, and alerts for news while the app is closed. Calendar file of deadlines and exams.
-- Sign-in with GitHub's device flow, offline cache, a stale-data banner, four palettes, light and dark.
+- Sign-in with GitHub's device flow, or with a fine-grained read-only token for one repository; offline cache, a stale-data
+  banner, four palettes, light and dark, an optional app lock (fingerprint, face or PIN), a home-screen widget with the
+  next deadline, a themed icon, and layouts for tablets and a phone on its side.
 
 ## Run it
 
@@ -45,6 +47,6 @@ python ../tools/make_mobile_fixtures.py       # rebuilds the awkward summary fil
 
 ## Not done yet
 
-Feeding the phone from a PC that does not use Cloud checks ("Share with my phone" on the desktop), a home-screen widget,
-an app lock, iOS, and a store release (signing key). Notifications, the background check and the share sheet have not been
-run on a real phone yet.
+A run on real phones (notifications, the background check, the widget, the lock prompt and the share sheet have only been
+tested in code), a store release (see [RELEASE.md](RELEASE.md) and [STORE.md](STORE.md)), and an iOS release (it compiles in
+CI; Snooze, Done and the background check are Android only).

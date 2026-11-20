@@ -18,7 +18,12 @@ class Reminders {
   /// Tests set this to false so scheduling never reaches the notification plugin.
   @visibleForTesting
   static bool? forceSupported;
-  static bool get supported => forceSupported ?? (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+  static bool get isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  static bool get isIOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// Reminders work on Android and on iOS. (The Snooze and Done buttons on a notification, and the background check for
+  /// news, are Android only for now.)
+  static bool get supported => forceSupported ?? (isAndroid || isIOS);
 
   static const _loud = AndroidNotificationDetails('deadlines', 'Deadlines',
       channelDescription: 'Reminders before an assignment is due', importance: Importance.high, priority: Priority.high,
@@ -33,6 +38,8 @@ class Reminders {
   static const _digest = AndroidNotificationDetails('digest', 'Summaries',
       channelDescription: 'Your morning digest and the Sunday summary', importance: Importance.defaultImportance, priority: Priority.defaultPriority);
 
+  static DarwinNotificationDetails _ios(bool quiet) => DarwinNotificationDetails(presentSound: !quiet);
+
   static Future<void> init() async {
     if (!supported || _ready) return;
     tzdata.initializeTimeZones();
@@ -42,7 +49,11 @@ class Reminders {
       debugPrint('timezone: $e');
     }
     await _plugin.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/launcher_icon')),
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/launcher_icon'),
+        // the permission is asked for by allowed(), once there is something to remind about, not at start-up
+        iOS: DarwinInitializationSettings(requestAlertPermission: false, requestBadgePermission: false, requestSoundPermission: false),
+      ),
       onDidReceiveNotificationResponse: _answer,
       onDidReceiveBackgroundNotificationResponse: answerInBackground,
     );
@@ -53,6 +64,10 @@ class Reminders {
   static Future<bool> allowed() async {
     if (!supported) return false;
     await init();
+    if (isIOS) {
+      final i = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      return await i?.requestPermissions(alert: true, badge: false, sound: true) ?? false;
+    }
     final a = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     return await a?.requestNotificationsPermission() ?? false;
   }
@@ -108,7 +123,7 @@ class Reminders {
     for (final m in messages) {
       await _plugin.zonedSchedule(
         id: m.id, title: m.message.title, body: m.message.body, scheduledDate: tz.TZDateTime.from(m.at, tz.local),
-        notificationDetails: const NotificationDetails(android: _digest), androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        notificationDetails: const NotificationDetails(android: _digest, iOS: DarwinNotificationDetails()), androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     }
     return planned.length + messages.length;
@@ -118,7 +133,7 @@ class Reminders {
   static Future<void> showNow(AlertText m, int id) async {
     if (!supported) return;
     await init();
-    await _plugin.show(id: id, title: m.title, body: m.body, notificationDetails: const NotificationDetails(android: _news));
+    await _plugin.show(id: id, title: m.title, body: m.body, notificationDetails: const NotificationDetails(android: _news, iOS: DarwinNotificationDetails()));
   }
 
   static Future<void> _show(Work w, DateTime at, int? hours, int id) {
@@ -129,7 +144,7 @@ class Reminders {
       title: '${w.course}: ${w.title}',
       body: 'Assignment ${w.number} $left.'.replaceAll('  ', ' '),
       scheduledDate: tz.TZDateTime.from(at, tz.local),
-      notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud),
+      notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud, iOS: _ios(quiet)),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: payloadFor(w),
     );
@@ -166,7 +181,7 @@ class Reminders {
     final quiet = at.hour >= 23 || at.hour < 7;
     await _plugin.zonedSchedule(
       id: _idFor(a.id, 99), title: '${a.course.isEmpty ? '' : '${a.course}: '}${a.title}', body: 'Assignment ${a.number} is still open.'.replaceAll('  ', ' '),
-      scheduledDate: tz.TZDateTime.from(at, tz.local), notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud),
+      scheduledDate: tz.TZDateTime.from(at, tz.local), notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud, iOS: _ios(quiet)),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: jsonEncode({'id': a.id, 'title': a.title, 'course': a.course, 'number': a.number}),
     );

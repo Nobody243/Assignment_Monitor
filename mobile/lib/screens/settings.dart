@@ -48,9 +48,11 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.calendarPlus, 'Calendar', 'Add deadlines and exams to your calendar', () => CalendarSettings(summary: summary)),
         const Divider(height: 1, indent: 76),
+        row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
+        const Divider(height: 1, indent: 76),
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
         const Divider(height: 1, indent: 76),
-        row(LucideIcons.shieldCheck, 'About and privacy', 'What this app stores and sends', () => AboutSettings(summary: summary, model: model)),
+        row(LucideIcons.info, 'About and privacy', 'What this app stores and sends', () => AboutSettings(summary: summary, model: model)),
       ])),
       const SizedBox(height: 28),
       OutlinedButton.icon(
@@ -124,7 +126,7 @@ class _RemindersState extends State<RemindersSettings> {
         subtitle: const Text('Every day at 07:30: what is due today, today\'s classes, an exam in the next three days'),
         value: p.digest, onChanged: (v) => setState(() => p.update(() => p.digest = v)),
       ),
-      SwitchListTile(
+      if (Reminders.isAndroid) SwitchListTile(
         contentPadding: EdgeInsets.zero, title: const Text('Updates while the app is closed'),
         subtitle: const Text('About every two hours the phone checks GitHub and tells you about a new announcement, assignment, extension, mark, exam seat or result. Android may delay a check to save battery.'),
         value: p.alerts, onChanged: (v) { setState(() => p.update(() => p.alerts = v)); BackgroundCheck.apply(on: v); },
@@ -274,6 +276,43 @@ class CalendarSettings extends StatelessWidget {
       ),
       const SizedBox(height: 12),
       const Muted('The file is a snapshot. Deadlines that change later (an extension, say) need a new file; the desktop app can keep a calendar feed up to date.'),
+    ]);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------- security
+class SecuritySettings extends StatefulWidget {
+  const SecuritySettings({super.key, required this.model});
+  final AppModel model;
+  @override
+  State<SecuritySettings> createState() => _SecurityState();
+}
+
+class _SecurityState extends State<SecuritySettings> {
+  String? problem;
+  bool busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context), m = widget.model;
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      const _Head('App lock'),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Ask for my fingerprint, face or PIN'),
+        subtitle: const Text('When the app opens, and when you come back to it after more than 30 seconds away. It uses the same lock as the rest of your phone; the app never sees your fingerprint or PIN.'),
+        value: m.prefs.appLock,
+        onChanged: busy ? null : (v) async {
+          setState(() { busy = true; problem = null; });
+          final err = await m.setAppLock(v);
+          if (mounted) setState(() { busy = false; problem = err; });
+        },
+      ),
+      if (problem != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(problem!, style: TextStyle(color: t.colorScheme.error))),
+      const Divider(height: 32),
+      const _Head('What the lock protects'),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.eyeOff), title: Text('Your grades, seat numbers and deadlines'), subtitle: Text('They stay hidden behind the lock screen. Reminders still arrive, and they show only the assignment title.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Sign-in token'), subtitle: Text('Kept in the phone\'s secure storage whether or not the lock is on.')),
     ]);
   }
 }

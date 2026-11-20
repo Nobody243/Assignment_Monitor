@@ -64,8 +64,13 @@ class SignInScreen extends StatelessWidget {
         FilledButton.icon(onPressed: model.phase == Phase.signingIn ? null : model.signIn, icon: const Icon(LucideIcons.logIn), label: const Text('Sign in with GitHub')),
         const SizedBox(height: 10),
         OutlinedButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
-        const SizedBox(height: 16),
-        Text('You need Cloud checks switched on in the desktop app first (Settings, Cloud checks). That is what puts the summary in your repository.',
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
+          child: const Text('Use a read-only token instead'),
+        ),
+        const SizedBox(height: 12),
+        Text('In the desktop app, switch on Share with my phone (or Cloud checks). That puts the summary in your own private repository, which this app reads.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ];
 
@@ -107,5 +112,93 @@ class SignInScreen extends StatelessWidget {
       const SizedBox(height: 8),
       TextButton(onPressed: model.signOut, child: const Text('Sign out')),
     ];
+  }
+}
+
+
+/// The tighter way to sign in: a token that can read one repository and nothing else. The steps are on the screen, and the
+/// GitHub page opens with the name, description, permission and expiry already filled in.
+class TokenSignInPage extends StatefulWidget {
+  const TokenSignInPage({super.key, required this.model});
+  final AppModel model;
+  @override
+  State<TokenSignInPage> createState() => _TokenSignInState();
+}
+
+class _TokenSignInState extends State<TokenSignInPage> {
+  final field = TextEditingController();
+  bool show = false;
+
+  static final createUrl = Uri.parse('https://github.com/settings/personal-access-tokens/new'
+      '?name=Assignment+Monitor+phone&description=Read-only+access+for+the+Assignment+Monitor+phone+app&expires_in=365&contents=read');
+
+  @override
+  void initState() { super.initState(); widget.model.addListener(_changed); }
+
+  @override
+  void dispose() { widget.model.removeListener(_changed); field.dispose(); super.dispose(); }
+
+  void _changed() {
+    if (!mounted) return;
+    setState(() {});
+    // signed in (or waiting for the first summary): the app's own screens take over
+    if (widget.model.phase == Phase.ready || widget.model.phase == Phase.waiting) Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
+  Widget _step(BuildContext context, int n, String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 26, height: 26, alignment: Alignment.center, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+              child: Text('$n', style: TextStyle(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onPrimaryContainer))),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4))),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context), m = widget.model;
+    final busy = m.phase == Phase.signingIn;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Read-only token', style: TextStyle(fontWeight: FontWeight.w700))),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          Text('GitHub\'s normal sign-in gives the app access to all your repositories, even though it only reads one file. A fine-grained token can be limited to that one repository, read-only.',
+              style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant, height: 1.4)),
+          const SizedBox(height: 18),
+          _step(context, 1, 'Open the GitHub page below. The name, a one-year expiry and the Contents read-only permission are already filled in.'),
+          _step(context, 2, 'Under Repository access choose "Only select repositories", then pick assignment-monitor-cloud.'),
+          _step(context, 3, 'Create the token, copy it, and paste it here.'),
+          const SizedBox(height: 4),
+          OutlinedButton.icon(
+            onPressed: () => launchUrl(createUrl, mode: LaunchMode.externalApplication),
+            icon: const Icon(LucideIcons.externalLink, size: 18), label: const Text('Open GitHub token page'),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: field, obscureText: !show, enableSuggestions: false, autocorrect: false, enabled: !busy,
+            decoration: InputDecoration(
+              labelText: 'Token', hintText: 'github_pat_...', border: const OutlineInputBorder(),
+              suffixIcon: IconButton(tooltip: show ? 'Hide' : 'Show', icon: Icon(show ? LucideIcons.eyeOff : LucideIcons.eye, size: 20), onPressed: () => setState(() => show = !show)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+            onPressed: busy ? null : () async { final d = await Clipboard.getData('text/plain'); if (d?.text != null) setState(() => field.text = d!.text!.trim()); },
+            icon: const Icon(LucideIcons.clipboardPaste, size: 18), label: const Text('Paste'),
+          )),
+          if (m.error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(m.error!, style: TextStyle(color: t.colorScheme.error))),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            onPressed: busy ? null : () => m.signInWithToken(field.text),
+            icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(LucideIcons.logIn, size: 20),
+            label: Text(busy ? 'Checking' : 'Sign in'),
+          ),
+          const SizedBox(height: 14),
+          Text('The token is kept in this phone\'s secure storage and deleted when you sign out. The app never shows or logs it.',
+              style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+        ]),
+      ),
+    );
   }
 }

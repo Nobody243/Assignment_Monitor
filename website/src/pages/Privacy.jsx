@@ -11,11 +11,13 @@ const DATA = [
   ["Assignments, attendance, exam plan, announcements, lecture list, timetable, log", "data\\ in the same folder", "Local files, readable only by your Windows account by default."],
   ["Browser profile (portal session cookies)", "chrome_profile\\ in the same folder", "Local. Deleted on uninstall."],
   ["With cloud checks on: the same login and keys, plus the cache", "a private repository in your own GitHub account", "Sealed on your PC with the repository's key and kept as GitHub Actions secrets; the cache is files in the private repository. Only if you turn it on."],
+  ["Phone app: the GitHub sign-in, and the last summary it read (your name, deadlines, attendance, exam seats, timetable, grades)", "the phone's secure storage, and the app's private storage", "The sign-in sits in the Android Keystore. Cloud and device backups are off, so none of it leaves the phone. An optional fingerprint, face or PIN lock hides it; signing out deletes it all."],
 ];
 const NETWORK = [
   ["The portal", "cms.bahria.edu.pk and lms.bahria.edu.pk over HTTPS, to do exactly what you would do by hand: sign in and open your own pages. It only ever reads."],
   ["Your channels", "Only if you turn them on: your own mail server over TLS, and your phone's browser push service. Pairing a phone uses a public ntfy relay for ten minutes, carrying ciphertext only."],
   ["GitHub", "The optional update check reads the newest release number from api.github.com. With cloud checks on, the app also manages your private repository there."],
+  ["The phone app", "Only github.com (sign-in) and api.github.com (reading one small summary file from your own private repository), over HTTPS. It never contacts the portal, has no server of ours behind it, and sends no analytics or crash reports."],
   ["Browser engine", "Only if Google Chrome is not installed: downloaded once from Microsoft's Playwright CDN."],
 ];
 const NOT = [

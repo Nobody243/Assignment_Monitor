@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data.dart';
+import 'lock.dart';
 import 'reminders.dart';
 import 'source.dart';
+import 'widget.dart';
 import 'theme.dart';
 
 enum Phase { loading, signedOut, signingIn, waiting, ready }
@@ -18,6 +20,7 @@ class Prefs extends ChangeNotifier {
   ThemeMode mode = ThemeMode.system;
   List<int> leads = [24, 3, 1];
   DateTime? annSeen;   // announcements posted after this are new
+  bool appLock = false;   // ask the phone's own lock before showing anything
   bool weekly = true, digest = false, alerts = true;   // Sunday summary, morning digest, background alerts
   final Set<String> done = {};
   final Map<String, DateTime> snoozed = {};
@@ -29,6 +32,7 @@ class Prefs extends ChangeNotifier {
     mode = ThemeMode.values.firstWhere((x) => x.name == p.getString('mode'), orElse: () => ThemeMode.system);
     leads = (p.getStringList('leads') ?? ['24', '3', '1']).map(int.parse).toList();
     annSeen = DateTime.tryParse(p.getString('annSeen') ?? '');
+    appLock = p.getBool('appLock') ?? false;
     weekly = p.getBool('weekly') ?? true;
     digest = p.getBool('digest') ?? false;
     alerts = p.getBool('alerts') ?? true;
@@ -46,6 +50,7 @@ class Prefs extends ChangeNotifier {
     await p.setString('mode', mode.name);
     await p.setStringList('leads', leads.map((e) => '$e').toList());
     if (annSeen != null) await p.setString('annSeen', annSeen!.toIso8601String());
+    await p.setBool('appLock', appLock);
     await p.setBool('weekly', weekly);
     await p.setBool('digest', digest);
     await p.setBool('alerts', alerts);
@@ -63,8 +68,8 @@ class Prefs extends ChangeNotifier {
 
 /// Signed in or not, what was last read, and how fresh it is. The screens only read from here.
 class AppModel extends ChangeNotifier {
-  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission})
-      : _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed {
+  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy()})
+      : _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed, locker = locker ?? DeviceLocker(), _lockPolicy = lockPolicy {
     prefs.onChanged = replan;
   }
   final Prefs prefs;
@@ -104,6 +109,48 @@ class AppModel extends ChangeNotifier {
   /// anything new on GitHub and plan the reminders before the first screen shows, so the app opens already filled in.
   final Duration _splashMin, _splashMax;
   final Future<bool> Function() _askPermission;
+  final Locker locker;
+  final LockPolicy _lockPolicy;
+
+  /// True while the lock screen must be shown. Starts true when the lock is on, so a cold start asks first.
+  bool locked = false;
+  bool _lockChecked = false;
+  DateTime? _leftAt;
+
+  /// Called once the settings are read: the app opens locked if the lock is on and the phone can still verify.
+  Future<void> _applyLockAtStart() async {
+    if (_lockChecked) return;
+    _lockChecked = true;
+    locked = prefs.appLock && await locker.available();
+  }
+
+  /// The app went to the background.
+  void noteLeft(DateTime now) => _leftAt = now;
+
+  /// The app came back: lock again if it was away long enough.
+  void noteBack(DateTime now) {
+    if (_lockPolicy.shouldLock(enabled: prefs.appLock, leftAt: _leftAt, now: now)) { locked = true; notifyListeners(); }
+    _leftAt = null;
+  }
+
+  /// Asks the phone to verify; unlocks only on a yes.
+  Future<bool> unlock() async {
+    final ok = await locker.verify('Unlock Assignment Monitor');
+    if (ok) { locked = false; notifyListeners(); }
+    return ok;
+  }
+
+  /// Turns the lock on or off. Turning it on needs the phone to have a lock, and one successful check, so you cannot lock
+  /// yourself out with a lock that cannot be answered.
+  Future<String?> setAppLock(bool on) async {
+    if (on) {
+      if (!await locker.available()) return 'Set up a screen lock, fingerprint or face on this phone first.';
+      if (!await locker.verify('Turn on the app lock')) return 'The lock was not confirmed, so it stays off.';
+    }
+    prefs.update(() => prefs.appLock = on);
+    if (!on) { locked = false; notifyListeners(); }
+    return null;
+  }
 
   /// Android 13 and later show no notification until the user allows it, so the app asks once, as soon as there is
   /// something to remind about. The Allow button in Settings stays for anyone who said no.
@@ -125,6 +172,7 @@ class AppModel extends ChangeNotifier {
     _step('Reading your saved data');
     await prefs.load();
     introSeen = (await SharedPreferences.getInstance()).getBool('introSeen') ?? false;
+    await _applyLockAtStart();
     final token = await _store.token();
     if (token != null) {
       login = await _store.login();
@@ -184,6 +232,39 @@ class AppModel extends ChangeNotifier {
     }
   }
 
+  /// Sign-in with a fine-grained personal access token that can read one repository (Contents: read-only), instead of
+  /// the device flow, whose token can touch every repository. The token is checked against GitHub, then kept exactly
+  /// like the device-flow one.
+  Future<void> signInWithToken(String raw) async {
+    final token = raw.trim();
+    error = null;
+    if (!looksLikeToken(token)) {
+      error = 'That does not look like a GitHub token. A fine-grained one starts with github_pat_.';
+      notifyListeners();
+      return;
+    }
+    phase = Phase.signingIn;
+    notifyListeners();
+    try {
+      login = await _auth.login(token);
+      await _store.saveSession(token, login!);
+      phase = Phase.waiting;
+      notifyListeners();
+      await refresh();
+      if (summary != null) unawaited(askForNotificationsOnce());
+    } on SourceError catch (e) {
+      error = e.message; phase = Phase.signedOut;
+      notifyListeners();
+    } catch (e) {
+      error = 'Sign-in failed. Check the connection and try again.'; phase = Phase.signedOut;
+      notifyListeners();
+    }
+  }
+
+  /// A fine-grained token (`github_pat_...`) or a classic one (`ghp_...`); anything with spaces or too short is refused
+  /// before it is sent anywhere.
+  static bool looksLikeToken(String t) => RegExp(r'^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$').hasMatch(t);
+
   void cancelSignIn() { _cancelSignIn = true; code = null; phase = Phase.signedOut; notifyListeners(); }
 
   Future<void> refresh() async {
@@ -217,6 +298,7 @@ class AppModel extends ChangeNotifier {
   Future<void> replan() async {
     final s = summary;
     if (s == null || demo) return;
+    unawaited(HomeScreenWidget.update(s, prefs.done));
     scheduled = await Reminders.schedule(s, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest);
     notifyListeners();
   }

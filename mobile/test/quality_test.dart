@@ -117,7 +117,7 @@ void main() {
             await open(tester, section);
             _noException(tester, '$section overflowed at ${(scale * 100).round()}% text in ${b.name}');
             if (section == 'Settings') {
-              for (final page in ['Reminders', 'Appearance', 'Calendar', 'Account and data', 'About and privacy']) {
+              for (final page in ['Reminders', 'Appearance', 'Calendar', 'Security', 'Account and data', 'About and privacy']) {
                 await tester.ensureVisible(find.text(page));
                 await tester.tap(find.text(page));
                 await tester.pumpAndSettle();
@@ -134,6 +134,22 @@ void main() {
           }
         });
       }
+    }
+  });
+
+  group('layout: other screen shapes', skip: _roboto == null ? 'the SDK Roboto font was not found' : null, () {
+    for (final (name, size) in [('a phone on its side', const Size(800, 360)), ('a small tablet', const Size(800, 1280)), ('a large tablet on its side', const Size(1280, 800)), ('a narrow phone', const Size(320, 640))]) {
+      testWidgets('$name: every section fits and the content stays in a column', (tester) async {
+        final s = (await tester.runAsync(Summary.load))!;
+        await boot(tester, s, size: size);
+        for (final section in _sections) {
+          await open(tester, section);
+          _noException(tester, '$section overflowed on $name');
+        }
+        // wide screens keep the content a readable column, not edge to edge
+        final content = tester.getSize(find.byType(AnimatedSwitcher).last).width;
+        expect(content, lessThanOrEqualTo(maxContentWidth + 0.5), reason: 'the content is $content px wide on $name');
+      });
     }
   });
 

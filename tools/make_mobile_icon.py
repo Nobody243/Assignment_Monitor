@@ -66,6 +66,11 @@ def main() -> None:
     icon.save(OUT / "icon.png")
     mark(s, 0.60).save(OUT / "mark.png")         # inside the adaptive icon's safe circle
     mark(s, 0.86).save(OUT / "mark_splash.png")
+    # Android 13 themed icon: a single-colour silhouette; the system tints it with the wallpaper's colour
+    shape = mark(s, 0.60)
+    mono = Image.new("RGBA", shape.size, (0, 0, 0, 255))
+    mono.putalpha(shape.getchannel("A"))
+    mono.save(OUT / "mark_mono.png")
     print("wrote", OUT)
 
 

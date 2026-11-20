@@ -135,4 +135,16 @@ void main() {
     await tester.scrollUntilVisible(find.text('Check again'), 200);
     expect(find.text('Check again'), findsOneWidget);
   });
+
+  testWidgets('sign-in: the read-only token page explains the steps and rejects a bad token', (tester) async {
+    final model = AppModel(Prefs());
+    await phone(tester, ListenableBuilder(listenable: model, builder: (_, _) => TokenSignInPage(model: model)));
+    expect(find.textContaining('assignment-monitor-cloud'), findsOneWidget);
+    expect(find.text('Open GitHub token page'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'not a token');
+    await tester.scrollUntilVisible(find.widgetWithText(FilledButton, 'Sign in'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('does not look like a GitHub token'), findsOneWidget);
+  });
 }

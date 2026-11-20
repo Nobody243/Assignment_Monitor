@@ -42,15 +42,19 @@ name, course, grade or token (a test asserts it).
 
 ## Known gaps (not hidden)
 
-1. **Sign-in scope.** GitHub's OAuth device flow cannot be limited to one repository, so the app asks for `repo`
-   (read and write on the student's repositories). The app only ever reads one file. A fine-grained, read-only token on
-   that one repository would be tighter; it needs a different sign-in (a pasted token or a GitHub App) and is the main
-   open item.
-2. **Debug-signed APK.** CI builds an APK signed with the debug key, for testing only. A store release needs its own
-   signing key kept in the project's secrets, plus code shrinking (R8) once tried on a device.
-3. **No app lock.** Anyone holding the unlocked phone can open the app and see grades and seat numbers. A biometric
-   lock is planned.
+1. **The default sign-in is broad.** GitHub's device flow cannot be limited to one repository, so "Sign in with GitHub" asks
+   for `repo`. The app only reads one file. The tighter option is built: "Use a read-only token instead" takes a
+   fine-grained token limited to the one repository with Contents read-only (the GitHub page opens pre-filled).
+   Prefer it. The default stays the device flow because it is one tap.
+2. **App lock is optional and off by default.** Settings, Security turns it on (fingerprint, face or the phone's PIN, through
+   Android's own lock). It hides the app after 30 seconds away. It does not stop a screenshot of a locked screen's
+   notification text: reminders show the assignment title.
+3. **Test APKs are debug-signed.** The signed build is `.github/workflows/phone-release.yml` (see `RELEASE.md`): your own key
+   from repository secrets, code shrinking (R8) on, a draft release. Nothing is signed or published until the four secrets
+   exist and you run it, and the shrunk build must be tried on a real phone first.
 4. **Announcement text** is copied from the portal as is (clipped to 600 characters) and may contain whatever a teacher
    wrote, including links or contact details. It lives only in the student's private repository and the phone.
-5. **Not yet tried on a device.** Notifications, the background check, the share sheet (timetable and calendar), the keystore and the launcher icon
-   need a run on a real Android phone.
+5. **Not yet tried on a device.** Notifications (and Snooze and Done on them), the background check, the home-screen widget,
+   the app lock prompt, the share sheet (timetable and calendar), the keystore and the launcher icons need a run on a real
+   Android phone. iOS is a compile check in CI only (no Apple developer account, no device run; Snooze, Done and the
+   background check are Android only).

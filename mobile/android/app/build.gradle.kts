@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -30,11 +33,33 @@ android {
         versionName = flutter.versionName
     }
 
+    // A store-ready build is signed with the project's own key, read from android/key.properties (written by the release
+    // workflow from repository secrets; never committed). Without it the build falls back to the debug key, which is fine
+    // for testing and is what CI's test APK uses.
+    val keyProps = Properties().also { p ->
+        val f = rootProject.file("key.properties")
+        if (f.exists()) FileInputStream(f).use { p.load(it) }
+    }
+    signingConfigs {
+        if (keyProps.containsKey("storeFile")) {
+            create("release") {
+                storeFile = rootProject.file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            // Code shrinking (R8) is off for the test APK and on for a signed release (-Pminify=true): it removes unused
+            // code and renames the rest. proguard-rules.pro keeps what the notification and background plugins read by name.
+            val shrink = project.findProperty("minify") == "true"
+            isMinifyEnabled = shrink
+            isShrinkResources = shrink
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
