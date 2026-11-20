@@ -310,8 +310,17 @@ class _SecurityState extends State<SecuritySettings> {
       ),
       if (problem != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(problem!, style: TextStyle(color: t.colorScheme.error))),
       const Divider(height: 32),
+      const _Head('Screen privacy'),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Hide the app in recent apps and block screenshots'),
+        subtitle: const Text('Screenshots and screen recordings show black, and the app\'s preview in the recent-apps list is blank, so your grades are not visible there. Turn it off only if you need to screenshot the app.'),
+        value: m.prefs.secureScreen,
+        onChanged: (v) => setState(() => m.setSecureScreen(v)),
+      ),
+      const Divider(height: 32),
       const _Head('What the lock protects'),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.eyeOff), title: Text('Your grades, seat numbers and deadlines'), subtitle: Text('They stay hidden behind the lock screen. Reminders still arrive, and they show only the assignment title.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.eyeOff), title: Text('Your grades, seat numbers and deadlines'), subtitle: Text('They stay hidden behind the lock screen. Reminders still arrive, but while the lock is on they say only "Assignment due soon" so nothing private shows on the lock screen.')),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Sign-in token'), subtitle: Text('Kept in the phone\'s secure storage whether or not the lock is on.')),
     ]);
   }

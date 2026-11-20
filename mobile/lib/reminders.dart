@@ -110,19 +110,19 @@ class Reminders {
   }
 
   /// Replaces every scheduled reminder with the ones the current summary and settings call for.
-  static Future<int> schedule(Summary s, {required List<int> leads, required Set<String> done, required Map<String, DateTime> snoozed, bool weekly = false, bool digest = false}) async {
+  static Future<int> schedule(Summary s, {required List<int> leads, required Set<String> done, required Map<String, DateTime> snoozed, bool weekly = false, bool digest = false, bool hide = false}) async {
     if (!supported) return 0;
     await init();
     await _plugin.cancelAll();
     final now = DateTime.now();
     final planned = plan(s, leads: leads, done: done, snoozed: snoozed, now: now);
     for (final p in planned) {
-      await _show(p.work, p.at, p.hours, _idFor(p.work.id, p.hours ?? 99));
+      await _show(p.work, p.at, p.hours, _idFor(p.work.id, p.hours ?? 99), hide: hide);
     }
     final messages = planMessages(s, weekly: weekly, digest: digest, now: now);
     for (final m in messages) {
       await _plugin.zonedSchedule(
-        id: m.id, title: m.message.title, body: m.message.body, scheduledDate: tz.TZDateTime.from(m.at, tz.local),
+        id: m.id, title: maskSummary(m.message, hide: hide, daily: m.daily).title, body: maskSummary(m.message, hide: hide, daily: m.daily).body, scheduledDate: tz.TZDateTime.from(m.at, tz.local),
         notificationDetails: const NotificationDetails(android: _digest, iOS: DarwinNotificationDetails()), androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     }
@@ -136,13 +136,26 @@ class Reminders {
     await _plugin.show(id: id, title: m.title, body: m.body, notificationDetails: const NotificationDetails(android: _news, iOS: DarwinNotificationDetails()));
   }
 
-  static Future<void> _show(Work w, DateTime at, int? hours, int id) {
-    final quiet = at.hour >= 23 || at.hour < 7;
+  // ---- what a notification says. With the app lock on, the lock screen must not say what is due or what changed, so the
+  // ---- text is generic and the details are one tap away inside the (locked) app.
+  static AlertText reminderText({required String course, required String title, required String number, int? hours, required bool hide}) {
+    if (hide) return (title: 'Assignment due soon', body: 'Open the app to see which one.');
     final left = hours == null ? 'is still open' : hours == 1 ? 'is due in 1 hour' : 'is due in $hours hours';
+    return (title: '${course.isEmpty ? '' : '$course: '}$title', body: 'Assignment $number $left.'.replaceAll('  ', ' '));
+  }
+
+  static AlertText maskNews(AlertText m, {required bool hide}) => hide ? (title: 'Assignment Monitor', body: 'There is something new. Open the app to see it.') : m;
+
+  static AlertText maskSummary(AlertText m, {required bool hide, required bool daily}) =>
+      hide ? (title: daily ? 'Your day' : 'Your week ahead', body: 'Open the app for the details.') : m;
+
+  static Future<void> _show(Work w, DateTime at, int? hours, int id, {required bool hide}) {
+    final quiet = at.hour >= 23 || at.hour < 7;
+    final text = reminderText(course: w.course, title: w.title, number: w.number, hours: hours, hide: hide);
     return _plugin.zonedSchedule(
       id: id,
-      title: '${w.course}: ${w.title}',
-      body: 'Assignment ${w.number} $left.'.replaceAll('  ', ' '),
+      title: text.title,
+      body: text.body,
       scheduledDate: tz.TZDateTime.from(at, tz.local),
       notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud, iOS: _ios(quiet)),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -174,13 +187,13 @@ class Reminders {
   }
 
   /// Snooze: the notification on screen goes away and a new one comes back at [at].
-  static Future<void> snoozeUntil(({String id, String title, String course, String number}) a, DateTime at, {int? shownId}) async {
+  static Future<void> snoozeUntil(({String id, String title, String course, String number}) a, DateTime at, {int? shownId, bool hide = false}) async {
     if (!supported) return;
     await init();
     if (shownId != null) await _plugin.cancel(id: shownId);
     final quiet = at.hour >= 23 || at.hour < 7;
     await _plugin.zonedSchedule(
-      id: _idFor(a.id, 99), title: '${a.course.isEmpty ? '' : '${a.course}: '}${a.title}', body: 'Assignment ${a.number} is still open.'.replaceAll('  ', ' '),
+      id: _idFor(a.id, 99), title: reminderText(course: a.course, title: a.title, number: a.number, hide: hide).title, body: reminderText(course: a.course, title: a.title, number: a.number, hide: hide).body,
       scheduledDate: tz.TZDateTime.from(at, tz.local), notificationDetails: NotificationDetails(android: quiet ? _quiet : _loud, iOS: _ios(quiet)),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: jsonEncode({'id': a.id, 'title': a.title, 'course': a.course, 'number': a.number}),
@@ -206,7 +219,7 @@ Future<void> answerInBackground(NotificationResponse r) async {
     final m = Map<String, dynamic>.from(jsonDecode(p.getString('snoozed') ?? '{}') as Map);
     m[a.id] = wake.toIso8601String();
     await p.setString('snoozed', jsonEncode(m));
-    await Reminders.snoozeUntil(a, wake, shownId: r.id);
+    await Reminders.snoozeUntil(a, wake, shownId: r.id, hide: p.getBool('appLock') ?? false);
   }
 }
 

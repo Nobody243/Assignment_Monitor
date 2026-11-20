@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data.dart';
 import 'lock.dart';
+import 'secure_screen.dart';
 import 'reminders.dart';
 import 'source.dart';
 import 'widget.dart';
@@ -20,6 +21,8 @@ class Prefs extends ChangeNotifier {
   ThemeMode mode = ThemeMode.system;
   List<int> leads = [24, 3, 1];
   DateTime? annSeen;   // announcements posted after this are new
+  bool secureScreen = true;   // block screenshots and the recent-apps preview (Android)
+  bool setupDone = false;     // the first-run reminder setup and lock offer have been shown
   bool appLock = false;   // ask the phone's own lock before showing anything
   bool weekly = true, digest = false, alerts = true;   // Sunday summary, morning digest, background alerts
   final Set<String> done = {};
@@ -33,6 +36,8 @@ class Prefs extends ChangeNotifier {
     leads = (p.getStringList('leads') ?? ['24', '3', '1']).map(int.parse).toList();
     annSeen = DateTime.tryParse(p.getString('annSeen') ?? '');
     appLock = p.getBool('appLock') ?? false;
+    secureScreen = p.getBool('secureScreen') ?? true;
+    setupDone = p.getBool('setupDone') ?? false;
     weekly = p.getBool('weekly') ?? true;
     digest = p.getBool('digest') ?? false;
     alerts = p.getBool('alerts') ?? true;
@@ -51,6 +56,8 @@ class Prefs extends ChangeNotifier {
     await p.setStringList('leads', leads.map((e) => '$e').toList());
     if (annSeen != null) await p.setString('annSeen', annSeen!.toIso8601String());
     await p.setBool('appLock', appLock);
+    await p.setBool('secureScreen', secureScreen);
+    await p.setBool('setupDone', setupDone);
     await p.setBool('weekly', weekly);
     await p.setBool('digest', digest);
     await p.setBool('alerts', alerts);
@@ -173,6 +180,7 @@ class AppModel extends ChangeNotifier {
     await prefs.load();
     introSeen = (await SharedPreferences.getInstance()).getBool('introSeen') ?? false;
     await _applyLockAtStart();
+    unawaited(SecureScreen.set(prefs.secureScreen));
     final token = await _store.token();
     if (token != null) {
       login = await _store.login();
@@ -192,7 +200,6 @@ class AppModel extends ChangeNotifier {
     phase = summary == null ? Phase.waiting : Phase.ready;
     notifyListeners();
     if (summary == null) unawaited(refresh());
-    if (summary != null) unawaited(askForNotificationsOnce());
   }
 
   Future<void> finishIntro() async {
@@ -222,7 +229,6 @@ class AppModel extends ChangeNotifier {
       phase = Phase.waiting;
       notifyListeners();
       await refresh();
-      if (summary != null) unawaited(askForNotificationsOnce());
     } on SourceError catch (e) {
       error = e.message; code = null; phase = Phase.signedOut;
       notifyListeners();
@@ -251,7 +257,6 @@ class AppModel extends ChangeNotifier {
       phase = Phase.waiting;
       notifyListeners();
       await refresh();
-      if (summary != null) unawaited(askForNotificationsOnce());
     } on SourceError catch (e) {
       error = e.message; phase = Phase.signedOut;
       notifyListeners();
@@ -264,6 +269,17 @@ class AppModel extends ChangeNotifier {
   /// A fine-grained token (`github_pat_...`) or a classic one (`ghp_...`); anything with spaces or too short is refused
   /// before it is sent anywhere.
   static bool looksLikeToken(String t) => RegExp(r'^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$').hasMatch(t);
+
+  /// Turns the screenshot and recent-apps protection on or off.
+  void setSecureScreen(bool on) {
+    prefs.update(() => prefs.secureScreen = on);
+    unawaited(SecureScreen.set(on));
+  }
+
+  /// The first-run setup (reminders, then the lock offer) is due: signed in with real data and not yet shown.
+  bool get firstRunDue => !demo && phase == Phase.ready && !prefs.setupDone;
+
+  void finishFirstRun() => prefs.update(() => prefs.setupDone = true);
 
   void cancelSignIn() { _cancelSignIn = true; code = null; phase = Phase.signedOut; notifyListeners(); }
 
@@ -299,7 +315,7 @@ class AppModel extends ChangeNotifier {
     final s = summary;
     if (s == null || demo) return;
     unawaited(HomeScreenWidget.update(s, prefs.done));
-    scheduled = await Reminders.schedule(s, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest);
+    scheduled = await Reminders.schedule(s, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest, hide: prefs.appLock);
     notifyListeners();
   }
 

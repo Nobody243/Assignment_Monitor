@@ -114,14 +114,32 @@ class SummarySource {
   }
 }
 
-/// Token in the platform keystore; the last good summary and its ETag in app storage, so the app opens offline.
+/// Where secrets live: the platform's keystore on a phone, memory in tests.
+abstract class Vault {
+  Future<String?> read(String key);
+  Future<void> write(String key, String value);
+  Future<void> delete(String key);
+}
+
+class KeystoreVault implements Vault {
+  static const _s = FlutterSecureStorage();
+  @override Future<String?> read(String key) => _s.read(key: key);
+  @override Future<void> write(String key, String value) => _s.write(key: key, value: value);
+  @override Future<void> delete(String key) => _s.delete(key: key);
+}
+
+/// The sign-in token and the last summary are kept in the keystore (encrypted with a key that never leaves the secure
+/// hardware where there is one); the ETag, the login name and the time of the last read are not secret and stay in plain
+/// preferences. The saved summary is the most sensitive thing on the phone (grades, name, seat numbers), so it is not
+/// written to ordinary storage. A copy an earlier build left in preferences is moved into the keystore on first read.
 class Store {
-  static const _secure = FlutterSecureStorage();
+  Store({Vault? vault}) : _vault = vault ?? KeystoreVault();
+  final Vault _vault;
   static const _kToken = 'token', _kLogin = 'login', _kSummary = 'summary', _kEtag = 'etag', _kFetched = 'fetched';
 
-  Future<String?> token() => _secure.read(key: _kToken);
+  Future<String?> token() => _vault.read(_kToken);
   Future<void> saveSession(String token, String login) async {
-    await _secure.write(key: _kToken, value: token);
+    await _vault.write(_kToken, token);
     final p = await SharedPreferences.getInstance();
     await p.setString(_kLogin, login);
   }
@@ -130,10 +148,15 @@ class Store {
 
   Future<({Summary? summary, String? etag, DateTime? fetchedAt})> cached() async {
     final p = await SharedPreferences.getInstance();
-    final raw = p.getString(_kSummary);
+    var raw = await _vault.read(_kSummary);
+    final legacy = p.getString(_kSummary);
+    if (legacy != null) {   // an earlier build kept it in plain preferences: move it, then forget the plain copy
+      if (raw == null) { await _vault.write(_kSummary, legacy); raw = legacy; }
+      await p.remove(_kSummary);
+    }
     Summary? s;
     if (raw != null) {
-      try { s = Summary(jsonDecode(raw) as Map<String, dynamic>); } catch (e) { debugPrint('cache unreadable: $e'); }
+      try { s = Summary(jsonDecode(raw) as Map<String, dynamic>); } catch (e) { debugPrint('cache unreadable'); }
     }
     final at = p.getString(_kFetched);
     return (summary: s, etag: p.getString(_kEtag), fetchedAt: at == null ? null : DateTime.tryParse(at));
@@ -141,7 +164,8 @@ class Store {
 
   Future<void> saveSummary(Summary s, String? etag) async {
     final p = await SharedPreferences.getInstance();
-    await p.setString(_kSummary, jsonEncode(s.raw));
+    await _vault.write(_kSummary, jsonEncode(s.raw));
+    await p.remove(_kSummary);
     if (etag != null) await p.setString(_kEtag, etag);
     await p.setString(_kFetched, DateTime.now().toIso8601String());
   }
@@ -150,7 +174,8 @@ class Store {
 
   /// Sign out: the token and everything cached go.
   Future<void> clear() async {
-    await _secure.delete(key: _kToken);
+    await _vault.delete(_kToken);
+    await _vault.delete(_kSummary);
     final p = await SharedPreferences.getInstance();
     for (final k in [_kLogin, _kSummary, _kEtag, _kFetched]) { await p.remove(k); }
   }

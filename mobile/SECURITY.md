@@ -7,7 +7,10 @@ What the app holds, what it sends, what is checked, and what is still open. Upda
 | Item | Where | Notes |
 | --- | --- | --- |
 | GitHub sign-in token | Android Keystore through `flutter_secure_storage` | Never logged, never shown, deleted on sign out. |
-| Last `summary.json` (name, courses, grades, timetable, seat numbers) | App-private storage (`shared_preferences`) | Not encrypted at rest beyond Android's per-app sandbox and device encryption. Backups and device-to-device copies are switched **off** (`allowBackup=false`, data-extraction rules). Deleted on sign out. |
+| Last `summary.json` (name, courses, grades, timetable, seat numbers) | Android Keystore (encrypted, same vault as the token) | A copy left in plain preferences by an older build is moved into the vault and removed on first read. Backups and device-to-device copies are switched **off** (`allowBackup=false`, data-extraction rules). Deleted on sign out. |
+| Screen content | `FLAG_SECURE` (Settings, Security, Screen privacy; on by default) | Screenshots and screen recordings are black and the recent-apps preview is blank. |
+| Notification text | Generic while the app lock is on | Reminders say only "Assignment due soon", news and summaries are generic too; details are inside the locked app. |
+| First-run setup | One time, after the first real data | Reminder lead times and notification permission, then an offer to turn the app lock on. |
 | Settings (palette, lead times, done and snoozed assignments) | `shared_preferences` | No personal data beyond assignment ids. |
 | Portal password | **Never** on the phone | The phone never contacts the portal. |
 

@@ -15,3 +15,11 @@ class MemoryStore extends Store {
   @override Future<void> touchFetched() async => fetchedV = DateTime.now();
   @override Future<void> clear() async { tokenV = loginV = etagV = null; summaryV = null; cleared = true; }
 }
+
+/// A vault that lives in memory, so the real Store (its keystore and plain-preference split) is tested without a phone.
+class MemoryVault implements Vault {
+  final data = <String, String>{};
+  @override Future<String?> read(String key) async => data[key];
+  @override Future<void> write(String key, String value) async => data[key] = value;
+  @override Future<void> delete(String key) async => data.remove(key);
+}

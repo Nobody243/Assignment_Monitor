@@ -51,14 +51,14 @@ class BackgroundCheck {
       final send = notify ?? Reminders.showNow;
       var i = 0;
       for (final m in messagesFor(changes)) {
-        await send(m, 7000 + i++);
+        await send(Reminders.maskNews(m, hide: prefs.appLock), 7000 + i++);
         shown++;
       }
     }
     await st.saveSummary(fresh, fetched.etag);
     await HomeScreenWidget.update(fresh, prefs.done);
     // the saved copy changed, so what is planned changes too (a new deadline needs its reminders)
-    await Reminders.schedule(fresh, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest);
+    await Reminders.schedule(fresh, leads: prefs.leads, done: prefs.done, snoozed: prefs.snoozed, weekly: prefs.weekly, digest: prefs.digest, hide: prefs.appLock);
     return shown;
   }
 

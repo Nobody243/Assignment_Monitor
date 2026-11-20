@@ -8,6 +8,7 @@ import 'data.dart' show Clock;
 import 'model.dart';
 import 'screens/announcements.dart';
 import 'screens/attendance.dart';
+import 'screens/first_run.dart';
 import 'screens/intro.dart';
 import 'screens/lock_screen.dart';
 import 'data.dart' show Summary;
@@ -113,6 +114,8 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     tick = Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));   // the countdowns move
+    // the first time there is real data: reminder setup, then the lock offer (once)
+    if (widget.model.firstRunDue) WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) runFirstRun(context, widget.model); });
   }
 
   @override
