@@ -146,18 +146,19 @@ def test_the_weekly_summary_goes_once_a_week(store, monkeypatch):
 
 
 def test_the_support_report_hides_personal_details():
-    text = ("Signed in 01-135232-062 as someone@example.com from C:\\Users\\Muhammad Saad\\AppData\\x, "
-            "token=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345 and Muhammad Saad opened it; "
-            "secret ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop12345 end")
-    clean = support.redact(text, names=["Muhammad Saad"])
-    for leaked in ("01-135232-062", "someone@example.com", "Muhammad", "ghp_ABCDEF", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"):
+    fake_token = "gh" + "p_" + "A" * 24 + "0123456789ab"                 # built here so no secret-looking text sits in the repository
+    fake_secret = "Zz" * 24 + "12345"
+    text = (f"Signed in 01-123456-789 as someone@example.com from C:\\Users\\Alex Morgan\\AppData\\x, "
+            f"token={fake_token} and Alex Morgan opened it; secret {fake_secret} end")
+    clean = support.redact(text, names=["Alex Morgan"])
+    for leaked in ("01-123456-789", "someone@example.com", "Alex", "Morgan", fake_token, fake_secret):
         assert leaked not in clean
     assert "<enrollment>" in clean and "<email>" in clean and "<user>" in clean
 
 
 def test_the_support_report_builds_without_secrets(store, monkeypatch):
     monkeypatch.setattr(config, "LOG_PATH", store / "app.log")
-    (store / "app.log").write_text("2026-11-20 10:00:00  INFO  Check for 01-135232-062 done\n", encoding="utf-8")
+    (store / "app.log").write_text("2026-11-20 10:00:00  INFO  Check for 01-123456-789 done\n", encoding="utf-8")
     report = support.build_report(20)
-    assert report.startswith(config.APP_NAME) and "<enrollment>" in report and "01-135232-062" not in report
+    assert report.startswith(config.APP_NAME) and "<enrollment>" in report and "01-123456-789" not in report
     assert "PASSWORD" not in report.upper().replace("CREDENTIALS SAVED", "")
