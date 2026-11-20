@@ -65,7 +65,7 @@ has no server and no account of ours:
 - **Where it connects.** Only `github.com` (to sign in) and `api.github.com` (to read that one file and, if you use the
   phone-only setup below, to set up your repository), over HTTPS. It never contacts the portal. No analytics, no crash
   reports, no advertising.
-- **Phone-only setup (optional).** If you have no desktop app, "I only use the phone" sets up Cloud checks from the phone,
+- **Setting up from the phone (optional).** If you do not use the desktop app (or want the phone to manage it), "Set up from this phone" sets up Cloud checks from the phone,
   the same way the desktop does. You sign in to GitHub with a code (the app asks for the `repo` and `workflow`
   permissions), then type your portal enrollment number and password **once**. The phone encrypts them with your
   repository's public key and sends them over HTTPS to GitHub, where they are stored as Actions secrets of your own private

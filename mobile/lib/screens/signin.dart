@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../model.dart';
 import 'intro.dart' show BrandMark;
 import '../source.dart' show DeviceCode, repoName;
-import 'cloud_setup_screens.dart' show CloudSetupWizard;   // phone-only setup
+import 'cloud_setup_screens.dart' show CloudSetupWizard;   // setup from the phone
 
 /// First run: sign in to GitHub (device flow) or look at the demo. Also shown while the first summary is awaited.
 class SignInScreen extends StatelessWidget {
@@ -62,22 +62,22 @@ class SignInScreen extends StatelessWidget {
 
   List<Widget> _start(BuildContext context) => [
         if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+        Text('Already use the desktop app? Sign in and your deadlines are here. It works on its own too: no PC is needed.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 12),
         FilledButton.icon(onPressed: model.phase == Phase.signingIn ? null : model.signIn, icon: const Icon(LucideIcons.logIn), label: const Text('Sign in with GitHub')),
         const SizedBox(height: 10),
-        OutlinedButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
+        // new here, or no PC: the phone sets up the checks itself (lib/screens/cloud_setup_screens.dart)
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model))),
+          icon: const Icon(LucideIcons.smartphone), label: const Text('Set up from this phone'),
+        ),
         const SizedBox(height: 4),
+        TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
         TextButton(
           onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
           child: const Text('Use a read-only token instead'),
         ),
-        // phone-only setup: no desktop app needed (lib/screens/cloud_setup_screens.dart)
-        TextButton(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model))),
-          child: const Text('I only use the phone'),
-        ),
-        const SizedBox(height: 12),
-        Text('In the desktop app, switch on Share with my phone (or Cloud checks). That puts the summary in your own private repository, which this app reads.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ];
 
   List<Widget> _code(BuildContext context, DeviceCode c) {

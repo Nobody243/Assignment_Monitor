@@ -60,7 +60,7 @@ void main() {
   }
 
   Future<void> toPortalPage(WidgetTester tester) async {
-    await tapText(tester, 'I only use the phone');
+    await tapText(tester, 'Set up from this phone');
     expect(find.text('What this does'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Continue'), 150, scrollable: find.byType(Scrollable).first);
     expect(tester.widget<FilledButton>(find.ancestor(of: find.text('Continue'), matching: find.byWidgetPredicate((w) => w is FilledButton))).onPressed, isNull, reason: 'consent first');
@@ -190,7 +190,7 @@ void main() {
           }), Duration.zero);
       await tester.pumpWidget(signIn());
       await tester.pumpAndSettle();
-      await tapText(tester, 'I only use the phone');
+      await tapText(tester, 'Set up from this phone');
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pump();
       await tapText(tester, 'Continue');

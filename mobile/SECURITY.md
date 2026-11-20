@@ -27,7 +27,7 @@ name, course, grade or token (a test asserts it).
 
 ## Phone-only setup (Cloud checks from the phone)
 
-Sign-in screen, "I only use the phone", and Settings, Cloud checks. It does what the desktop's Cloud checks setup does
+Sign-in screen, "Set up from this phone", and Settings, Cloud checks. It does what the desktop's Cloud checks setup does
 (`cloud.py`), from the phone, so a student without the desktop app gets the same private repository
 (`assignment-monitor-cloud`), the same scheduled workflow and the same `state/summary.json`. What changes about the
 claims above, stated exactly:

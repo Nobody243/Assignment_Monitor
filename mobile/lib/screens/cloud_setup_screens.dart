@@ -21,7 +21,7 @@ GithubAuth Function() cloudAuthFactory = () => GithubAuth();
 // ================================================================================================ the wizard
 enum _Page { intro, github, portal, progress }
 
-/// "I only use the phone": the whole Cloud checks setup, from the phone. Steps: what will happen, GitHub sign-in (device
+/// "Set up from this phone": the whole Cloud checks setup, from the phone. Steps: what will happen, GitHub sign-in (device
 /// code), the portal login, then the progress of the setup. When it works the app is signed in and waits for the first check.
 class CloudSetupWizard extends StatefulWidget {
   const CloudSetupWizard({super.key, required this.model});

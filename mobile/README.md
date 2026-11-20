@@ -20,7 +20,7 @@ what is checked, and what is still open.
 - **Results and GPA**: the transcript (CGPA, trend, every semester) and a calculator.
 - **Reminders**: before each deadline (24 h, 3 h and 1 h by default), with Snooze and Done on the notification, quiet hours,
   a Sunday summary, a morning digest, and alerts for news while the app is closed. Calendar file of deadlines and exams.
-- **Phone-only setup**: "I only use the phone" on the first screen sets up Cloud checks from the phone (private repository,
+- **Phone-only setup**: "Set up from this phone" on the first screen sets up Cloud checks from the phone (private repository,
   schedule, encrypted portal login, first check), no desktop app needed. Settings, Cloud checks shows the last run and can
   run a check now, change the portal login or turn it off.
 - Sign-in with GitHub's device flow, or with a fine-grained read-only token for one repository; offline cache, a stale-data

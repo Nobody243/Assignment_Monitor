@@ -115,6 +115,7 @@ void main() {
     final model = AppModel(Prefs());
     await phone(tester, ListenableBuilder(listenable: model, builder: (_, _) => SignInScreen(model: model)));
     expect(find.text('Sign in with GitHub'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Look around with demo data'), 150, scrollable: find.byType(Scrollable).first);
     expect(find.text('Look around with demo data'), findsOneWidget);
     model.code = DeviceCode('dc', 'ABCD-1234', 'https://github.com/login/device', 5, 900);
     model.phase = Phase.signingIn;
