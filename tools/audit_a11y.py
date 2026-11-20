@@ -42,7 +42,7 @@ def main(axe_path: Path) -> int:
     try:
         for _ in range(60):
             try:
-                urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:8765/api/state", headers={"Authorization": "Bearer dev"}), timeout=2)
+                urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:8765/api/state", headers={"Authorization": "Bearer dev"}), timeout=2)  # nosec B310 - a fixed loopback address
                 break
             except Exception:
                 time.sleep(0.5)
