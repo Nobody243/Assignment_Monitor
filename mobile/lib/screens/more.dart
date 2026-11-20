@@ -7,7 +7,7 @@ import 'widgets.dart';
 
 /// Opens a secondary page (Timetable, Results, Settings) over the main screens.
 void openPage(BuildContext context, String title, Widget body) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: SafeArea(child: body))));
+    Navigator.of(context).push(slideRoute<void>(Scaffold(appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))), body: SafeArea(child: body))));
 
 // ------------------------------------------------------------------------------------------------ exams
 class ExamsPage extends StatelessWidget {
@@ -66,7 +66,6 @@ class ExamsPage extends StatelessWidget {
         for (final (i, e) in rest.indexed) Reveal(index: i + 1, child: Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(
           clipBehavior: Clip.antiAlias,
           child: Container(
-            decoration: BoxDecoration(border: Border(left: BorderSide(color: courseColor(e.title), width: 5))),
             padding: const EdgeInsets.all(14),
             child: Row(children: [
               Container(
@@ -150,7 +149,7 @@ class _TimetableState extends State<TimetablePage> {
             : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
                 for (final (i, s) in slots.indexed) Reveal(index: i, child: Builder(builder: (_) {
                   final live = day == todayIdx && nowMin >= _mins(s.start) && nowMin < _mins(s.end);
-                  final cc = courseColor(s.course);
+                  final cc = t.colorScheme.primary;
                   return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     SizedBox(width: 56, child: Padding(padding: const EdgeInsets.only(top: 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(s.start, style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
@@ -166,7 +165,7 @@ class _TimetableState extends State<TimetablePage> {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Container(
                         padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18), border: Border(left: BorderSide(color: cc, width: 5))),
+                        decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
                         child: Row(children: [
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(s.course, style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),

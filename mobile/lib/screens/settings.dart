@@ -15,11 +15,8 @@ class SettingsHub extends StatelessWidget {
   final Prefs prefs;
   final AppModel model;
 
-  void _open(BuildContext context, String title, Widget Function() body) => Navigator.of(context).push(PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (_, a, _) => Scaffold(appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))), body: SafeArea(child: body())),
-        transitionsBuilder: (_, a, _, child) => SlideTransition(position: Tween(begin: const Offset(0.12, 0), end: Offset.zero).chain(CurveTween(curve: Curves.easeOutCubic)).animate(a), child: FadeTransition(opacity: a, child: child)),
-      ));
+  void _open(BuildContext context, String title, Widget Function() body) =>
+      Navigator.of(context).push(slideRoute<void>(Scaffold(appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))), body: SafeArea(child: body()))));
 
   String _lead(int h) => h == 48 ? '2 days' : h == 24 ? '1 day' : '$h h';
 

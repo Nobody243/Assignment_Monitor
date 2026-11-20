@@ -18,6 +18,7 @@ class TodayScreen extends StatelessWidget {
     final work = summary.work;
     final open = work.where((w) => w.todo && w.open && w.due != null && !prefs.done.contains(w.id)).toList()..sort((a, c) => a.due!.compareTo(c.due!));
     final next = open.isEmpty ? null : open.first;
+    final comingUp = open.skip(1).take(3).toList();
     final overdue = work.where((w) => w.overdue).length;
     final low = summary.attendance.where((c) => c.recorded && !c.ok).toList();
     final rec = summary.attendance.where((c) => c.recorded).toList();
@@ -27,7 +28,7 @@ class TodayScreen extends StatelessWidget {
     final classes = summary.timetable.where((c) => c.day == today).toList()..sort((a, c) => a.start.compareTo(c.start));
     final hour = now.hour;
     final hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    final checked = summary.lastCheck == null ? 'not checked yet' : 'checked ${agoText(now.difference(summary.lastCheck!))}';
+    final checked = summary.lastCheck == null ? 'not updated yet' : 'updated ${agoText(now.difference(summary.lastCheck!))}';
 
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -39,18 +40,31 @@ class TodayScreen extends StatelessWidget {
       ]),
       const SizedBox(height: 16),
       Reveal(index: 0, child: next != null ? _Hero(work: next, now: now, prefs: prefs, onOpen: onOpenWork) : const _AllClear()),
-      const SizedBox(height: 16),
-      Reveal(index: 1, child: _WeekStrip(summary: summary, now: now, prefs: prefs)),
       const SizedBox(height: 12),
-      Reveal(index: 2, child: SizedBox(height: 184, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(flex: 5, child: _Bento(value: '${open.length}', label: 'to do', caption: open.isEmpty ? 'all clear' : 'tap to see them', big: true, bg: t.colorScheme.secondaryContainer, fg: t.colorScheme.onSecondaryContainer, onTap: onOpenWork)),
+      Reveal(index: 1, child: SizedBox(height: 176, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(flex: 5, child: _Bento(value: '${open.length}', label: open.length == 1 ? 'assignment to do' : 'assignments to do', caption: open.isEmpty ? 'Nothing waiting' : 'See the list', big: true, fg: t.colorScheme.primary, onTap: onOpenWork)),
         const SizedBox(width: 10),
         Expanded(flex: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(child: _Bento(value: '$overdue', label: 'overdue', bg: overdue > 0 ? Status.bad(b).withValues(alpha: 0.16) : t.colorScheme.surfaceContainerHigh, fg: overdue > 0 ? Status.bad(b) : t.colorScheme.onSurface, onTap: onOpenWork)),
+          Expanded(child: _Bento(value: '$overdue', label: 'overdue', fg: overdue > 0 ? Status.bad(b) : t.colorScheme.onSurface, tint: overdue > 0 ? Status.bad(b) : null, onTap: onOpenWork)),
           const SizedBox(height: 10),
-          Expanded(child: _Bento(value: overall == null ? '–' : '${overall.toStringAsFixed(0)}%', label: 'attendance', bg: overall != null && overall < summary.minimum ? Status.bad(b).withValues(alpha: 0.16) : t.colorScheme.tertiaryContainer, fg: overall != null && overall < summary.minimum ? Status.bad(b) : t.colorScheme.onTertiaryContainer, onTap: onOpenAttendance)),
+          Expanded(child: _Bento(value: overall == null ? '–' : '${overall.toStringAsFixed(0)}%', label: 'attendance', fg: overall == null ? t.colorScheme.onSurface : overall < summary.minimum ? Status.bad(b) : Status.good(b), tint: overall != null && overall < summary.minimum ? Status.bad(b) : null, onTap: onOpenAttendance)),
         ])),
       ]))),
+      if (comingUp.isNotEmpty) ...[
+        const SizedBox(height: 20),
+        SectionTitle('Coming up', trailing: 'Next ${comingUp.length}'),
+        Reveal(index: 2, child: Card(child: Column(children: [
+          for (final (i, w) in comingUp.indexed) ...[
+            if (i > 0) Divider(height: 1, indent: 16, endIndent: 16, color: t.colorScheme.outlineVariant),
+            ListTile(
+              onTap: onOpenWork,
+              title: Text(w.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text('${w.course} · ${dayLabel(w.due!)}', maxLines: 1, overflow: TextOverflow.ellipsis),
+              trailing: Pill(countdown(w.due!, now)),
+            ),
+          ],
+        ]))),
+      ],
       const SizedBox(height: 20),
       SectionTitle('Today\'s classes', trailing: classes.isEmpty ? null : '${classes.length}'),
       if (classes.isEmpty)
@@ -104,8 +118,6 @@ class _HeroState extends State<_Hero> {
         Text(w.title, style: t.textTheme.titleLarge?.copyWith(color: fg, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         Row(children: [
-          Container(width: 10, height: 10, decoration: BoxDecoration(color: courseColor(w.course), shape: BoxShape.circle, border: Border.all(color: fg.withValues(alpha: 0.5)))),
-          const SizedBox(width: 8),
           Expanded(child: Text('${w.course} · ${dayLabel(due)}, ${timeLabel(due)}', style: t.textTheme.bodyMedium?.copyWith(color: fg.withValues(alpha: 0.8)))),
         ]),
         if (w.extended && w.wasDue != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Extended from ${w.wasDue}', style: t.textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.8)))),
@@ -121,7 +133,7 @@ class _HeroState extends State<_Hero> {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Okay: no more reminders for this one. The next check confirms it with the portal.')));
           }, child: const Text('Done'))),
         ]),
-        TextButton(onPressed: widget.onOpen, child: const Text('See all work')),
+        TextButton(onPressed: widget.onOpen, child: const Text('See all assignments')),
       ]),
     );
   }
@@ -152,7 +164,7 @@ class _ClassTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(16), border: Border(left: BorderSide(color: courseColor(slot.course), width: 5))),
+      decoration: BoxDecoration(color: live ? t.colorScheme.primaryContainer : t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
       child: Row(children: [
         SizedBox(width: 92, child: Text('${slot.start}–${slot.end}', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]))),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -173,71 +185,32 @@ String agoText(Duration d) {
 }
 
 
-/// The next seven days at a glance: a dot per deadline, one for an exam.
-class _WeekStrip extends StatelessWidget {
-  const _WeekStrip({required this.summary, required this.now, required this.prefs});
-  final Summary summary;
-  final DateTime now;
-  final Prefs prefs;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context), b = t.brightness;
-    final start = DateTime(now.year, now.month, now.day);
-    bool same(DateTime? a, DateTime d) => a != null && a.year == d.year && a.month == d.month && a.day == d.day;
-    final work = summary.work.where((w) => w.todo && w.open && !prefs.done.contains(w.id)).toList();
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-      decoration: BoxDecoration(color: t.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(20)),
-      child: Row(children: [
-        for (var i = 0; i < 7; i++) Builder(builder: (_) {
-          final d = start.add(Duration(days: i));
-          final due = work.where((w) => same(w.due, d)).length;
-          final exam = summary.exams.any((e) => same(e.day, d));
-          final isToday = i == 0;
-          return Expanded(child: Column(children: [
-            Text(weekdays[d.weekday - 1].substring(0, 1), style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Container(
-              width: 34, height: 34, alignment: Alignment.center,
-              decoration: BoxDecoration(color: isToday ? t.colorScheme.primary : null, shape: BoxShape.circle),
-              child: Text('${d.day}', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: isToday ? t.colorScheme.onPrimary : null)),
-            ),
-            const SizedBox(height: 5),
-            SizedBox(height: 8, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              for (var k = 0; k < due.clamp(0, 3); k++) Container(width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 1.5), decoration: BoxDecoration(color: Status.warn(b), shape: BoxShape.circle)),
-              if (exam) Container(width: 6, height: 6, margin: const EdgeInsets.symmetric(horizontal: 1.5), decoration: BoxDecoration(color: Status.bad(b), borderRadius: BorderRadius.circular(1.5))),
-            ])),
-          ]));
-        }),
-      ]),
-    );
-  }
-}
-
-/// A tonal tile for the bento grid on Today: a big number and what it counts.
+/// A tile for the grid on Today: a big number, what it counts, and a faint tint only when it needs attention.
 class _Bento extends StatelessWidget {
-  const _Bento({required this.value, required this.label, required this.bg, required this.fg, required this.onTap, this.caption, this.big = false});
+  const _Bento({required this.value, required this.label, required this.fg, required this.onTap, this.caption, this.tint, this.big = false});
   final String value, label;
   final String? caption;
-  final Color bg, fg;
+  final Color fg;
+  final Color? tint;
   final bool big;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Material(
-      color: bg, borderRadius: BorderRadius.circular(28),
+      color: tint == null ? t.colorScheme.surfaceContainerHigh : Color.alphaBlend(tint!.withValues(alpha: 0.14), t.colorScheme.surfaceContainerHigh),
+      borderRadius: BorderRadius.circular(28),
       child: InkWell(
         borderRadius: BorderRadius.circular(28), onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.all(big ? 20 : 14),
+          padding: EdgeInsets.all(big ? 20 : 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: big ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center, children: [
-            if (big) Icon(Icons.north_east, size: 20, color: fg.withValues(alpha: 0.7)),
+            if (big) Icon(Icons.north_east, size: 20, color: t.colorScheme.onSurfaceVariant),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(value, style: (big ? t.textTheme.displayLarge : t.textTheme.headlineMedium)?.copyWith(fontWeight: FontWeight.w800, color: fg, height: 1.0, fontFeatures: const [FontFeature.tabularFigures()])),
               const SizedBox(height: 2),
-              Text(label, style: t.textTheme.titleSmall?.copyWith(color: fg, fontWeight: FontWeight.w600)),
-              if (caption != null) Text(caption!, style: t.textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.7))),
+              Text(label, style: t.textTheme.titleSmall?.copyWith(color: t.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+              if (caption != null) Text(caption!, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
             ]),
           ]),
         ),

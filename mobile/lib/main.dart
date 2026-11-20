@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart' show SpringDescription, SpringSimulation;
 import 'package:flutter/services.dart' show HapticFeedback;
 
 import 'data.dart' show Clock;
@@ -84,7 +85,8 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
   late final Animation<double> _t = CurvedAnimation(parent: _menu, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
 
-  static const _titles = ['Today', 'Work', 'Attendance', 'Exams'];
+  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams'];
+  int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
 
   @override
   void initState() {
@@ -95,21 +97,24 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   @override
   void dispose() { tick?.cancel(); _menu.dispose(); super.dispose(); }
 
-  void goto(int i) => setState(() => tab = i);
-  void _toggleMenu() => _menu.isDismissed ? _menu.forward() : _menu.reverse();
+  void goto(int i) => setState(() { _dir = i >= tab ? 1 : -1; tab = i; });
+
+  /// Settles the menu open or shut with a spring that carries on from the speed of the finger.
+  TickerFuture _settle(bool open, [double velocity = 0]) => _menu.animateWith(SpringSimulation(const SpringDescription(mass: 1, stiffness: 320, damping: 36), _menu.value, open ? 1 : 0, velocity));
+  void _toggleMenu() => _menu.value < 0.5 ? _settle(true) : _settle(false);
 
   /// Menu rows: 0..3 are the bottom-bar screens, the rest open over them.
   Future<void> _pick(int i, Summary s, DateTime now) async {
     if (i <= 3) {
       goto(i);
-      _menu.reverse();
+      _settle(false);
       return;
     }
-    await _menu.reverse();
+    await _settle(false);
     if (!mounted) return;
     switch (i) {
       case 4: openPage(context, 'Timetable', TimetablePage(summary: s, now: now));
-      case 5: openPage(context, 'Results and GPA', ResultsPage(summary: s));
+      case 5: openPage(context, 'Results & GPA', ResultsPage(summary: s));
       case 6: openPage(context, 'Settings', SettingsHub(summary: s, prefs: widget.prefs, model: widget.model));
     }
   }
@@ -121,12 +126,12 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
     final todo = s.work.where((x) => x.todo && x.open && !widget.prefs.done.contains(x.id)).length;
     return PopScope(
       canPop: _menu.isDismissed,
-      onPopInvokedWithResult: (didPop, _) { if (!didPop) _menu.reverse(); },
+      onPopInvokedWithResult: (didPop, _) { if (!didPop) _settle(false); },
       child: ColoredBox(
         color: t.colorScheme.surfaceContainerLowest,
         child: Stack(children: [
           // the menu sits underneath; the app slides aside to uncover it
-          _SideMenu(summary: s, model: m, selected: tab, todo: todo, progress: _t, onPick: (i) => _pick(i, s, now), onSignOut: () { _menu.reverse(); m.signOut(); }),
+          _SideMenu(summary: s, model: m, selected: tab, todo: todo, progress: _t, onPick: (i) => _pick(i, s, now), onSignOut: () { _settle(false); m.signOut(); }),
           AnimatedBuilder(
             animation: _t,
             builder: (context, child) {
@@ -138,7 +143,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(32 * v),
                   child: Stack(children: [
                     child!,
-                    if (v > 0) Positioned.fill(child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: _menu.reverse, child: ColoredBox(color: Colors.black.withValues(alpha: 0.10 * v)))),
+                    if (v > 0) Positioned.fill(child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => _settle(false), child: ColoredBox(color: Colors.black.withValues(alpha: 0.10 * v)))),
                   ]),
                 ),
               );
@@ -146,7 +151,11 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
             child: GestureDetector(
               // a swipe that starts at the left edge pulls the menu out (rows inside the app keep their own swipes)
               onHorizontalDragUpdate: (d) { if (d.localPosition.dx < 28 || !_menu.isDismissed) _menu.value += d.delta.dx / (w * 0.72); },
-              onHorizontalDragEnd: (d) { if (_menu.isDismissed) return; (_menu.value > 0.45 || d.primaryVelocity! > 400) && d.primaryVelocity! > -400 ? _menu.forward() : _menu.reverse(); },
+              onHorizontalDragEnd: (d) {
+                if (_menu.isDismissed) return;
+                final v = (d.primaryVelocity ?? 0) / (w * 0.72);   // menu-widths per second
+                _settle(v > 0.8 || (_menu.value > 0.5 && v > -0.8), v);
+              },
               child: _body(m, s, now, todo),
             ),
           ),
@@ -169,7 +178,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
         leading: IconButton(icon: AnimatedIcon(icon: AnimatedIcons.menu_arrow, progress: _t), tooltip: 'Menu', onPressed: _toggleMenu),
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
-          transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, 0.3), end: Offset.zero).animate(a), child: c)),
+          transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: Offset(0.15 * _dir, 0), end: Offset.zero).animate(a), child: c)),
           child: Text(_titles[tab], key: ValueKey(tab), style: const TextStyle(fontWeight: FontWeight.w700)),
         ),
         actions: [
@@ -185,9 +194,10 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
             child: RefreshIndicator(
               onRefresh: m.refresh,
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 260),
+                duration: const Duration(milliseconds: 320),
                 switchInCurve: Curves.easeOutCubic,
-                transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, 0.02), end: Offset.zero).animate(a), child: c)),
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (c, a) => FadeTransition(opacity: a, child: SlideTransition(position: Tween(begin: Offset(0.08 * _dir, 0), end: Offset.zero).animate(a), child: c)),
                 child: KeyedSubtree(key: ValueKey(tab), child: pages[tab]),
               ),
             ),
@@ -206,7 +216,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
           ),
           child: Row(children: [
             _NavItem(icon: Icons.today_outlined, selectedIcon: Icons.today, label: 'Today', selected: tab == 0, onTap: () => goto(0)),
-            _NavItem(icon: Icons.checklist_outlined, selectedIcon: Icons.checklist, label: 'Work', selected: tab == 1, badge: todo, onTap: () => goto(1)),
+            _NavItem(icon: Icons.checklist_outlined, selectedIcon: Icons.checklist, label: 'Assignments', selected: tab == 1, badge: todo, onTap: () => goto(1)),
             _NavItem(icon: Icons.event_available_outlined, selectedIcon: Icons.event_available, label: 'Attendance', selected: tab == 2, onTap: () => goto(2)),
             _NavItem(icon: Icons.school_outlined, selectedIcon: Icons.school, label: 'Exams', selected: tab == 3, onTap: () => goto(3)),
           ]),
@@ -233,11 +243,11 @@ class _SideMenu extends StatelessWidget {
     final w = MediaQuery.of(context).size.width;
     final items = <(int, IconData, IconData, String)>[
       (0, Icons.today_outlined, Icons.today, 'Today'),
-      (1, Icons.checklist_outlined, Icons.checklist, todo > 0 ? 'Work  ·  $todo to do' : 'Work'),
+      (1, Icons.checklist_outlined, Icons.checklist, 'Assignments'),
       (2, Icons.event_available_outlined, Icons.event_available, 'Attendance'),
       (3, Icons.school_outlined, Icons.school, 'Exams'),
       (4, Icons.calendar_view_week_outlined, Icons.calendar_view_week, 'Timetable'),
-      (5, Icons.calculate_outlined, Icons.calculate, 'Results and GPA'),
+      (5, Icons.calculate_outlined, Icons.calculate, 'Results & GPA'),
       (6, Icons.tune, Icons.tune, 'Settings'),
     ];
     // row i is fully in by the time the app has moved (0.25 + 0.06 i) of the way; it starts at 0.06 i
@@ -261,7 +271,7 @@ class _SideMenu extends StatelessWidget {
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(summary.studentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                Text(model.demo ? 'Demo data' : [summary.semester, if (model.age != null) 'read ${agoLabel(model.age!)}'].where((e) => e.isNotEmpty).join(' · '),
+                Text(model.demo ? 'Demo data' : [summary.semester, if (model.age != null) 'updated ${agoLabel(model.age!)}'].where((e) => e.isNotEmpty).join(' · '),
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
               ])),
             ])),
@@ -269,12 +279,12 @@ class _SideMenu extends StatelessWidget {
             for (final (i, it) in items.indexed)
               staggered(i + 1, Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: _MenuRow(icon: selected == it.$1 ? it.$3 : it.$2, label: it.$4, selected: it.$1 <= 3 && selected == it.$1, onTap: () => onPick(it.$1)),
+                child: _MenuRow(icon: selected == it.$1 ? it.$3 : it.$2, label: it.$4, count: it.$1 == 1 && todo > 0 ? todo : 0, selected: it.$1 <= 3 && selected == it.$1, onTap: () => onPick(it.$1)),
               )),
             const Spacer(),
             staggered(items.length + 1, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _MenuRow(icon: Icons.logout, label: model.demo ? 'Leave the demo' : 'Sign out', selected: false, onTap: onSignOut),
-              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text('Your portal password never touches this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text('Your portal password is never stored on this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
             ])),
           ]),
         ),
@@ -284,7 +294,8 @@ class _SideMenu extends StatelessWidget {
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _MenuRow({required this.icon, required this.label, required this.selected, required this.onTap, this.count = 0});
+  final int count;
   final IconData icon;
   final String label;
   final bool selected;
@@ -304,6 +315,7 @@ class _MenuRow extends StatelessWidget {
             Icon(icon, size: 22, color: fg),
             const SizedBox(width: 14),
             Expanded(child: Text(label, style: t.textTheme.titleSmall?.copyWith(color: fg, fontWeight: selected ? FontWeight.w800 : FontWeight.w600))),
+            if (count > 0) Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: fg.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(99)), child: Text('$count', style: t.textTheme.labelMedium?.copyWith(color: fg, fontWeight: FontWeight.w800))),
           ]),
         ),
       ),

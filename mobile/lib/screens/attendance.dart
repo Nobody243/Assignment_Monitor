@@ -88,7 +88,6 @@ class _CourseCardState extends State<_CourseCard> {
       child: InkWell(
         onTap: () => setState(() => open = !open),
         child: Container(
-          decoration: BoxDecoration(border: Border(left: BorderSide(color: courseColor(c.title), width: 5))),
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [

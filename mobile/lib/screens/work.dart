@@ -90,14 +90,12 @@ class _WorkTile extends StatelessWidget {
       c = left.inHours < 3 ? Status.bad(b) : left.inHours < 24 ? Status.warn(b) : null;
     } else { chip = ''; }
     final muted = prefs.done.contains(w.id) || (prefs.snoozed[w.id]?.isAfter(now) ?? false);
-    final cc = courseColor(w.course);
     final card = Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () { HapticFeedback.selectionClick(); showModalBottomSheet(context: context, showDragHandle: true, isScrollControlled: true, builder: (_) => _Detail(work: w, now: now, prefs: prefs)); },
         child: IntrinsicHeight(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(width: 5, color: cc),
             Expanded(child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
               child: Row(children: [
@@ -157,7 +155,6 @@ class _Detail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context), b = t.brightness, w = work, due = w.due;
-    final cc = courseColor(w.course);
     final left = due?.difference(now);
     final late = !w.submitted && (w.overdue || (left != null && left.isNegative));
     final tone = w.submitted ? Status.good(b) : late ? Status.bad(b) : (left != null && left.inHours < 24) ? Status.warn(b) : t.colorScheme.primary;
@@ -166,8 +163,6 @@ class _Detail extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + MediaQuery.of(context).viewInsets.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(width: 10, height: 10, decoration: BoxDecoration(color: cc, shape: BoxShape.circle)),
-            const SizedBox(width: 8),
             Expanded(child: Text('${w.course} · assignment #${w.number}', maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))),
           ]),
           const SizedBox(height: 6),
@@ -200,7 +195,7 @@ class _Detail extends StatelessWidget {
             Expanded(child: FilledButton.icon(icon: const Icon(Icons.check), onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, label: const Text('Done'))),
           ]),
           const SizedBox(height: 10),
-          Text('Uploads stay on the PC app and the portal; the phone shows and reminds.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+          Text('Submit on the portal or the PC app. This phone shows deadlines and reminds you.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
         ]),
       ),
     );

@@ -16,12 +16,27 @@ const palettes = [
 ];
 
 ThemeData buildTheme(Palette p, Brightness b) {
-  final scheme = ColorScheme.fromSeed(seedColor: p.seed, brightness: b);
+  final base = ColorScheme.fromSeed(seedColor: p.seed, brightness: b);
+  final dark = b == Brightness.dark;
+  // Same seed, but surfaces are warm neutrals one step apart (so a card reads against the page) and the
+  // secondary text is kept well above AA contrast. The accent only appears where something is actionable.
+  final scheme = base.copyWith(
+    surface: dark ? const Color(0xFF16120F) : const Color(0xFFFFFAF6),
+    surfaceContainerLowest: dark ? const Color(0xFF110E0C) : const Color(0xFFFFFFFF),
+    surfaceContainerLow: dark ? const Color(0xFF1E1916) : const Color(0xFFFBF1EA),
+    surfaceContainer: dark ? const Color(0xFF241E1A) : const Color(0xFFF6EAE1),
+    surfaceContainerHigh: dark ? const Color(0xFF2D2621) : const Color(0xFFF0E2D8),
+    surfaceContainerHighest: dark ? const Color(0xFF383029) : const Color(0xFFE9D8CB),
+    onSurface: dark ? const Color(0xFFF4EBE5) : const Color(0xFF241A15),
+    onSurfaceVariant: dark ? const Color(0xFFCDBFB6) : const Color(0xFF5A4A41),
+    outlineVariant: dark ? const Color(0xFF4A3F37) : const Color(0xFFD9C6B9),
+  );
   return ThemeData(
     useMaterial3: true,
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()}),
     colorScheme: scheme,
-    scaffoldBackgroundColor: b == Brightness.light ? const Color(0xFFFFFAF6) : const Color(0xFF14110F),
-    cardTheme: CardThemeData(elevation: 0, color: scheme.surfaceContainerLow, margin: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+    scaffoldBackgroundColor: scheme.surface,
+    cardTheme: CardThemeData(elevation: 0, color: scheme.surfaceContainer, margin: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
     navigationBarTheme: NavigationBarThemeData(height: 64, backgroundColor: scheme.surfaceContainer, indicatorColor: scheme.primaryContainer),
     chipTheme: ChipThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
     appBarTheme: const AppBarTheme(centerTitle: false, scrolledUnderElevation: 0, backgroundColor: Colors.transparent),

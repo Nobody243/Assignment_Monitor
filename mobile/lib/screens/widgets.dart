@@ -59,12 +59,17 @@ class Pill extends StatelessWidget {
   }
 }
 
-/// A stable, muted colour per course (low saturation, so it marks a subject without competing with the status colours).
-const _courseColors = [
-  Color(0xFFB46A55), Color(0xFF7E9275), Color(0xFF6F86A3), Color(0xFFB39A5C),
-  Color(0xFF8C7089), Color(0xFF5F8A89), Color(0xFF8A8478), Color(0xFFA4766F),
-];
-Color courseColor(String name) => _courseColors[name.codeUnits.fold<int>(7, (a, b) => (a * 31 + b) & 0x7fffffff) % _courseColors.length];
+/// The one page transition for secondary pages: the new page slides in a little from the right while fading.
+Route<T> slideRoute<T>(Widget page) => PageRouteBuilder<T>(
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (_, _, _) => page,
+      transitionsBuilder: (_, a, sa, child) {
+        final slide = Tween(begin: const Offset(0.10, 0), end: Offset.zero).chain(CurveTween(curve: Curves.easeOutCubic));
+        final under = Tween(begin: Offset.zero, end: const Offset(-0.04, 0)).chain(CurveTween(curve: Curves.easeOutCubic));
+        return SlideTransition(position: under.animate(sa), child: FadeTransition(opacity: CurvedAnimation(parent: a, curve: Curves.easeOut), child: SlideTransition(position: slide.animate(a), child: child)));
+      },
+    );
 
 /// Fades and lifts its child in; later items (higher [index]) arrive a moment after the earlier ones.
 class Reveal extends StatelessWidget {
