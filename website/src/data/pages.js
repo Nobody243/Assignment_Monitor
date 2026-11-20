@@ -54,7 +54,7 @@ export const PAGES = {
     sections: [
       { h: "Installer", p: ["The easy path: Start Menu and Desktop icons, in-app updates and a clean uninstall. Installs for your user account only."] },
       { h: "Portable zip", p: ["The same program without an installer. Unzip it anywhere and run AssignmentMonitor.exe. Data lives in your local app-data folder either way."] },
-      { h: "Windows may say \"protected your PC\"", p: ["The installer is not yet code-signed (the project is applying for a free open-source certificate), so SmartScreen warns the first time. Click \"More info\", then \"Run anyway\". Or clone the repository and build the same installer yourself."] },
+      { h: "Windows may say \"protected your PC\"", p: ["The installer is not yet code-signed. The project has applied to the SignPath Foundation for free code signing (free code signing provided by SignPath.io, certificate by SignPath Foundation), and releases will be signed that way once it is approved. Until then SmartScreen warns the first time. Click \"More info\", then \"Run anyway\". Or clone the repository and build the same installer yourself."] },
       { h: "Uninstall", p: ["Settings → Apps → Assignment Monitor → Uninstall. It closes the app, removes the background tasks and the Startup entry, offers to turn off cloud checks, deletes the program, and asks whether to delete your saved sign-in and cached data too."] },
     ],
   },

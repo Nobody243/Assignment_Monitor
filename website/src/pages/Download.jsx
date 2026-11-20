@@ -66,7 +66,7 @@ export default function Download() {
       <section className="dl-smartscreen">
         <div className="wrap">
           <SectionHead kicker="First run" title={<>Windows may say <span className="heading-accent">"protected your PC".</span></>}
-            lede="The installer is not yet code-signed (the project is applying for a free open-source certificate), so SmartScreen shows a warning the first time. The file itself is built by GitHub Actions from the public source." />
+            lede="The installer is not yet code-signed. The project has applied to the SignPath Foundation for free code signing (free code signing provided by SignPath.io, certificate by SignPath Foundation), and releases will be signed that way once it is approved. Until then SmartScreen shows a warning the first time. The file itself is built by GitHub Actions from the public source." />
           <Stagger className="steps" step={0.1}>
             <Item className="step" data-n="1"><h3>More info</h3><p>On the blue SmartScreen dialog, click the small "More info" link under the message.</p></Item>
             <Item className="step" data-n="2"><h3>Run anyway</h3><p>A "Run anyway" button appears. Click it; the normal setup wizard opens.</p></Item>
