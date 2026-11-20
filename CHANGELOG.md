@@ -11,6 +11,10 @@
 - The tray icon and the taskbar button show a red dot when something is due within a day, and the tray tooltip says how many and what is next.
 - Drop a file on an assignment row to upload it (with the usual confirmation); rows that cannot take a submission say why.
 - Home shows the latest announcements again.
+- Reminder notifications have Snooze 1 h and Done buttons (installed app): Snooze silences that assignment and reminds you once more when the time is up; Done stops reminders for that deadline (the portal still decides whether it is submitted, and a moved deadline reminds again).
+- A Sunday-evening summary: what is due next week, exams, and attendance to watch. Switchable under Settings, Notifications.
+- An optional daily digest: phone and email get one morning message instead of each alert, except alerts about something due within hours.
+- Settings, About: Copy support info puts the version, which features are on and the recent log on the clipboard with enrollment numbers, emails, your Windows user name, your name and tokens removed, ready for a bug report.
 
 - A Timetable page: your week as a grid with a colour per course, today and the current time marked, and Save as PNG, JPG or PDF (to Documents / Assignment Monitor).
 - First run: a welcome with three steps (sign in, first check, automatic checks) instead of a dashboard that says you are all caught up.

@@ -10,11 +10,13 @@ log = logging.getLogger("bahria.notifier")
 CREATE_NO_WINDOW = 0x08000000
 
 
-def send_toast(title: str, message: str) -> None:
-    """Native Windows 10/11 desktop notification."""
+def send_toast(title: str, message: str, actions: list = None) -> None:
+    """Native Windows 10/11 desktop notification. `actions` are up to two (label, link) buttons."""
     try:
         from winotify import Notification
         toast = Notification(app_id=APP_NAME, title=title, msg=message, duration="short")
+        for label, link in (actions or [])[:2]:
+            toast.add_actions(label=label, launch=link)
         toast.show()
     except Exception as e:
         log.warning("Toast notification failed: %s", e)
@@ -59,15 +61,20 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'' if n == 1 else 's'}"
 
 
-def _notify(title: str, body: str, voice: str = "", channels: bool = True) -> None:
-    """Desktop notification, optional voice line and, unless `channels` is False, the phone and the mailbox."""
+def _notify(title: str, body: str, voice: str = "", channels: bool = True, actions: list = None, urgent: bool = False) -> None:
+    """Desktop notification (with optional buttons), optional voice line and, unless `channels` is False, the phone and the
+    mailbox. With the daily digest on, phone and email alerts that are not `urgent` wait for the morning digest."""
     env = load_env()
     log.info("Alert: %s - %s", title, body.replace("\n", " | "))
     if env.get("ENABLE_WINDOWS_TOAST", True):
-        send_toast(f"{APP_NAME}: {title}", body)
+        send_toast(f"{APP_NAME}: {title}", body, actions)
     if voice:
         speak_voice(voice)
     if not channels:
+        return
+    if env.get("DIGEST_ENABLED") and not urgent:
+        import reminders
+        reminders.queue_digest(title, body)
         return
     try:
         from channels import send_all
@@ -170,7 +177,7 @@ def alert_exams_soon(exams: list) -> None:
 
 def alert_exam_today(e: dict) -> None:
     """Morning-of reminder (hourly job, once per exam)."""
-    _notify(f"Exam today: {e['title'][:40]}", _exam_line(e))
+    _notify(f"Exam today: {e['title'][:40]}", _exam_line(e), urgent=True)
 
 
 def alert_exams_scheduled(exams: list) -> None:

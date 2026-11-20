@@ -99,3 +99,10 @@ test('the badge paints a red dot in the corner and leaves the rest alone', () =>
   const i = ((h - 9) * w + (w - 9)) * 4
   assert.deepEqual([out[i], out[i + 1], out[i + 2]], [51, 51, 220])   // the dot: red in BGR
 })
+
+test('a button on a reminder notification is handed to the engine and never opens a window', () => {
+  const c = parseCli(['C:/x/AssignmentMonitor.exe', 'assignment-monitor://snooze?id=a%231&h=1'])
+  assert.equal(c.headless, true)
+  assert.deepEqual(c.passthrough, ['--toast-action', 'assignment-monitor://snooze?id=a%231&h=1'])
+  assert.equal(parseCli(['http://example.com']).headless, false)
+})

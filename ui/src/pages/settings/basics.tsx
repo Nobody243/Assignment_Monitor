@@ -42,6 +42,8 @@ export function AlertsSection({ view, save, demo }: { view: SettingsView; save: 
           })}
         </div>
       </Row>
+      <SwitchRow label="Sunday summary" hint="On Sunday evening: what is due next week, exams, and attendance to watch" checked={al.weekly_summary} onChange={v => void save({ weekly_summary: v })} />
+      <SwitchRow label="Daily digest for phone and email" hint="Phone and email get one morning message instead of each alert. Alerts about something due within hours still arrive at once." checked={al.digest_enabled} onChange={v => void save({ digest_enabled: v })} />
       <Row label="Voice" hint="A speech voice installed on this PC">
         <Select value={al.voice_name || 'default'} onValueChange={v => void save({ voice_name: v === 'default' ? '' : v })}>
           <SelectTrigger size="sm" className="w-56" aria-label="Voice"><SelectValue /></SelectTrigger>

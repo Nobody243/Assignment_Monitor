@@ -74,6 +74,8 @@ FIELDS: dict[str, tuple[str, str]] = {
     "animations": ("ANIMATIONS", "bool"),
     "remind_leads": ("REMIND_LEADS", "leads"),
     "setup_done": ("SETUP_DONE", "bool"),
+    "weekly_summary": ("WEEKLY_SUMMARY", "bool"),
+    "digest_enabled": ("DIGEST_ENABLED", "bool"),
 }
 _ENROLLMENT = re.compile(r"^[A-Za-z0-9\-]{3,30}$")
 _HOST = re.compile(r"^[A-Za-z0-9.\-]{0,253}$")
@@ -160,6 +162,8 @@ def view() -> dict:
             "voice_name": env["VOICE_NAME"],
             "voice_volume": env["VOICE_VOLUME"],
             "voice_rate": env["VOICE_RATE"],
+            "weekly_summary": env["WEEKLY_SUMMARY"],
+            "digest_enabled": env["DIGEST_ENABLED"],
         },
         "tracking": {
             "track_attendance": env["TRACK_ATTENDANCE"],

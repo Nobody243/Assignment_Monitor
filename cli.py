@@ -8,6 +8,11 @@ as a normal long-running service).
 import argparse
 
 
+def config_name() -> str:
+    from config import APP_NAME
+    return APP_NAME
+
+
 def add_arguments(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--check", action="store_true", help="sync assignments and notify, then exit")
     ap.add_argument("--remind", action="store_true", help="hourly same-day reminder, then exit")
@@ -19,14 +24,21 @@ def add_arguments(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--enable-automation", action="store_true", help="register the background tasks, then exit")
     ap.add_argument("--disable-automation", action="store_true", help="remove the background tasks, then exit")
     ap.add_argument("--disable-cloud", action="store_true", help="turn off cloud checks, then exit")
+    ap.add_argument("--toast-action", default="", metavar="LINK", help="carry out a notification button, then exit")
 
 
 def wanted(args) -> bool:
-    keys = ("check", "remind", "status", "test_alert", "enable_automation", "disable_automation", "disable_cloud")
+    keys = ("check", "remind", "status", "test_alert", "enable_automation", "disable_automation", "disable_cloud", "toast_action")
     return any(getattr(args, k, False) for k in keys)
 
 
 def run(args) -> int | None:
+    if getattr(args, "toast_action", ""):
+        import toast_actions
+        from notifier import send_toast
+        ok, message = toast_actions.handle(args.toast_action)
+        send_toast(config_name(), message)
+        return 0 if ok else 1
     if args.check or args.remind or args.status or args.test_alert:
         import jobs
         if args.check:

@@ -145,6 +145,8 @@ DEFAULTS = {
     "LECTURES_DIR": "",
     "ANIMATIONS": True,
     "REMIND_LEADS": "24,3,1",      # hours before a deadline at which to remind; "off" for none
+    "WEEKLY_SUMMARY": True,        # a Sunday-evening look at the week ahead
+    "DIGEST_ENABLED": False,       # phone and email get one morning digest instead of each alert (urgent ones still go at once)
     "SETUP_DONE": False,           # the first-run setup has been completed or skipped
     # cloud checks (GitHub Actions in the student's own account); the token is a secret like the password
     "CLOUD_ENABLED": False,
@@ -156,7 +158,7 @@ DEFAULTS = {
 }
 _BOOL_KEYS = ("ENABLE_VOICE", "ENABLE_WINDOWS_TOAST", "HEADLESS", "CLOSE_TO_TRAY", "CHECK_UPDATES",
               "TRACK_ATTENDANCE", "TRACK_EXAMS", "TRACK_ANNOUNCEMENTS", "TRACK_LECTURES", "TRACK_TIMETABLE",
-              "TRACK_RESULTS", "ANIMATIONS", "SETUP_DONE",
+              "TRACK_RESULTS", "ANIMATIONS", "SETUP_DONE", "WEEKLY_SUMMARY", "DIGEST_ENABLED",
               "EMAIL_ENABLED", "PUSH_ENABLED", "CALENDAR_ENABLED", "CALENDAR_INVITES", "CLOUD_ENABLED")
 _SECRET_KEYS = ("PASSWORD", "EMAIL_PASS", "PUSH_SUB", "PUSH_VAPID", "GITHUB_TOKEN")
 

@@ -107,7 +107,7 @@ export type SettingsView = {
   setup_done?: boolean
   about: { version: string; tagline: string; installed: boolean; repo: string; site: string; author: string; license: string }
   campuses: { id: string; name: string }[]
-  alerts: { voice: boolean; toast: boolean; notify_days_ahead: number; voice_name: string; voice_volume: number; voice_rate: number }
+  alerts: { voice: boolean; toast: boolean; notify_days_ahead: number; voice_name: string; voice_volume: number; voice_rate: number; weekly_summary: boolean; digest_enabled: boolean }
   tracking: {
     track_attendance: boolean; track_exams: boolean; track_announcements: boolean; track_lectures: boolean; track_timetable: boolean; track_results: boolean
     attendance_min: number; exam_remind_days: number; remind_leads: number[]
@@ -133,6 +133,7 @@ export const testAlert = () => post<{ ok: boolean }>('/api/test/alert')
 export const testEmail = () => post<{ job: string }>('/api/test/email')
 export const testPush = () => post<{ job: string }>('/api/test/push')
 export const getVoices = () => call<{ voices: string[] }>('/api/voices')
+export const getSupport = () => call<{ text: string }>('/api/support')
 export const previewVoice = (v: { voice_name: string; voice_volume: number; voice_rate: number }) => post<{ ok: boolean }>('/api/voice/preview', v)
 export const pairStart = () => post<{ url: string; code: string; qr: string }>('/api/pair/start')
 export const pairPoll = () => post<{ status: 'waiting' | 'opened' | 'paired'; device?: string }>('/api/pair/poll')

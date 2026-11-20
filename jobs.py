@@ -182,22 +182,24 @@ def run_check(quiet: bool = False, headless: bool = None) -> int:
 
 
 def find_due_today_pending(assignments: dict) -> list:
+    import reminders
     now = datetime.now()
     return [item for item in assignments.values()
-            if is_open_pending(item) and classify(item, now)["key"] == "today"]
+            if is_open_pending(item) and classify(item, now)["key"] == "today" and not reminders.is_muted(item, now)]
 
 
 def lead_reminders(env: dict, assignments: dict, now: datetime = None) -> list:
     """Reminders owed now: for each open, unsubmitted assignment, the smallest configured lead time (hours) it has reached
     and has not been reminded about. A reminder for a smaller lead also settles the larger ones, so a PC that was off
     through the 24 h mark does not announce "24 hours" when only 2 are left. Returns [(item, lead, hours_left, keys)]."""
+    import reminders
     from config import remind_leads
     from deadlines import deadline_of
     now = now or datetime.now()
     leads = remind_leads(env.get("REMIND_LEADS"))
     owed = []
     for item in assignments.values():
-        if not is_open_pending(item):
+        if not is_open_pending(item) or reminders.is_muted(item, now):
             continue
         due = deadline_of(item)
         if due is None or due <= now:
@@ -232,11 +234,70 @@ def run_lead_reminders(env: dict) -> int:
         log.info("Lead reminder: %s (%s left)", item["title"], phrase)
         quiet = not 7 <= datetime.now().hour < 23                       # a reminder may pop up at night, but never speaks
         voice = f"Reminder: {item['title']} for {item['course']} is due in {phrase}." if env.get("ENABLE_VOICE", True) and not quiet else ""
-        _notify(title, body, voice=voice)
+        from toast_actions import actions_for
+        _notify(title, body, voice=voice, actions=actions_for(item), urgent=left <= 3)
         for k in keys:
             mark_reminder(k)
         sent += 1
     return sent
+
+
+def run_snooze_wakeups(env: dict) -> int:
+    """A snoozed reminder whose time is up: remind once more, if the assignment is still open and unsubmitted."""
+    import reminders
+    from notifier import _notify
+    from toast_actions import actions_for
+    stored = load_stored_assignments()
+    sent = 0
+    for item_id in reminders.due_snoozes():
+        item = stored.get(item_id)
+        if not item or not is_open_pending(item):
+            continue
+        log.info("Snooze over: %s", item.get("title"))
+        _notify(f"Reminder: {item['title'][:40]}", f"{item['course']}\n{item.get('due_date', '')}", actions=actions_for(item), urgent=True)
+        sent += 1
+    return sent
+
+
+def run_weekly_summary(env: dict, now: datetime = None) -> bool:
+    """Sunday evening: what is due next week, exams, and attendance to watch. Once a week."""
+    import reminders
+    from notifier import _notify
+    from tracker import load_attendance, load_exams
+    now = now or datetime.now()
+    if not env.get("WEEKLY_SUMMARY", True) or not reminders.weekly_due(now):
+        return False
+    mark_reminder(reminders.weekly_key(now))
+    exams = exams_within(8, load_exams(), now)
+    summary = reminders.weekly_summary(load_stored_assignments(), load_attendance(), exams, int(env.get("ATTENDANCE_MIN", 75)), now)
+    if not summary:
+        return False
+    log.info("Weekly summary: %s", summary[0])
+    _notify(summary[0], summary[1])
+    return True
+
+
+def run_digest(env: dict, now: datetime = None) -> bool:
+    """One message to phone and email with everything that waited since the last one. Goes out with the first hourly check
+    from 07:00; if the digest was switched off with items waiting, they are sent at once."""
+    import reminders
+    from channels import send_all
+    now = now or datetime.now()
+    on = env.get("DIGEST_ENABLED")
+    if on and now.hour < reminders.DIGEST_HOUR:
+        return False
+    key = f"digest:{now:%Y-%m-%d}"
+    if on and reminder_sent(key):
+        return False
+    items = reminders.take_digest()
+    if not items:
+        return False
+    title, body = reminders.digest_text(items)
+    log.info("Digest: %s", title)
+    send_all(title, body)
+    if on:
+        mark_reminder(key)
+    return True
 
 
 def run_reminder(test: bool = False) -> int:
@@ -252,6 +313,9 @@ def run_reminder(test: bool = False) -> int:
         if env.get("TRACK_EXAMS", True):
             _exam_day_reminders()
         run_lead_reminders(env)
+        run_snooze_wakeups(env)
+        run_weekly_summary(env)
+        run_digest(env)
 
     if not due_items:
         log.info("Hourly check: nothing due today.")

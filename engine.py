@@ -323,6 +323,9 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/state":
             return self._send(200, build_state())
+        if url.path == "/api/support":
+            import support
+            return self._send(200, {"text": support.build_report()})
         if url.path == "/api/log":
             n = int((parse_qs(url.query).get("lines") or ["300"])[0] or 300)
             return self._send(200, {"entries": log_tail(n)})

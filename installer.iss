@@ -51,6 +51,12 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 ; the previous (Tk) build kept its libraries here; the new app does not, so an update must not leave them behind
 Type: filesandordirs; Name: "{app}\_internal"
 
+[Registry]
+; the link scheme behind the Snooze and Done buttons on reminder notifications: assignment-monitor://snooze?id=...
+Root: HKCU; Subkey: "Software\Classes\assignment-monitor"; ValueType: string; ValueData: "URL:Assignment Monitor"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\assignment-monitor"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\assignment-monitor\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExe}"" ""%1"""
+
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"

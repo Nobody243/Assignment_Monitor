@@ -66,12 +66,13 @@ const VIEWS = ['dashboard', 'assignments', 'attendance', 'exams', 'results', 'ti
  */
 function parseCli(argv) {
   const has = f => argv.includes(f)
-  const headless = HEADLESS_FLAGS.some(has)
+  const link = argv.find(a => /^assignment-monitor:\/\//i.test(a))          // a button on a reminder notification
+  const headless = HEADLESS_FLAGS.some(has) || !!link
   const i = argv.indexOf('--view')
   const view = i >= 0 && VIEWS.includes(argv[i + 1]) ? argv[i + 1] : null
   return {
     headless,
-    passthrough: headless ? argv.filter(a => HEADLESS_FLAGS.includes(a) || HEADLESS_MODIFIERS.includes(a)) : [],
+    passthrough: headless ? [...argv.filter(a => HEADLESS_FLAGS.includes(a) || HEADLESS_MODIFIERS.includes(a)), ...(link ? ['--toast-action', link] : [])] : [],
     quit: has('--quit'), tray: has('--tray'), setup: has('--setup'),
     view: has('--setup') ? 'settings' : view,
   }

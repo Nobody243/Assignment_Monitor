@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Download, ExternalLink } from 'lucide-react'
-import { getUpdate, installUpdate, type SettingsView, type UpdateInfo } from '@/api'
+import { ClipboardCopy, Download, ExternalLink } from 'lucide-react'
+import { getSupport, getUpdate, installUpdate, type SettingsView, type UpdateInfo } from '@/api'
 import { Alert } from '@/components/inline-alert'
 import { ConfirmDialog, LoadingButton } from '@/components/feedback'
 import { toast } from '@/lib/notify'
@@ -26,6 +26,12 @@ export function AboutSection({ view, version, demo, run, busy: running }: {
     if (r.ok) toast.success(r.message); else toast.error(r.message)
   }
   const installed = !!about?.installed
+  const copySupport = async () => {
+    try {
+      await navigator.clipboard.writeText((await getSupport()).text)
+      toast.success('Copied. Paste it into your bug report: names, emails, enrollment numbers and tokens are already removed.')
+    } catch (e) { toast.error('Could not copy the support info', { description: e instanceof Error ? e.message : undefined }) }
+  }
   const repo = about?.repo ?? 'https://github.com/Nobody243/Assignment_Monitor'
   const links: [string, string][] = [['What\'s new', `${repo}/blob/main/CHANGELOG.md`], ['Privacy and terms', `${repo}/blob/main/PRIVACY.md`],
     ['Security', `${repo}/blob/main/SECURITY.md`], ['Licenses', `${repo}/blob/main/THIRD_PARTY_LICENSES.md`], ['Source on GitHub', repo], ...(about ? [['Website', about.site] as [string, string]] : [])]
@@ -47,6 +53,10 @@ export function AboutSection({ view, version, demo, run, busy: running }: {
       <ConfirmDialog open={confirm} onOpenChange={setConfirm} title={`Install version ${info?.version ?? ''}?`}
         description="The app downloads the update, checks it against the checksum published with the release, then closes and reopens by itself. Your data and settings are kept."
         yes="Yes, install" no="Not now" onYes={() => void install()} />
+      <Row label="Support info" hint="The version, which features are on and the recent log, with personal details removed, ready to paste into a bug report">
+        <Button variant="outline" size="sm" disabled={demo} onClick={() => void copySupport()}><ClipboardCopy />Copy support info</Button>
+        <Button variant="ghost" size="sm" asChild><a href={`${repo}/issues/new`} target="_blank" rel="noreferrer">Report a problem<ExternalLink className="size-3" /></a></Button>
+      </Row>
       <Row label="Setup walkthrough" hint="Go through the first-run steps again: sign in, look, reminders, automatic checks, files">
         <Button variant="outline" size="sm" disabled={demo} onClick={() => window.dispatchEvent(new Event('am:setup'))}>Run setup again</Button>
       </Row>
