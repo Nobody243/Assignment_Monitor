@@ -114,6 +114,7 @@ export default function GpaCalculator() {
             <h2 className="h-md">How it is worked out</h2>
             <p>Each course contributes its credit hours times its grade points. The GPA is the total of those divided by the total credit hours. The CGPA is the same sum carried across every graded semester, so it needs your earlier CGPA and credit hours. Zero-credit courses weigh nothing.</p>
             <p>The scale used is the one the CMS result page prints. Confirm it, and any pass marks, with your department; this page is an independent student tool, not an official Bahria University calculator. <Link to="/guide/bahria-cgpa-calculator">Read the guide with worked examples.</Link></p>
+            <p className="mono">Grade scale and arithmetic last checked on 20 November 2026.</p>
           </Reveal>
         </div>
       </section>
