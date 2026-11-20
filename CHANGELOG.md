@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.9.0 - 2026-11-21
 
+- The Assignment Monitor phone app (Android) can read the same private repository, and it can also set up Cloud checks by itself, so the desktop and the phone each work on their own or together. Cloud checks now write `state/summary.json` for the phone.
 - Share with my phone (Settings, Background): a PC that does not use Cloud checks can still feed the phone app. After each check that finds something new, the app writes one small file, `state/summary.json` (your deadlines, attendance, exams, timetable, results and announcement text), to a private repository `assignment-monitor-cloud` in your own GitHub account; the phone app signs in to the same account and reads it. Sign-in is GitHub's one-time code and asks only for the `repo` permission; the token is stored encrypted like your other secrets. The portal password never goes with it. A failed send never fails or slows a check (the reason shows in Settings), an unchanged summary is not sent again, Share now sends at once, and Turn off forgets the sign-in. If Cloud checks is on, it already shares the file, so the PC does not send it twice.
 
 ## 1.8.1 - 2026-11-20
