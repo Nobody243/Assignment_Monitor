@@ -13,6 +13,11 @@ LMS, opens each page, and hands the page HTML to parsers. The parsers are ports 
 Why a WebView and not plain HTTP: the portal pages are ASP.NET with postbacks, modals and scripts. A WebView runs them as
 a browser does, and it keeps the session cookie that downloads and uploads need.
 
+## Testing
+
+The app is run and tested in an Android emulator on the development PC (Android SDK in C:\Android\sdk, an x86_64 Google APIs image). The emulator
+can open the real portal sign-in page and run the screens, but a sign-in with a real account is typed by the student.
+
 ## Security rules
 
 - The portal password is stored only in the Android Keystore (flutter_secure_storage, already used for the token), never
@@ -38,7 +43,7 @@ a browser does, and it keeps the session cookie that downloads and uploads need.
 | 3 | Refresh on the phone with the same views and reminders as today; background refresh every two hours | yes |
 | 4 | Lectures page: list by course, download, open | yes |
 | 5 | Assignments: download the brief, upload, replace and delete a submission | yes |
-| 6 | Activity page and the remaining desktop settings | no |
+| 6 | The remaining desktop settings (there is no Activity page on the phone) | no |
 
 ## What I cannot check without the student
 
