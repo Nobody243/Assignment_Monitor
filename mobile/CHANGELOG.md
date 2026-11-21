@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.2 - 2026-11-21
 
 - The phone app can now work on its own, with no desktop app and no GitHub repository: sign in with your university login (enrollment number, password and campus) and the phone reads the portal itself. Your login stays in the phone's secure storage and goes only to the university portal.
 - New Lectures section: the notes and files of every course, with a download that opens in your viewer or saves to your files.
