@@ -166,14 +166,14 @@ class _GradeRow extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('Course ${index + 1}', style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
-          if (onRemove != null) IconButton(visualDensity: VisualDensity.compact, tooltip: 'Remove this course', onPressed: onRemove, icon: Icon(LucideIcons.x, size: 18, color: t.colorScheme.onSurfaceVariant)),
+          if (onRemove != null) IconButton(tooltip: 'Remove this course', onPressed: onRemove, icon: Icon(LucideIcons.x, size: 18, color: t.colorScheme.onSurfaceVariant)),
         ]),
         Row(children: [
           Text('Credit hours', style: t.textTheme.labelMedium?.copyWith(color: t.colorScheme.onSurfaceVariant)),
           const SizedBox(width: 10),
           Expanded(child: Wrap(spacing: 6, runSpacing: 4, children: [
             for (final c in [1, 2, 3, 4]) ChoiceChip(
-              label: Text('$c'), visualDensity: VisualDensity.compact, showCheckmark: false,
+              label: Text('$c'), showCheckmark: false,
               selected: course.credits == c.toDouble(),
               onSelected: (_) { course.credits = c.toDouble(); onChanged(); },
             ),

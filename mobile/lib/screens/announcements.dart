@@ -57,8 +57,8 @@ class _AnnouncementsState extends State<AnnouncementsScreen> {
     bool isNew(Note n) => n.postedAt != null && seenAtOpen != null && n.postedAt!.isAfter(seenAtOpen!);
     return Column(children: [
       if (courses.length > 1) SizedBox(
-        height: 52,
-        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(12, 4, 12, 8), children: [
+        height: 56,   // the chips are 48 dp tall inside this, the smallest comfortable tap target
+        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), children: [
           Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ChoiceChip(label: Text('All  ${all.length}'), selected: course == null, showCheckmark: false, onSelected: (_) => setState(() => course = null))),
           for (final c in courses) Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),

@@ -52,8 +52,8 @@ class _WorkState extends State<WorkScreen> {
     const order = ['Due today', 'This week', 'Later', 'Overdue', 'Submitted', 'No date'];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(
-        height: 52,
-        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), children: [
+        height: 56,   // the chips are 48 dp tall inside this, the smallest comfortable tap target
+        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), children: [
           for (final f in _Filter.values)
             Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ChoiceChip(label: Text('${_filterLabels[f]}  ${count(f)}'), selected: filter == f, onSelected: (_) => setState(() => filter = f))),
         ]),
