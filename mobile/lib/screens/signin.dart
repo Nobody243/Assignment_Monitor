@@ -43,7 +43,7 @@ class SignInScreen extends StatelessWidget {
               for (final (icon, text) in const [
                 (LucideIcons.timer, 'Live countdowns and reminders that work offline'),
                 (LucideIcons.calendarCheck, 'Attendance: exactly how many hours you can still miss'),
-                (LucideIcons.lock, 'Reads from your own private GitHub repository. Your portal password is never stored here.'),
+                (LucideIcons.lock, 'Your login stays in this phone\'s secure storage and goes only to the university portal. Or read from your own private GitHub repository instead, with no portal password on the phone.'),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -67,14 +67,23 @@ class SignInScreen extends StatelessWidget {
         Text('Already use the desktop app? Sign in and your deadlines are here. It works on its own too: no PC is needed.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
-        // standalone: the phone talks to the portal itself (hidden until the screens behind it are built)
         if (standaloneReady) ...[
+          // two equal ways in; each works on its own and they can be used together (the phone then reads the portal itself)
           FilledButton.icon(
             onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PortalSignInPage(model: model))),
             icon: const Icon(LucideIcons.graduationCap), label: const Text('Sign in with my university login'),
           ),
           const SizedBox(height: 10),
-        ],
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudChoicePage(model: model))),
+            icon: const Icon(LucideIcons.cloud), label: const Text('Use my GitHub cloud checks'),
+          ),
+        ] else ..._cloudOptions(context),
+        TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
+      ];
+
+  /// The ways to use the GitHub cloud checks: a read-only token (recommended), setting them up from the phone, or a GitHub code.
+  List<Widget> _cloudOptions(BuildContext context) => [
         // the safest way in is the default: a token that can only read the one repository
         FilledButton.icon(
           onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
@@ -88,7 +97,6 @@ class SignInScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         TextButton(onPressed: model.phase == Phase.signingIn ? null : model.signIn, child: const Text('Sign in with a GitHub code instead')),
-        TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
       ];
 
   List<Widget> _code(BuildContext context, DeviceCode c) {
@@ -138,6 +146,34 @@ class SignInScreen extends StatelessWidget {
   }
 }
 
+
+/// The GitHub way in, on its own page so the first screen stays short: the same three choices as before.
+class CloudChoicePage extends StatelessWidget {
+  const CloudChoicePage({super.key, required this.model});
+  final AppModel model;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return ListenableBuilder(
+      listenable: model,
+      builder: (context, _) {
+        // signed in, or waiting for the first summary: the app's own screens take over
+        if (model.phase == Phase.ready || model.phase == Phase.waiting) WidgetsBinding.instance.addPostFrameCallback((_) { if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst); });
+        final code = model.code;
+        return Scaffold(
+          appBar: AppBar(title: const Text('GitHub cloud checks', style: TextStyle(fontWeight: FontWeight.w700))),
+          body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
+            Text('Your own private GitHub repository runs the checks and keeps the results. The phone only reads them, and no portal password is kept on the phone.',
+                style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant, height: 1.4)),
+            const SizedBox(height: 18),
+            if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: t.colorScheme.error))),
+            if (code != null) ...SignInScreen(model: model)._code(context, code) else ...SignInScreen(model: model)._cloudOptions(context),
+          ])),
+        );
+      },
+    );
+  }
+}
 
 /// The tighter way to sign in: a token that can read one repository and nothing else. The steps are on the screen, and the
 /// GitHub page opens with the name, description, permission and expiry already filled in.

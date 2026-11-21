@@ -16,9 +16,8 @@ const loginUrl = 'https://$cmsHost/Logins/Student/Login.aspx';
 const ssoUrl = 'https://$cmsHost/Sys/Common/GoToLMS.aspx';
 const assignmentsUrl = 'https://$lmsHost/Student/Assignments.php';
 
-/// The direct-from-the-phone mode is built phase by phase (mobile/STANDALONE.md); its sign-in entry stays hidden until the data
-/// screens behind it work, so nobody signs in to a path that leads nowhere.
-const standaloneReady = bool.fromEnvironment('STANDALONE');   // test builds: --dart-define=STANDALONE=true
+/// The direct-from-the-phone mode (mobile/STANDALONE.md): its sign-in entry on the first screen.
+const standaloneReady = bool.fromEnvironment('STANDALONE', defaultValue: true);   // --dart-define=STANDALONE=false hides it
 
 /// Only these hosts are ever opened; the password is typed into nothing else.
 bool isPortalHost(String? host) => host == cmsHost || host == lmsHost;

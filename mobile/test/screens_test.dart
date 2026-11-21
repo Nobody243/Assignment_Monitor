@@ -114,8 +114,9 @@ void main() {
   testWidgets('sign-in: shows the code to type on GitHub while waiting, and an error if it failed', (tester) async {
     final model = AppModel(Prefs());
     await phone(tester, ListenableBuilder(listenable: model, builder: (_, _) => SignInScreen(model: model)));
-    expect(find.text('Sign in (read-only, recommended)'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Look around with demo data'), 150, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Sign in with my university login'), findsOneWidget);
+    expect(find.text('Use my GitHub cloud checks'), findsOneWidget);
     expect(find.text('Look around with demo data'), findsOneWidget);
     model.code = DeviceCode('dc', 'ABCD-1234', 'https://github.com/login/device', 5, 900);
     model.phase = Phase.signingIn;

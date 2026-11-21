@@ -60,6 +60,7 @@ void main() {
   }
 
   Future<void> toPortalPage(WidgetTester tester) async {
+    await tapText(tester, 'Use my GitHub cloud checks');
     await tapText(tester, 'Set up from this phone');
     expect(find.text('What this does'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Continue'), 150, scrollable: find.byType(Scrollable).first);
@@ -190,6 +191,7 @@ void main() {
           }), Duration.zero);
       await tester.pumpWidget(signIn());
       await tester.pumpAndSettle();
+      await tapText(tester, 'Use my GitHub cloud checks');
       await tapText(tester, 'Set up from this phone');
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pump();

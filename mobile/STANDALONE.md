@@ -34,16 +34,18 @@ can open the real portal sign-in page and run the screens, but a sign-in with a 
 2. **Cloud checks** (today): reads `summary.json` from the student's private GitHub repository.
 3. **Desktop** (today): the desktop app shares to the same repository.
 
-## Phases (each one is released on its own)
+## Phases (status)
 
-| Phase | What | Needs a real phone test |
+| Phase | What | State |
 | --- | --- | --- |
-| 1 | Portal session: sign-in, SSO, course list, errors (wrong password, campus, expired session) | yes |
-| 2 | Dart parsers with fixture tests: assignments, attendance, exams, announcements, timetable, results | no |
-| 3 | Refresh on the phone with the same views and reminders as today; background refresh every two hours | yes |
-| 4 | Lectures page: list by course, download, open | yes |
-| 5 | Assignments: download the brief, upload, replace and delete a submission | yes |
-| 6 | The remaining desktop settings (there is no Activity page on the phone) | no |
+| 1 | Portal session: sign-in, SSO, course list, errors (wrong password, captcha, offline, changed page) | built, tested with a scripted portal; not yet run against the real portal |
+| 2 | Dart parsers (`portal_parse.dart`) ported from the Python ones, same test pages | built, 40 tests |
+| 3 | Refresh straight from the portal into the same summary the screens already read (`portal_sync.dart`) | built, tested on the builder; not yet run against the real portal |
+| 4 | Lectures section: list by course, download, open (share sheet) | built |
+| 5 | Assignments: download the brief, upload, replace, delete a submission (`portal_files.dart`) | built, guards tested; the portal flow itself not yet run for real |
+| 6 | Remaining desktop settings (no Activity page on the phone) | not started |
+
+Not on the phone by design: the Activity page.
 
 ## What I cannot check without the student
 
