@@ -71,6 +71,16 @@ def main() -> None:
     mono = Image.new("RGBA", shape.size, (0, 0, 0, 255))
     mono.putalpha(shape.getchannel("A"))
     mono.save(OUT / "mark_mono.png")
+    # the launch screen's tile: the same rounded orange tile the app draws in BrandMark (corner radius 23% of the side), 416 px
+    # so that Android scales it to 104 dp, the size of the in-app mark that takes over from it
+    tile = 416
+    shape = Image.new("L", (tile * 4, tile * 4), 0)
+    ImageDraw.Draw(shape).rounded_rectangle([0, 0, tile * 4 - 1, tile * 4 - 1], radius=int(tile * 4 * 0.23), fill=255)
+    shape = shape.resize((tile, tile), Image.LANCZOS)
+    card = Image.new("RGBA", (tile, tile), ORANGE)
+    card.alpha_composite(mark(tile, 1.0))
+    card.putalpha(shape)
+    card.save(OUT / "splash_tile.png")
     print("wrote", OUT)
 
 

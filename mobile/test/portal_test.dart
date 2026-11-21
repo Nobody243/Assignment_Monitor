@@ -14,8 +14,11 @@ import 'helpers.dart';
 
 /// A scripted portal: tracks the address and answers the few scripts the sign-in runs.
 class FakeBrowser implements PortalBrowser {
-  FakeBrowser({this.loginForm = true, this.acceptPassword = 'right', this.pageHtml = '<html></html>', this.error = '', this.offline = false, this.courses = const []});
+  FakeBrowser({this.rejectFirst = 0, this.loginForm = true, this.acceptPassword = 'right', this.pageHtml = '<html></html>', this.error = '', this.offline = false, this.courses = const []});
   bool loginForm, offline;
+
+  /// How many sign-in clicks the portal ignores without saying why (a page that was not ready).
+  int rejectFirst;
   String acceptPassword, pageHtml, error;
   List<List<String>> courses;
   String current = '';
@@ -44,13 +47,25 @@ class FakeBrowser implements PortalBrowser {
   @override
   Future<void> close() async => closed = true;
 
+  String typed = '';
+  int clicks = 0;
+
   @override
   Future<dynamic> js(String s) async {
     scripts.add(s);
     if (s.contains("!!document.querySelector('#BodyPH_tbEnrollment')")) return loginForm;
-    if (s.contains('btnLogin')) {
-      final m = RegExp('\'#BodyPH_tbPassword\', (".*")\\);').firstMatch(s);
-      if (m != null && jsonDecode(m.group(1)!) == acceptPassword) current = 'https://$cmsHost/Sys/Student/Home.aspx';
+    if (s.contains('readyState')) return true;
+    if (s.contains("set('#BodyPH_tbPassword'")) {
+      // the line is:  set('#BodyPH_tbPassword', "<json string>");
+      final line = s.split('\n').firstWhere((l) => l.contains("set('#BodyPH_tbPassword'"));
+      final start = line.indexOf(', ') + 2, end = line.lastIndexOf(');');
+      typed = jsonDecode(line.substring(start, end)) as String;
+      return null;
+    }
+    if (s.contains("g('#BodyPH_tbEnrollment') ===")) return true;
+    if (s.contains("btnLogin').click()")) {
+      clicks++;
+      if (clicks > rejectFirst && typed == acceptPassword) current = 'https://$cmsHost/Sys/Student/Home.aspx';
       return null;
     }
     if (s.contains('querySelectorAll(sel)')) return error;
@@ -73,8 +88,29 @@ void main() {
   test('the password is passed as a safe string, so quotes in it cannot run as code', () async {
     final b = FakeBrowser(acceptPassword: 'a"); alert(1); ("b');
     await Portal(b, pause: Duration.zero).signIn(const PortalCredentials('x', 'a"); alert(1); ("b', '1'));
-    final script = b.scripts.firstWhere((s) => s.contains('btnLogin'));
+    final script = b.scripts.firstWhere((s) => s.contains("set('#BodyPH_tbPassword'"));
     expect(script, contains(jsonEncode('a"); alert(1); ("b')));
+  });
+
+  test('a first click the portal ignores without a message is tried once more, and then works', () async {
+    final b = FakeBrowser(rejectFirst: 1);
+    final r = await Portal(b, pause: Duration.zero, signInSeconds: 0).signIn(good);
+    expect(r.ok, isTrue);
+    expect(b.opened.where((u) => u == loginUrl).length, 2, reason: 'a fresh page for the second try');
+  });
+
+  test('a real rejection (the portal gave a reason) is reported at once and the password is sent only once', () async {
+    final b = FakeBrowser(error: 'Invalid enrollment or password');
+    final r = await Portal(b, pause: Duration.zero, signInSeconds: 0).signIn(const PortalCredentials('x', 'wrong', '1'));
+    expect(r.problem, SignInProblem.wrongDetails);
+    expect(b.clicks, 1);
+  });
+
+  test('two silent rejections in a row are reported, not retried forever', () async {
+    final b = FakeBrowser(rejectFirst: 5);
+    final r = await Portal(b, pause: Duration.zero, signInSeconds: 0).signIn(good);
+    expect(r.ok, isFalse);
+    expect(b.clicks, 2);
   });
 
   test('a wrong password says what the portal said, and is not mistaken for a block', () async {

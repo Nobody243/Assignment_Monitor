@@ -141,8 +141,19 @@ class Portal {
 
   Future<bool> _onLogin() async => (await browser.url()).toLowerCase().contains('login.aspx');
 
+  static const _noReason = 'The portal did not accept the enrollment number, password or campus.';
+
   /// Signs in to the CMS. The reasons a sign-in can fail are told apart so the screen can say what to do about each.
+  /// When the portal rejects the sign-in without saying why (no message on the page), the page was most likely not ready for
+  /// the form (the first load of a cold browser), so it is tried once more from a fresh page. A real rejection always carries
+  /// the portal's own message and is reported at once, so a wrong password is never sent twice.
   Future<SignInResult> signIn(PortalCredentials c) async {
+    var r = await _signInOnce(c);
+    if (!r.ok && r.problem == SignInProblem.wrongDetails && r.message == _noReason) r = await _signInOnce(c);
+    return r;
+  }
+
+  Future<SignInResult> _signInOnce(PortalCredentials c) async {
     try {
       await browser.open(loginUrl);
     } catch (e) {
@@ -161,15 +172,25 @@ class Portal {
     if (page.contains('g-recaptcha') || page.contains('captcha_image')) {
       return const SignInResult.failed(SignInProblem.blocked, 'The portal is asking for a captcha, which the phone cannot solve on its own.');
     }
-    await browser.js('''
+    // the page has loaded, but its own scripts and the campus list may not be ready yet: wait for them, as the desktop app does
+    await _waitFor(() async => await browser.js("document.readyState === 'complete' && !!document.querySelector('#BodyPH_btnLogin') && !!document.querySelector('#BodyPH_ddlInstituteID option[value=' + JSON.stringify(${_q(c.instituteId)}) + ']')") == true, seconds: 10);
+    await Future<void>.delayed(pause);
+    final enr = _q(c.enrollment.trim()), pw = _q(c.password), inst = _q(c.instituteId);
+    // fill the form and check that the values stayed (a script on the page can clear them); up to three tries
+    var filled = false;
+    for (var i = 0; i < 3 && !filled; i++) {
+      await browser.js('''
 (() => {
   const set = (id, v) => { const el = document.querySelector(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); } };
-  set('#BodyPH_tbEnrollment', ${_q(c.enrollment.trim())});
-  set('#BodyPH_tbPassword', ${_q(c.password)});
-  set('#BodyPH_ddlInstituteID', ${_q(c.instituteId)});
+  set('#BodyPH_tbEnrollment', $enr);
+  set('#BodyPH_tbPassword', $pw);
+  set('#BodyPH_ddlInstituteID', $inst);
   set('#BodyPH_ddlSubUserType', 'None');
-  document.querySelector('#BodyPH_btnLogin').click();
 })()''');
+      filled = await browser.js("(() => { const g = id => (document.querySelector(id) || {}).value; return g('#BodyPH_tbEnrollment') === $enr && g('#BodyPH_tbPassword') === $pw && g('#BodyPH_ddlInstituteID') === $inst; })()") == true;
+      if (!filled) await Future<void>.delayed(pause);
+    }
+    await browser.js("document.querySelector('#BodyPH_btnLogin').click()");
     final left = await _waitFor(() async => !await _onLogin(), seconds: signInSeconds);
     if (left) { _inLms = false; return const SignInResult.ok(); }
     final said = await browser.js('''
@@ -187,8 +208,7 @@ class Portal {
     if (after.contains('captcha')) {
       return const SignInResult.failed(SignInProblem.blocked, 'The portal is asking for a captcha, which the phone cannot solve on its own.');
     }
-    return SignInResult.failed(SignInProblem.wrongDetails,
-        text.isNotEmpty ? text : 'The portal did not accept the enrollment number, password or campus.');
+    return SignInResult.failed(SignInProblem.wrongDetails, text.isNotEmpty ? text : _noReason);
   }
 
   /// Goes from the CMS to the LMS through single sign-on. Returns false when the session is gone.
