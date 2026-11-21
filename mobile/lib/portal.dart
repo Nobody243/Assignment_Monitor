@@ -262,17 +262,18 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
   }
 
   /// Chooses a course by its name in the LMS course selector and returns the page after the change. The option values are
-  /// re-issued each time the list reloads, so the value is read from the page as it is now.
+  /// re-issued each time the list reloads, so the value is read from the page as it is now. The change is made by the same
+  /// call that starts waiting for the page to settle: asking first and waiting afterwards missed a reload that had already
+  /// finished and sat out the whole timeout for every course.
   Future<String> selectCourse(String name) async {
+    final find = "const s = document.querySelector('#courseId'); const o = s && Array.from(s.options).find(o => (o.innerText || '').trim() === ${_q(name)});";
     for (var attempt = 0; attempt < 3; attempt++) {
-      final raw = await browser.js("""
-(() => {
-  const s = document.querySelector('#courseId'); if (!s) return '';
-  const o = Array.from(s.options).find(o => (o.innerText || '').trim() === ${_q(name)});
-  if (!o) return '';
-  s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true})); return 'ok';
-})()""");
-      if (raw == 'ok') { await browser.jsThenSettle('0', timeout: const Duration(seconds: 15)); await Future<void>.delayed(pause * 2); return browser.html(); }
+      final there = await browser.js("(() => { $find return !!o; })()");
+      if (there == true) {
+        await browser.jsThenSettle("(() => { $find if (o) { s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true})); } })()", timeout: const Duration(seconds: 25));
+        await Future<void>.delayed(pause * 3);   // a table that fills in after the page loads (the desktop waits 1.5 s too)
+        return browser.html();
+      }
       await Future<void>.delayed(pause);
     }
     throw StateError('Course not found in the course list: $name');
@@ -280,10 +281,8 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
 
   /// Chooses an option of a select by its value (the exam type, for one) and returns the page after the change.
   Future<String> selectOption(String selector, String value) async {
-    await browser.js("""
-(() => { const s = document.querySelector(${_q(selector)}); if (s) { s.value = ${_q(value)}; s.dispatchEvent(new Event('change', {bubbles: true})); } })()""");
-    await browser.jsThenSettle('0', timeout: const Duration(seconds: 15));
-    await Future<void>.delayed(pause * 2);
+    await browser.jsThenSettle("(() => { const s = document.querySelector(${_q(selector)}); if (s) { s.value = ${_q(value)}; s.dispatchEvent(new Event('change', {bubbles: true})); } })()", timeout: const Duration(seconds: 25));
+    await Future<void>.delayed(pause * 3);
     return browser.html();
   }
 
@@ -295,6 +294,7 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
 class WebViewBrowser implements PortalBrowser {
   WebViewController? _c;
   Completer<void>? _loaded;
+  Completer<void>? _started;
 
   Future<WebViewController> _ready() async {
     final have = _c;
@@ -306,6 +306,7 @@ class WebViewBrowser implements PortalBrowser {
           final u = Uri.tryParse(r.url);
           return (u != null && u.scheme == 'https' && isPortalHost(u.host)) ? NavigationDecision.navigate : NavigationDecision.prevent;
         },
+        onPageStarted: (_) { final s = _started; if (s != null && !s.isCompleted) s.complete(); },
         onPageFinished: (_) { final l = _loaded; if (l != null && !l.isCompleted) l.complete(); },
         onWebResourceError: (e) { final l = _loaded; if (l != null && !l.isCompleted && (e.isForMainFrame ?? true)) l.completeError(StateError(e.description)); },
       ));
@@ -412,12 +413,20 @@ class WebViewBrowser implements PortalBrowser {
 })()''');
   }
 
+  /// Runs the script, then waits for the page to reload and finish if it does. A reload starts within a moment of a form
+  /// post; if none starts in three seconds the page updated in place and there is nothing to wait for.
   @override
   Future<void> jsThenSettle(String source, {Duration timeout = const Duration(seconds: 20)}) async {
     final c = await _ready();
     _loaded = Completer<void>();
+    _started = Completer<void>();
     await c.runJavaScript(source);
-    try { await _loaded!.future.timeout(timeout); } catch (_) {/* no reload happened */}
+    try {
+      await _started!.future.timeout(const Duration(seconds: 3));
+    } catch (_) {
+      return;   // no reload began
+    }
+    try { await _loaded!.future.timeout(timeout); } catch (_) {/* took too long: read what is there */}
   }
 
   @override

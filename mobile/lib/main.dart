@@ -238,7 +238,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       ),
       body: SafeArea(
         child: Column(children: [
-          if (!m.demo && (m.error != null || stale)) _Banner(model: m),
+          if (!m.demo && (m.error != null || stale || (m.portalMode && m.syncSkipped.isNotEmpty))) _Banner(model: m),
           if (m.offerCloud) _CloudOffer(model: m),
           Expanded(
             child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxContentWidth), child: RefreshIndicator(
@@ -418,7 +418,10 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final made = DateTime.now().difference(model.summary!.generatedAt);
-    final text = model.error != null
+    final missing = model.syncSkipped.map((k) => const {'assignments': 'assignments', 'attendance': 'attendance', 'exams': 'exam seats', 'results': 'results', 'timetable': 'timetable', 'announcements': 'announcements', 'lectures': 'lectures'}[k] ?? k).join(', ');
+    final text = model.error == null && model.portalMode && model.syncSkipped.isNotEmpty
+        ? 'The portal did not give back: $missing. Pull down to try again.'
+        : model.error != null
         ? '${model.error} Showing what was read ${model.fetchedAt == null ? 'earlier' : agoLabel(model.age!)}.'
         : model.portalMode ? 'The phone last read the portal ${agoLabel(made)}. Pull down to read it again.' : 'The last cloud check was ${agoLabel(made)}. Check that cloud checks are still on.';
     return Material(

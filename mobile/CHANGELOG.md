@@ -2,6 +2,9 @@
 
 ## 1.0.4 - 2026-11-21
 
+- Reading the portal is much faster: the phone used to ask the portal for a course and then start waiting for the page after it had already loaded, so every course sat out a long timeout. It now starts waiting before it asks, and does not wait at all for a page that updates in place.
+- Each part now appears as soon as it is read (assignments first, then attendance, exams, results, timetable, announcements, lectures) instead of everything at the end, and a part that is not read yet keeps showing the last full read.
+- A part or a single course that cannot be read no longer loses the rest, and the app says what is missing ("The portal did not give back: lectures. Pull down to try again.") instead of showing nothing. An empty lecture table gets one more look in case it filled in late.
 - The GitHub background-checks setup now explains, before GitHub's approval screen appears, that it will say "full control of private repositories" and "update GitHub Action workflows": what those words mean here, that GitHub cannot limit them to one repository, and how to remove the access afterwards.
 - Signing in to the portal no longer needs a second try: the app waits until the portal's sign-in page and campus list are ready, checks the fields before pressing the button, and if the portal answers with no reason it tries once more from a fresh page. A wrong password still stops at once (the portal gives a reason), so it is never sent twice.
 - The launch screen shows the same rounded orange tile as the app's own splash, instead of a hard-edged square, so the two look like one screen.

@@ -23,23 +23,64 @@ class PortalSync {
   final int minimumAttendance;
   final DateTime Function() _now;
 
-  /// Reads everything. [say] is told what is happening ("Reading attendance"); a part that fails is skipped and named in
-  /// [skipped], so one slow page never loses the rest.
-  Future<({Summary summary, List<String> skipped})> run({void Function(String)? say, String campus = ''}) async {
+  /// Reads everything. [say] is told what is happening ("Reading attendance"). A part that fails is skipped and named in
+  /// `skipped`, so one slow page never loses the rest; a course that fails inside a part is skipped on its own. After each part
+  /// [onPartial] gets the summary as far as it is read (the parts not read yet keep what [previous] had), so the screens can
+  /// fill in while the rest is still being read. `report` says, per part, what came back and how long it took.
+  Future<({Summary summary, List<String> skipped, List<String> report})> run({
+    void Function(String)? say, String campus = '', Map<String, dynamic>? previous, Future<void> Function(Summary)? onPartial,
+  }) async {
     void tell(String s) => say?.call(s);
-    final skipped = <String>[];
-    Future<T?> part<T>(String name, Future<T> Function() f) async {
-      tell(name);
-      try { return await f(); } catch (e) { skipped.add(name); return null; }
-    }
+    final skipped = <String>[], report = <String>[];
+    final read = <String>{};
 
     final meta = <String, dynamic>{'campus': campus};
     var courses = <PortalCourse>[];
-    final assignments = <Json>[];
-    final announcements = <Json>[];
-    final lectures = <Json>[];
+    final assignments = <Json>[], announcements = <Json>[], lectures = <Json>[];
+    var attendance = <Json>[], exams = <Json>[];
+    Json? results, timetable;
 
-    await part('Reading your courses and assignments', () async {
+    Map<String, dynamic> build() {
+      meta['last_sync'] = _now().toIso8601String();
+      final s = buildSummary(
+        meta: meta, assignments: assignments, attendance: attendance, exams: exams, timetable: timetable,
+        results: results, announcements: announcements, lectures: lectures, minimum: minimumAttendance, now: _now(),
+      );
+      // what is not read yet keeps the last full read, so a section never blinks empty while the rest loads
+      if (previous != null) {
+        for (final k in ['assignments', 'attendance', 'exams', 'timetable', 'results', 'announcements', 'lectures']) {
+          if (!read.contains(k) && previous[k] != null) s[k] = previous[k];
+        }
+        if (!read.contains('assignments') && previous['student'] != null) s['student'] = previous['student'];
+      }
+      return s;
+    }
+
+    Future<void> part(String name, String key, Future<String> Function() f) async {
+      tell(name);
+      final began = DateTime.now();
+      try {
+        final what = await f();
+        read.add(key);
+        report.add('$key: $what (${(DateTime.now().difference(began).inMilliseconds / 1000).toStringAsFixed(1)} s)');
+        if (onPartial != null) await onPartial(Summary(build()));
+      } catch (e) {
+        skipped.add(key);
+        report.add('$key: could not be read (${e is StateError ? e.message : e.runtimeType})');
+      }
+    }
+
+    /// One course at a time; a course that fails is noted and the next one still runs.
+    Future<void> eachCourse(String what, Future<void> Function(PortalCourse) f) async {
+      var failed = 0;
+      for (final c in courses) {
+        try { await f(c); } catch (_) { failed++; }
+      }
+      if (failed > 0) report.add('$what: $failed of ${courses.length} courses could not be read');
+      if (failed == courses.length && courses.isNotEmpty) throw StateError('no course could be read');
+    }
+
+    await part('Reading your courses and assignments', 'assignments', () async {
       courses = await portal.courses();
       final head = await portal.browser.js('''
 JSON.stringify({name: ((document.querySelector('a.dropdown-toggle span.hidden-xs') || {}).innerText || '').trim(),
@@ -48,33 +89,34 @@ JSON.stringify({name: ((document.querySelector('a.dropdown-toggle span.hidden-xs
       final name = '${h['name']}'.trim();
       meta['student_name'] = name.isNotEmpty && name == name.toUpperCase() ? titleCase(name) : name;
       meta['semester'] = '${h['semester']}';
-      for (final c in courses) {
-        assignments.addAll(parseCourseTable(await portal.selectCourse(c.name), c.name));
-      }
+      await eachCourse('assignments', (c) async { assignments.addAll(parseCourseTable(await portal.selectCourse(c.name), c.name)); });
+      return '${assignments.length} assignments in ${courses.length} courses';
     });
     if (courses.isEmpty) throw StateError('No courses were found. Sign in again, or try later.');
 
-    final attendance = await part('Reading attendance', _attendance) ?? <Json>[];
-    final exams = await part('Reading exam seats', _exams) ?? <Json>[];
-    final results = await part('Reading results', () async => parseResults(await portal.cmsPage(resultsUrl)));
-    final timetable = await part('Reading the timetable', () async => parseTimetable(await portal.cmsPage(timetableUrl)));
-    await part('Reading announcements', () async {
+    await part('Reading attendance', 'attendance', () async { attendance = await _attendance(); return '${attendance.length} courses'; });
+    await part('Reading exam seats', 'exams', () async { exams = await _exams(); return '${exams.length} rows'; });
+    await part('Reading results', 'results', () async { results = parseResults(await portal.cmsPage(resultsUrl)); return '${(results!['semesters'] as List).length} semesters'; });
+    await part('Reading the timetable', 'timetable', () async { timetable = parseTimetable(await portal.cmsPage(timetableUrl)); return '${(timetable!['sessions'] as List).length} classes'; });
+    await part('Reading announcements', 'announcements', () async {
       await portal.lmsPage(announcementsUrl);
-      for (final c in courses) { announcements.addAll(parseAnnouncements(await portal.selectCourse(c.name), c.name)); }
+      await eachCourse('announcements', (c) async { announcements.addAll(parseAnnouncements(await portal.selectCourse(c.name), c.name)); });
+      return '${announcements.length} announcements';
     });
-    await part('Reading lecture notes', () async {
+    await part('Reading lecture notes', 'lectures', () async {
       await portal.lmsPage(lecturesUrl);
-      for (final c in courses) { lectures.addAll(parseLectures(await portal.selectCourse(c.name), c.name)); }
+      await eachCourse('lecture notes', (c) async {
+        var html = await portal.selectCourse(c.name);
+        var rows = parseLectures(html, c.name);
+        if (rows.isEmpty) { await Future<void>.delayed(const Duration(seconds: 2)); html = await portal.browser.html(); rows = parseLectures(html, c.name); }   // a table that fills in late
+        lectures.addAll(rows);
+      });
       await portal.lmsPage(miscUrl);
-      for (final c in courses) { lectures.addAll(parseMisc(await portal.selectCourse(c.name), c.name)); }
+      await eachCourse('miscellaneous files', (c) async { lectures.addAll(parseMisc(await portal.selectCourse(c.name), c.name)); });
+      return '${lectures.length} entries';
     });
 
-    meta['last_sync'] = _now().toIso8601String();
-    final s = buildSummary(
-      meta: meta, assignments: assignments, attendance: attendance, exams: exams, timetable: timetable,
-      results: results, announcements: announcements, lectures: lectures, minimum: minimumAttendance, now: _now(),
-    );
-    return (summary: Summary(s), skipped: skipped);
+    return (summary: Summary(build()), skipped: skipped, report: report);
   }
 
   Future<List<Json>> _attendance() async {

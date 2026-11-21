@@ -359,6 +359,9 @@ class AppModel extends ChangeNotifier {
   String syncStep = '';
   List<String> syncSkipped = const [];
 
+  /// Per part, what the last read of the portal brought back and how long it took (for finding out why something is missing).
+  List<String> syncReport = const [];
+
   /// Reads the whole portal with the saved sign-in and replaces the summary. Returns false (with [error] worded for the
   /// student) when it could not.
   Future<bool> _refreshFromPortal() async {
@@ -370,8 +373,17 @@ class AppModel extends ChangeNotifier {
       final r = await portal.signIn(c);
       if (!r.ok) { error = r.message; return false; }
       final campus = campuses.where((x) => x.$2 == c.instituteId).map((x) => x.$1).firstOrNull ?? '';
-      final out = await PortalSync(portal).run(say: (s) { syncStep = s; notifyListeners(); }, campus: campus);
-      summary = out.summary; syncSkipped = out.skipped; fetchedAt = DateTime.now(); etag = null;
+      final out = await PortalSync(portal).run(
+        say: (s) { syncStep = s; notifyListeners(); }, campus: campus, previous: summary?.raw,
+        // each part fills its screens as soon as it is read; the rest keeps showing the last full read meanwhile
+        onPartial: (s) async {
+          summary = s; fetchedAt = DateTime.now(); etag = null;
+          if (phase != Phase.loading) phase = Phase.ready;
+          await _store.saveSummary(s, null);
+          notifyListeners();
+        },
+      );
+      summary = out.summary; syncSkipped = out.skipped; syncReport = out.report; fetchedAt = DateTime.now(); etag = null;
       await _store.saveSummary(summary!, null);
       if (phase != Phase.loading) phase = Phase.ready;
       unawaited(replan());

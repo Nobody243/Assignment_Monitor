@@ -53,6 +53,9 @@ class LecturesScreen extends StatelessWidget {
     }
     final all = summary.lectures;
     if (all.isEmpty) {
+      if (model.syncSkipped.contains('lectures')) {
+        return const EmptyState(icon: LucideIcons.bookOpen, title: 'The lecture notes could not be read', hint: 'The portal did not give them back this time. Pull down to try again.');
+      }
       return const EmptyState(icon: LucideIcons.bookOpen, title: 'No lecture notes yet', hint: 'They appear here when your teachers upload them to the portal. Pull down to check again.');
     }
     final byCourse = <String, List<Lecture>>{};
