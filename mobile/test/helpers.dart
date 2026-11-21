@@ -3,6 +3,7 @@ import 'package:assignment_monitor_mobile/source.dart';
 
 /// Keeps the sign-in and the last summary in memory, so the model runs without a phone's keystore.
 class MemoryStore extends Store {
+  MemoryStore() : super(vault: MemoryVault());
   String? tokenV, loginV, etagV;
   Summary? summaryV;
   DateTime? fetchedV;

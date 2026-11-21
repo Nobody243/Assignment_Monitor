@@ -9,6 +9,7 @@ import 'data.dart';
 import 'lock.dart';
 import 'secure_screen.dart';
 import 'reminders.dart';
+import 'portal.dart';
 import 'source.dart';
 import 'widget.dart';
 import 'theme.dart';
@@ -75,12 +76,14 @@ class Prefs extends ChangeNotifier {
 
 /// Signed in or not, what was last read, and how fresh it is. The screens only read from here.
 class AppModel extends ChangeNotifier {
-  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy()})
-      : _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed, locker = locker ?? DeviceLocker(), _lockPolicy = lockPolicy {
+  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy(), PortalStore? portalStore, Portal Function()? portalFactory})
+      : _portalStore = portalStore ?? PortalStore((store ?? Store()).vault), _portalFactory = portalFactory ?? (() => Portal(WebViewBrowser())), _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed, locker = locker ?? DeviceLocker(), _lockPolicy = lockPolicy {
     prefs.onChanged = replan;
   }
   final Prefs prefs;
   final Store _store;
+  final PortalStore _portalStore;
+  final Portal Function() _portalFactory;
   final GithubAuth _auth;
   final SummarySource _source;
 
@@ -321,11 +324,37 @@ class AppModel extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _store.clear();
+    await _portalStore.clear();
     if (Reminders.supported) { await Reminders.schedule(Summary({'assignments': [], 'schema': 1}), leads: [], done: {}, snoozed: {}); }
     summary = null; login = null; etag = null; fetchedAt = null; demo = false; error = null; cloudFirstCheck = false;
     phase = Phase.signedOut;
     notifyListeners();
   }
+
+  // ---------------------------------------------------------------------------------------------- standalone (portal) mode
+  // The phone signs in to the university portal itself (lib/portal.dart). Built in phases: see mobile/STANDALONE.md.
+
+  /// True when the phone holds a portal sign-in (enrollment number and password, in the keystore).
+  Future<bool> hasPortal() async => (await _portalStore.read()) != null;
+
+  /// Tries the sign-in and, only if the portal accepts it, keeps the details in the keystore. Returns what happened and, on
+  /// success, the number of courses the LMS lists (a first proof that the whole path works, not just the CMS).
+  Future<({SignInResult result, int courses})> connectPortal(PortalCredentials c) async {
+    if (!c.complete) return (result: const SignInResult.failed(SignInProblem.wrongDetails, 'Enter the enrollment number and the password.'), courses: 0);
+    final portal = _portalFactory();
+    try {
+      final r = await portal.signIn(c);
+      if (!r.ok) return (result: r, courses: 0);
+      var n = 0;
+      try { n = (await portal.courses()).length; } catch (e) { debugPrint('portal courses unavailable'); }
+      await _portalStore.save(c);
+      return (result: r, courses: n);
+    } finally {
+      await portal.close();
+    }
+  }
+
+  Future<void> forgetPortal() => _portalStore.clear();
 
   // ---------------------------------------------------------------------------------------------- phone-only Cloud checks
   // (added for the phone-only setup, lib/screens/cloud_setup_screens.dart; kept together at the end of the class)

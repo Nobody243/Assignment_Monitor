@@ -136,6 +136,9 @@ class KeystoreVault implements Vault {
 class Store {
   Store({Vault? vault}) : _vault = vault ?? KeystoreVault();
   final Vault _vault;
+
+  /// The same keystore, for the other secrets the app keeps (the portal sign-in).
+  Vault get vault => _vault;
   static const _kToken = 'token', _kLogin = 'login', _kSummary = 'summary', _kEtag = 'etag', _kFetched = 'fetched';
 
   Future<String?> token() => _vault.read(_kToken);

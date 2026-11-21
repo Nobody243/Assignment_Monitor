@@ -5,7 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../model.dart';
 import 'intro.dart' show BrandMark;
+import '../portal.dart' show standaloneReady;
 import '../source.dart' show DeviceCode, repoName;
+import 'portal_signin.dart' show PortalSignInPage;
 import 'cloud_setup_screens.dart' show CloudSetupWizard;   // setup from the phone
 
 /// First run: sign in to GitHub (device flow) or look at the demo. Also shown while the first summary is awaited.
@@ -65,6 +67,14 @@ class SignInScreen extends StatelessWidget {
         Text('Already use the desktop app? Sign in and your deadlines are here. It works on its own too: no PC is needed.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
+        // standalone: the phone talks to the portal itself (hidden until the screens behind it are built)
+        if (standaloneReady) ...[
+          FilledButton.icon(
+            onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PortalSignInPage(model: model))),
+            icon: const Icon(LucideIcons.graduationCap), label: const Text('Sign in with my university login'),
+          ),
+          const SizedBox(height: 10),
+        ],
         // the safest way in is the default: a token that can only read the one repository
         FilledButton.icon(
           onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
