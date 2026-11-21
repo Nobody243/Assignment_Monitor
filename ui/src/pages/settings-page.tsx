@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Bell, Cloud, HardDrive, History, Info, ListChecks, Palette, User } from 'lucide-react'
 import { setAutomation, type State } from '@/api'
 import { ConfirmDialog } from '@/components/feedback'
@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/lib/notify'
 import { SETTINGS_TABS, type SettingsTab } from '@/lib/router'
+import { SlideMarker } from '@/lib/slide'
 import { cn } from '@/lib/utils'
 import type { Outcome, Running } from '@/useEngine'
 import { ActivityPanel } from './activity-page'
@@ -42,6 +43,18 @@ type Props = {
 }
 
 export function SettingsPage(p: Props) {
+  const navRef = useRef<HTMLElement>(null)
+  // arrow keys move between the sections (Up and Down in the column, Left and Right when it is a row), Home and End jump
+  const walkTabs = (e: KeyboardEvent<HTMLElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
+    const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
+    const at = items.indexOf(document.activeElement as HTMLButtonElement)
+    if (at < 0) return
+    const fwd = e.key === 'ArrowDown' || e.key === 'ArrowRight'
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : fwd ? (at + 1) % items.length : (at - 1 + items.length) % items.length
+    e.preventDefault()
+    items[next].focus()
+  }
   const { view, error, load, save } = useSettings(p.demo)
   const busy = !!p.running
   const [offerAuto, setOfferAuto] = useState(false)
@@ -84,13 +97,14 @@ export function SettingsPage(p: Props) {
       {error && !p.demo && <Alert tone="danger">{error}</Alert>}
 
       <div className="grid gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
-        <nav aria-label="Settings sections" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:sticky lg:top-4 lg:mx-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0 lg:pb-0">
+        <nav ref={navRef} aria-label="Settings sections" onKeyDown={walkTabs} className="slide-host relative -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:sticky lg:top-4 lg:mx-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0 lg:pb-0">
+          <SlideMarker host={navRef} selector="[aria-current='page']" watch={p.tab} className="bg-muted rounded-lg" />
           {SETTINGS_TABS.map(t => {
             const Icon = ICONS[t.key]
             const active = p.tab === t.key
             return (
               <button key={t.key} type="button" onClick={() => p.onTab(t.key)} aria-current={active ? 'page' : undefined}
-                className={cn('flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap transition-colors', active ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+                className={cn('relative z-10 flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap transition-colors active:scale-[0.98]', active ? 'font-medium' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
                 <Icon className={cn('size-4', active && 'text-foreground')} />{t.label}
               </button>
             )

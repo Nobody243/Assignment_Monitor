@@ -57,7 +57,8 @@ function CommandDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {children}
+        {/* the list, input and items need cmdk's own root around them, or opening the palette crashes the page */}
+        <Command>{children}</Command>
       </DialogContent>
     </Dialog>
   )

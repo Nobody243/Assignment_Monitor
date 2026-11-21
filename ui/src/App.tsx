@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CircleHelp, RefreshCw, Search } from 'lucide-react'
 import { patchSettings, deleteSubmission, downloadAssignmentFiles, downloadLectures, getSettings, getUpdate, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
-import { AppSidebar } from '@/components/app-sidebar'
+import { AppSidebar, NAV_ORDER } from '@/components/app-sidebar'
 import { AssignmentSheet } from '@/components/assignment-sheet'
 import { CommandMenu } from '@/components/command-menu'
 import { ConfirmDialog, EngineOffline, HelpDialog, NotFoundPage, PageSkeleton, RunningPill, TopProgress } from '@/components/feedback'
@@ -19,6 +19,7 @@ import { useActivity } from '@/lib/activity'
 import { courseColors } from '@/lib/courses'
 import { toast } from '@/lib/notify'
 import { PAGES, PAGE_TITLES, SETTINGS_TABS, usePage, type Page } from '@/lib/router'
+import { directionBetween } from '@/lib/slide'
 import { SetupWizard } from '@/components/setup-wizard'
 import { AnnouncementsPage } from '@/pages/announcements-page'
 import { AssignmentsPage, type Filter } from '@/pages/assignments-page'
@@ -69,6 +70,10 @@ export default function App() {
   const [motion, setMotion] = useMotion()
   const [palette, setPalette] = usePalette()
   const { page, sub, missing, go: navigate } = usePage()
+  // which way the page entrance moves is fixed when the page changes (it must not change again on a later re-render, which would replay it)
+  const [travel, setTravel] = useState<{ page: string | null; dir: 1 | -1 | 0 }>({ page: null, dir: 0 })
+  if (travel.page !== page) setTravel({ page, dir: directionBetween(NAV_ORDER, travel.page, page) })
+  const pageDir = travel.dir
   const [tab, setTab] = useState<Filter>('todo')
   const [course, setCourse] = useState('all')
   const [selId, setSelId] = useState<string | null>(null)
@@ -261,7 +266,7 @@ export default function App() {
           <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
             {demo && <Alert tone="info"><span className="flex flex-wrap items-center gap-x-3 gap-y-1">Showing sample data. The engine is not running, so nothing here is yours.<Button size="sm" variant="outline" className="h-7" onClick={eng.leaveDemo}>Try the engine again</Button></span></Alert>}
             {eng.stale && <Alert tone="warning"><span className="flex flex-wrap items-center gap-x-3 gap-y-1">Lost the connection to the engine. You are seeing the last data it sent{eng.lastGood ? ` (${dueParts(new Date(eng.lastGood).toISOString()).time})` : ''}. {eng.retryIn != null ? `Trying again in ${eng.retryIn}s.` : ''}<Button size="sm" variant="outline" className="h-7" onClick={eng.retry}>Try now</Button></span></Alert>}
-            <div key={page} className="animate-in fade-in slide-in-from-bottom-2 min-w-0 duration-300">{render()}</div>
+            <div key={page} data-dir={pageDir} className="page-enter min-w-0">{render()}</div>
           </div>
         </SidebarInset>
 

@@ -46,3 +46,4 @@ website/dist/
 # files downloaded while testing the app: personal and not ours to publish
 asg_out/
 multi_out/
+tools/stress_ui_*.png
