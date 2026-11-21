@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { Results } from '@/api'
 import { PageHeader, Stat } from '@/components/page-header'
@@ -9,6 +9,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { GRADES, gpaOf, project, totals } from '@/lib/results'
+import { SlideMarker } from '@/lib/slide'
 import { cn } from '@/lib/utils'
 
 const gradeTone = (g: string) => (!g ? 'text-muted-foreground' : g.startsWith('A') ? 'border-success/30 bg-success/10 text-success' : g.startsWith('B') ? 'border-brand/30 bg-brand/10 text-brand' : g.startsWith('C') ? 'border-warning/40 bg-warning/10 text-warning' : 'border-destructive/30 bg-destructive/10 text-destructive')
@@ -18,6 +19,7 @@ const shortName = (n: string) => n.replace(/^(Fall|Spring|Summer)-(\d{2})(\d{2})
 export function ResultsPage({ results }: { results: Results }) {
   const semesters = useMemo(() => results?.semesters ?? [], [results])
   const current = [...semesters].reverse().find(s => !s.complete)
+  const semRef = useRef<HTMLDivElement>(null)
   const [selName, setSel] = useState<string | null>(null)
   const sel = semesters.find(s => s.name === selName) ?? current ?? semesters[semesters.length - 1]
   const [picks, setPicks] = useState<Record<string, string>>({})
@@ -65,10 +67,11 @@ export function ResultsPage({ results }: { results: Results }) {
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex max-w-full gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Semester">
+        <div ref={semRef} className="slide-host relative flex max-w-full gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Semester">
+          <SlideMarker host={semRef} selector="[aria-selected='true']" watch={sel?.name} className="bg-primary rounded-lg" />
           {semesters.map(s => (
             <button key={s.name} role="tab" aria-selected={sel?.name === s.name} onClick={() => setSel(s.name)}
-              className={cn('shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors', sel?.name === s.name ? 'bg-primary text-primary-foreground border-transparent font-medium' : 'text-muted-foreground hover:bg-muted')}>
+              className={cn('relative z-10 shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors active:scale-[0.97]', sel?.name === s.name ? 'text-primary-foreground border-transparent font-medium' : 'text-muted-foreground hover:bg-muted')}>
               {s.name}{!s.complete && <span className="ml-1.5 text-xs opacity-80">running</span>}
             </button>
           ))}

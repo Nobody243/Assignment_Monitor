@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Copy, Mail, Smartphone } from 'lucide-react'
+import { ChevronDown, Copy, Mail, Smartphone } from 'lucide-react'
 import { toast } from '@/lib/notify'
 import { pairCancel, pairPoll, pairStart, testEmail, testPush, unpair, type SettingsView } from '@/api'
 import { ConfirmDialog } from '@/components/feedback'
@@ -103,7 +103,7 @@ export function ChannelsSection({ view, save, run, busy, demo, reload }: { view:
           <Input id="email-pass" type="password" value={pass} onChange={e => setPass(e.target.value)} autoComplete="new-password" placeholder={c.email_pass_set ? 'Saved. Type a new one to change it' : 'The 16-letter app password'} /></div>
       </div>
       <Collapsible>
-        <CollapsibleTrigger className="text-muted-foreground hover:text-foreground mb-2 text-xs underline-offset-2 hover:underline">Advanced: mail server</CollapsibleTrigger>
+        <CollapsibleTrigger className="text-muted-foreground hover:text-foreground hover:bg-muted/60 focus-visible:ring-ring/50 group/adv mb-2 flex min-h-10 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm transition-colors outline-none focus-visible:ring-3">Advanced: mail server<ChevronDown className="size-4 transition-transform duration-300 ease-[var(--ease-out)] group-data-[state=open]/adv:rotate-180" /></CollapsibleTrigger>
         <CollapsibleContent>
           <div className="grid gap-4 pb-3 sm:grid-cols-[1fr_8rem]">
             <div className="flex flex-col gap-1.5"><Label htmlFor="smtp-host">Server (empty picks it from your address)</Label><Input id="smtp-host" value={host} onChange={e => setHost(e.target.value)} placeholder="smtp.gmail.com" /></div>

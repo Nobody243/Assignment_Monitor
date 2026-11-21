@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { Moon, Sparkles, Sun } from 'lucide-react'
+import { SlideMarker } from '@/lib/slide'
 import { cn } from '@/lib/utils'
 import { Row, Section, SwitchRow } from './parts'
 
@@ -13,13 +15,15 @@ export const PALETTE_INFO = [
 export function AppearanceSection({ dark, onTheme, palette, onPalette, motion, onMotion }: {
   dark: boolean; onTheme: (dark: boolean) => void; palette: string; onPalette: (p: string) => void; motion: boolean; onMotion: (on: boolean) => void
 }) {
+  const themeRef = useRef<HTMLDivElement>(null)
   return (
     <Section id="appearance" title="Appearance" description="How the app looks. Changes apply immediately and are remembered on this computer.">
       <Row label="Theme" hint="Dark is easier on the eyes at night">
-        <div className="bg-muted inline-flex rounded-lg p-0.5" role="group" aria-label="Theme">
+        <div ref={themeRef} className="bg-muted slide-host relative inline-flex rounded-lg p-0.5" role="group" aria-label="Theme">
+          <SlideMarker host={themeRef} selector="[aria-pressed='true']" watch={dark} className="bg-background rounded-md shadow-sm" />
           {([[false, 'Light', Sun], [true, 'Dark', Moon]] as const).map(([v, label, Icon]) => (
             <button key={label} type="button" aria-pressed={dark === v} onClick={() => onTheme(v)}
-              className={cn('flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors', dark === v ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+              className={cn('flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors', 'relative z-10', dark === v ? '' : 'text-muted-foreground hover:text-foreground')}>
               <Icon className="size-4" />{label}
             </button>
           ))}

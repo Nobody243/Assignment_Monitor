@@ -57,5 +57,17 @@ export const DEMO: State = {
     ],
   },
   standing: { semester: 'Spring-2026', gpa: 3.4, cgpa: 3.3, semesters: 4, series: [{ name: 'Fall-2024', gpa: 3.1, cgpa: 3.1 }, { name: 'Spring-2025', gpa: 3.4, cgpa: 3.25 }, { name: 'Fall-2025', gpa: 3.2, cgpa: 3.23 }, { name: 'Spring-2026', gpa: 3.4, cgpa: 3.3 }] },
-  exams: [], exams_all: [], announcements: [], lectures: [], results: null, paths: { lectures: 'Documents\\Assignment Monitor\\Lectures', data: 'data' },
+  exams: [], exams_all: [], announcements: [], lectures: [], results: {
+    semesters: [
+      { name: 'Fall-2024', gpa: 3.1, cgpa: 3.1, complete: true, courses: [
+        { code: 'CS 101', title: 'Programming Fundamentals', credits: 3, grade: 'B+', points: 3.33, product: 10 },
+        { code: 'MT 101', title: 'Calculus', credits: 3, grade: 'B', points: 3, product: 9 } ] },
+      { name: 'Spring-2025', gpa: 3.4, cgpa: 3.25, complete: true, courses: [
+        { code: 'CS 201', title: 'Data Structures', credits: 3, grade: 'A-', points: 3.67, product: 11 },
+        { code: 'CS 202', title: 'Discrete Structures', credits: 3, grade: 'B+', points: 3.33, product: 10 } ] },
+      { name: 'Fall-2025', gpa: 3.4, cgpa: 3.3, complete: true, courses: [
+        { code: 'DB 210', title: 'Database Basics', credits: 3, grade: 'A', points: 4, product: 12 },
+        { code: 'OS 210', title: 'Computer Organisation', credits: 3, grade: 'B', points: 3, product: 9 } ] },
+    ],
+  }, paths: { lectures: 'Documents\\Assignment Monitor\\Lectures', data: 'data' },
 }

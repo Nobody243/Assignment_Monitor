@@ -340,6 +340,37 @@ with sync_playwright() as p:
         settle(pg)
         clean_state(pg, "after context menu storm")
 
+        # ---- 12. drop-downs, semester tabs and the theme switch
+        print("12. drop-down, semester tabs, theme switch")
+        nav(pg, "Attendance"); settle(pg, 600)
+        trig = pg.locator("[data-slot=collapsible-trigger]").first
+        others_before = pg.evaluate("() => Math.round(document.querySelectorAll('.rounded-2xl.p-5')[1]?.getBoundingClientRect().height ?? 0)")
+        for _ in range(ROUNDS):
+            trig.click(timeout=3000, delay=0)
+            pg.wait_for_timeout(rng.choice([0, 20, 90, 320]))
+        settle(pg, 700)
+        state = trig.get_attribute("data-state")
+        shown = pg.evaluate("() => [...document.querySelectorAll('[data-slot=collapsible-content]')].filter(e => e.getBoundingClientRect().height > 1).length")
+        check((shown == 1) == (state == "open"), f"drop-down state {state!r} but {shown} visible content block(s)")
+        others_after = pg.evaluate("() => Math.round(document.querySelectorAll('.rounded-2xl.p-5')[1]?.getBoundingClientRect().height ?? 0)")
+        check(others_before == others_after, f"the neighbouring card changed height {others_before} -> {others_after}")
+        nav(pg, "Results"); settle(pg, 600)
+        stabs = pg.locator("[role=tab]")
+        if stabs.count() >= 2:
+            for _ in range(ROUNDS):
+                stabs.nth(rng.randrange(stabs.count())).click(timeout=3000, delay=0)
+                pg.wait_for_timeout(rng.choice([0, 20, 90]))
+            settle(pg)
+            marker_matches(pg, "[role=tablist]", "[aria-selected=true]", "semester tabs marker")
+        nav(pg, "Settings"); settle(pg, 400)
+        pg.locator("nav[aria-label='Settings sections'] button", has_text="Appearance").first.click(); settle(pg, 500)
+        for _ in range(ROUNDS):
+            pg.get_by_role("button", name=rng.choice(["Light", "Dark"])).click(timeout=3000, delay=0)
+            pg.wait_for_timeout(rng.choice([0, 20, 90]))
+        settle(pg)
+        marker_matches(pg, "[role=group][aria-label=Theme]", "[aria-pressed=true]", "theme switch marker")
+        clean_state(pg, "after drop-down and tab storms")
+
     except Exception as exc:  # noqa: BLE001
         # say what the window looked like when it stopped answering
         shot = Path(__file__).with_name("stress_ui_failure.png")

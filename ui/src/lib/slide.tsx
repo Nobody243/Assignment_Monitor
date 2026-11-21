@@ -51,7 +51,7 @@ export function useSlidingBox(host: RefObject<HTMLElement | null>, selector: str
     window.addEventListener('resize', schedule)
     // the chosen item can change without this component re-rendering (a tab strip owns its own state)
     const mo = new MutationObserver(schedule)
-    mo.observe(h, { attributes: true, subtree: true, attributeFilter: ['data-state', 'data-active', 'aria-current'] })
+    mo.observe(h, { attributes: true, subtree: true, attributeFilter: ['data-state', 'data-active', 'aria-current', 'aria-selected', 'aria-pressed'] })
     const arm = requestAnimationFrame(() => setArmed(true))
     return () => { ro.disconnect(); mo.disconnect(); window.removeEventListener('resize', schedule); cancelAnimationFrame(frame.current); cancelAnimationFrame(arm) }
   }, [host, selector, schedule, watch])
