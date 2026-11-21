@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.6 - 2026-11-21
 
 - A progress bar under the top bar while the phone reads the portal, saying what it is reading and how far it has got ("Reading attendance · 2 of 7"), so a check that is still going can be told from one that has finished.
 - The hidden browser now presents itself as a desktop browser, so the portal sends the same pages the readers were written for (a phone can be sent a different layout, which may be why lecture notes came back empty).
