@@ -43,7 +43,7 @@ class SignInScreen extends StatelessWidget {
               for (final (icon, text) in const [
                 (LucideIcons.timer, 'Live countdowns and reminders that work offline'),
                 (LucideIcons.calendarCheck, 'Attendance: exactly how many hours you can still miss'),
-                (LucideIcons.lock, 'Nothing is sent anywhere but the university portal or your own private GitHub repository. No server of ours is involved.'),
+                (LucideIcons.lock, 'Your login stays in this phone\'s secure storage and goes only to the university portal. No server of ours is involved.'),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -64,21 +64,20 @@ class SignInScreen extends StatelessWidget {
 
   List<Widget> _start(BuildContext context) => [
         if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-        Text('Choose how this phone gets your data. Both work on their own, with no PC needed.',
+        Text('Sign in once with the same login as the university portal. Deadlines, attendance, lectures and uploads all work from this phone, with no PC needed.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         if (standaloneReady) ...[
-          // two equal choices, named by what each gives and what it keeps on the phone
-          _Choice(
-            icon: LucideIcons.graduationCap, title: 'Full app',
-            text: 'Signs in to your university portal from this phone: deadlines, attendance, lectures, and uploading your work. Your login is kept in this phone\'s secure storage.',
-            onTap: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PortalSignInPage(model: model))),
+          // one main way in; GitHub background checks are offered once the phone is working (and for someone who already uses them, here)
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+            onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PortalSignInPage(model: model))),
+            icon: const Icon(LucideIcons.graduationCap), label: const Text('Sign in with my university login'),
           ),
-          const SizedBox(height: 10),
-          _Choice(
-            icon: LucideIcons.eye, title: 'Read-only viewer',
-            text: 'Shows what your own GitHub checks found. No portal password on the phone, and it cannot change anything on the portal.',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudChoicePage(model: model))),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudChoicePage(model: model))),
+            child: const Text('I already use the GitHub checks'),
           ),
         ] else ..._cloudOptions(context),
         TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
@@ -149,42 +148,6 @@ class SignInScreen extends StatelessWidget {
 }
 
 
-/// One of the two ways in, as a card: what it is called, what it gives and what it keeps on the phone.
-class _Choice extends StatelessWidget {
-  const _Choice({required this.icon, required this.title, required this.text, required this.onTap});
-  final IconData icon;
-  final String title, text;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              width: 44, height: 44, alignment: Alignment.center,
-              decoration: BoxDecoration(color: t.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, size: 22, color: t.colorScheme.onPrimaryContainer),
-            ),
-            const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Text(text, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant, height: 1.35)),
-            ])),
-            const SizedBox(width: 8),
-            Padding(padding: const EdgeInsets.only(top: 12), child: Icon(LucideIcons.chevronRight, size: 20, color: t.colorScheme.onSurfaceVariant)),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
 /// The GitHub way in, on its own page so the first screen stays short: the same three choices as before.
 class CloudChoicePage extends StatelessWidget {
   const CloudChoicePage({super.key, required this.model});
@@ -199,9 +162,9 @@ class CloudChoicePage extends StatelessWidget {
         if (model.phase == Phase.ready || model.phase == Phase.waiting) WidgetsBinding.instance.addPostFrameCallback((_) { if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst); });
         final code = model.code;
         return Scaffold(
-          appBar: AppBar(title: const Text('Read-only viewer', style: TextStyle(fontWeight: FontWeight.w700))),
+          appBar: AppBar(title: const Text('GitHub checks', style: TextStyle(fontWeight: FontWeight.w700))),
           body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
-            Text('Your own private GitHub repository runs the checks and keeps the results. The phone only reads them, and no portal password is kept on the phone.',
+            Text('Already running the checks on GitHub (from the desktop app or the cloud setup)? The phone can read what they found, with no portal password on the phone.',
                 style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant, height: 1.4)),
             const SizedBox(height: 18),
             if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: t.colorScheme.error))),

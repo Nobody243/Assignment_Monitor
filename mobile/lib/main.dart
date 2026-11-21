@@ -9,6 +9,7 @@ import 'model.dart';
 import 'screens/announcements.dart';
 import 'screens/attendance.dart';
 import 'screens/first_run.dart';
+import 'screens/cloud_setup_screens.dart' show CloudSetupWizard;
 import 'screens/intro.dart';
 import 'screens/lectures.dart';
 import 'screens/lock_screen.dart';
@@ -233,6 +234,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       body: SafeArea(
         child: Column(children: [
           if (!m.demo && (m.error != null || stale)) _Banner(model: m),
+          if (m.offerCloud) _CloudOffer(model: m),
           Expanded(
             child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxContentWidth), child: RefreshIndicator(
               onRefresh: m.refresh,
@@ -375,6 +377,35 @@ class _MenuRow extends StatelessWidget {
 }
 
 /// Said plainly when the phone cannot be sure the numbers are current: offline, or the repository has gone quiet.
+/// Offered once, after the portal works: let GitHub also check while the phone is off. The portal login is reused, not asked for again.
+class _CloudOffer extends StatelessWidget {
+  const _CloudOffer({required this.model});
+  final AppModel model;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Material(
+      color: t.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        child: Row(children: [
+          Icon(LucideIcons.cloud, size: 20, color: t.colorScheme.onPrimaryContainer),
+          const SizedBox(width: 12),
+          Expanded(child: Text('Want checks to keep running when the phone is off? GitHub can do that for free, in your own private repository.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onPrimaryContainer))),
+          TextButton(onPressed: model.hideCloudOffer, child: const Text('Not now')),
+          FilledButton(
+            onPressed: () async {
+              final c = await model.savedPortalLogin();
+              if (context.mounted) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model, prefill: c)));
+            },
+            child: const Text('Set up'),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 class _Banner extends StatelessWidget {
   const _Banner({required this.model});
   final AppModel model;
@@ -384,7 +415,7 @@ class _Banner extends StatelessWidget {
     final made = DateTime.now().difference(model.summary!.generatedAt);
     final text = model.error != null
         ? '${model.error} Showing what was read ${model.fetchedAt == null ? 'earlier' : agoLabel(model.age!)}.'
-        : 'The last cloud check was ${agoLabel(made)}. Check that cloud checks are still on.';
+        : model.portalMode ? 'The phone last read the portal ${agoLabel(made)}. Pull down to read it again.' : 'The last cloud check was ${agoLabel(made)}. Check that cloud checks are still on.';
     return Material(
       color: t.colorScheme.errorContainer,
       child: InkWell(

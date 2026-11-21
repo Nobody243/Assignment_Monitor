@@ -15,7 +15,8 @@ import '../model.dart';
 import '../reminders.dart';
 import '../source.dart' show repoName;
 import '../theme.dart';
-import 'cloud_setup_screens.dart' show CloudSettingsPage;   // phone-only Cloud checks
+import '../portal.dart' show PortalCredentials;
+import 'cloud_setup_screens.dart' show CloudSettingsPage, CloudSetupWizard;   // phone-only Cloud checks
 import 'widgets.dart';
 
 /// Settings is a short list of sections; each one opens its own page, so a page only ever holds one kind of choice.
@@ -52,7 +53,7 @@ class SettingsHub extends StatelessWidget {
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
         if (!model.demo) ...[
-          row(LucideIcons.cloud, 'Cloud checks', 'Run, change the portal login, or turn off', () => CloudSettingsPage(model: model)),
+          row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => model.portalMode && !model.cloudOn ? _WizardWithSavedLogin(model: model) : CloudSettingsPage(model: model)),
           const Divider(height: 1, indent: 76),
         ],
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
@@ -329,4 +330,18 @@ class _SecurityState extends State<SecuritySettings> {
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Sign-in token'), subtitle: Text('Kept in the phone\'s secure storage whether or not the lock is on.')),
     ]);
   }
+}
+
+
+/// Turning on GitHub background checks from Settings in the Full app: the saved portal login is used, not typed again.
+class _WizardWithSavedLogin extends StatelessWidget {
+  const _WizardWithSavedLogin({required this.model});
+  final AppModel model;
+  @override
+  Widget build(BuildContext context) => FutureBuilder<PortalCredentials?>(
+        future: model.savedPortalLogin(),
+        builder: (context, snap) => snap.connectionState != ConnectionState.done
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : CloudSetupWizard(model: model, prefill: snap.data),
+      );
 }

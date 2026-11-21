@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:assignment_monitor_mobile/model.dart';
 import 'package:assignment_monitor_mobile/portal.dart';
+import 'package:assignment_monitor_mobile/screens/cloud_setup_screens.dart' show CloudSetupWizard;
 import 'package:assignment_monitor_mobile/screens/portal_signin.dart';
 import 'package:assignment_monitor_mobile/source.dart' show Store;
 import 'package:flutter/material.dart';
@@ -179,6 +180,28 @@ void main() {
       await run(FakeBrowser(error: 'Invalid enrollment or password'));
       expect(find.text('Invalid enrollment or password'), findsOneWidget);
       expect(find.text('Use my GitHub cloud checks instead'), findsNothing);
+    });
+
+    test('the background-checks offer shows once, only in the Full app without GitHub, and stays hidden after Not now', () async {
+      SharedPreferences.setMockInitialValues({});
+      final m = make(FakeBrowser(), MemoryVault());
+      m..portalMode = true..phase = Phase.ready..cloudOfferHidden = false;
+      expect(m.offerCloud, isTrue);
+      m.login = 'alex';   // GitHub is already connected
+      expect(m.offerCloud, isFalse);
+      m.login = null;
+      await m.hideCloudOffer();
+      expect(m.offerCloud, isFalse);
+      expect((await SharedPreferences.getInstance()).getBool('cloudOfferHidden'), isTrue);
+    });
+
+    testWidgets('the GitHub setup opens with the saved portal login already in it', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final m = make(FakeBrowser(), MemoryVault());
+      await tester.pumpWidget(MaterialApp(home: CloudSetupWizard(model: m, prefill: good)));
+      final wizard = tester.state(find.byType(CloudSetupWizard)) as dynamic;
+      expect(wizard.enrollment.text, good.enrollment);
+      expect(wizard.campus, good.instituteId);
     });
   });
 }

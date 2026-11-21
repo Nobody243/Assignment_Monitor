@@ -186,7 +186,7 @@ void main() {
               }));
           await show(ListenableBuilder(listenable: model, builder: (_, _) => SignInScreen(model: model)));
           _noException(tester, 'the sign-in screen overflowed at $label');
-          await tapText('Read-only viewer');
+          await tapText('I already use the GitHub checks');
           await tapText('Set up from this phone');
           await tester.pumpAndSettle();
           _noException(tester, 'the wizard intro overflowed at $label');

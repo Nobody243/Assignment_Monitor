@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../cloud_setup.dart';
 import '../logic.dart' show agoLabel;
 import '../model.dart';
+import '../portal.dart' show PortalCredentials;
 import '../source.dart' show DeviceCode, GithubAuth, SourceError, repoName;
 import '../theme.dart' show Status;
 
@@ -24,8 +25,11 @@ enum _Page { intro, github, portal, progress }
 /// "Set up from this phone": the whole Cloud checks setup, from the phone. Steps: what will happen, GitHub sign-in (device
 /// code), the portal login, then the progress of the setup. When it works the app is signed in and waits for the first check.
 class CloudSetupWizard extends StatefulWidget {
-  const CloudSetupWizard({super.key, required this.model});
+  const CloudSetupWizard({super.key, required this.model, this.prefill});
   final AppModel model;
+
+  /// The portal login already saved on the phone (Full app): used instead of asking for it a second time.
+  final PortalCredentials? prefill;
   @override
   State<CloudSetupWizard> createState() => _WizardState();
 }
@@ -41,6 +45,13 @@ class _WizardState extends State<CloudSetupWizard> {
   final done = <CloudStep>{};
   CloudStep? running;
   CloudError? failure;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.prefill;
+    if (p != null) { enrollment.text = p.enrollment; password.text = p.password; campus = p.instituteId; }
+  }
 
   @override
   void dispose() {

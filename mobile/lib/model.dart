@@ -103,6 +103,8 @@ class AppModel extends ChangeNotifier {
   DeviceCode? code;
   bool refreshing = false, _cancelSignIn = false;
   int scheduled = 0;
+  /// The one-time offer to turn on GitHub background checks after the first sign-in to the portal; hidden for good by "Not now".
+  bool cloudOfferHidden = true;
   bool introSeen = true;   // the first-run intro is shown once, only to someone who is signed out
 
   /// Announcements posted since the Announcements screen was last looked at. The first summary ever read sets the
@@ -190,6 +192,7 @@ class AppModel extends ChangeNotifier {
     _step('Reading your saved data');
     await prefs.load();
     introSeen = (await SharedPreferences.getInstance()).getBool('introSeen') ?? false;
+    cloudOfferHidden = (await SharedPreferences.getInstance()).getBool('cloudOfferHidden') ?? false;
     await _applyLockAtStart();
     unawaited(SecureScreen.set(prefs.secureScreen));
     final token = await _store.token();
@@ -422,6 +425,21 @@ class AppModel extends ChangeNotifier {
       await portal.close();
     }
   }
+
+  /// True when GitHub background checks are connected (a GitHub sign-in exists).
+  bool get cloudOn => login != null;
+
+  /// Whether to show the offer: only in portal mode, only until GitHub checks are on or the student said "Not now".
+  bool get offerCloud => portalMode && !cloudOn && !cloudOfferHidden && phase == Phase.ready && !demo;
+
+  Future<void> hideCloudOffer() async {
+    cloudOfferHidden = true;
+    notifyListeners();
+    await (await SharedPreferences.getInstance()).setBool('cloudOfferHidden', true);
+  }
+
+  /// The saved portal login, for the GitHub setup to use so it is not typed twice.
+  Future<PortalCredentials?> savedPortalLogin() => _portalStore.read();
 
   Future<void> forgetPortal() => _portalStore.clear();
 

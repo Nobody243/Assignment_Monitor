@@ -5,7 +5,8 @@
 - The phone app can now work on its own, with no desktop app and no GitHub repository: sign in with your university login (enrollment number, password and campus) and the phone reads the portal itself. Your login stays in the phone's secure storage and goes only to the university portal.
 - New Lectures section: the notes and files of every course, with a download that opens in your viewer or saves to your files.
 - Assignments: download the brief, upload your work, replace or delete a submission, from the phone.
-- The first screen has two equal choices named by what they give: "Full app" (signs in to the portal on the phone) and "Read-only viewer" (shows what your GitHub checks found, no portal password on the phone).
+- The first screen has one main button: sign in with your university login. Someone who already uses the GitHub checks has a small link below it.
+- Once the phone is working it offers, once, to let GitHub keep checking while the phone is off (free, in your own private repository). The portal login you already gave is reused, so it is not typed twice; Settings has the same option under Background checks.
 - With a university login saved, the background check (about every two hours) reads the portal itself and sends the same notifications as before; if the portal cannot be read it falls back to the GitHub copy when there is one.
 - The four colour palettes now change the whole app: page and card surfaces, text and borders take the palette's tint (Royal is blue-grey, Forest green-grey, Ember warm, Ink neutral), and the bottom bar labels, progress bars and switches follow the accent. Contrast stays above AA in all eight light and dark themes.
 - Results: the three summary cards (credit hours graded, courses graded, semesters done) are always the same height.
