@@ -1,10 +1,10 @@
 {
-  "version": "1.9.1",
-  "tag": "v1.9.1",
-  "published_at": "2026-11-21T03:18:19Z",
-  "page_url": "https://github.com/Nobody243/Assignment_Monitor/releases/tag/v1.9.1",
-  "setup_url": "https://github.com/Nobody243/Assignment_Monitor/releases/download/v1.9.1/AssignmentMonitor-Setup.exe",
-  "setup_size": 165305524,
-  "zip_url": "https://github.com/Nobody243/Assignment_Monitor/releases/download/v1.9.1/AssignmentMonitor-portable.zip",
-  "zip_size": 231603257
+  "version": "1.9.2",
+  "tag": "v1.9.2",
+  "published_at": "2026-11-21T03:46:59Z",
+  "page_url": "https://github.com/Nobody243/Assignment_Monitor/releases/tag/v1.9.2",
+  "setup_url": "https://github.com/Nobody243/Assignment_Monitor/releases/download/v1.9.2/AssignmentMonitor-Setup.exe",
+  "setup_size": 165310871,
+  "zip_url": "https://github.com/Nobody243/Assignment_Monitor/releases/download/v1.9.2/AssignmentMonitor-portable.zip",
+  "zip_size": 231605843
 }
