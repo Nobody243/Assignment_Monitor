@@ -1,0 +1,89 @@
+name: Auto release (phone)
+
+# Every change to the PHONE app that lands on main is released by itself, apart from the desktop app:
+#   1. wait for the phone CI (analyze, tests, coverage, APK build) on that commit to pass, and stop if it does not;
+#   2. work out the next version (patch +1; [minor] or [major] in a commit subject raises that part), write it into
+#      mobile/pubspec.yaml, mobile/lib/alerts.dart and mobile/CHANGELOG.md and commit it;
+#   3. tag it phone-vX.Y.Z and start the signed release build (phone-release.yml), which publishes the APK and the Play bundle.
+# It needs the four Android signing secrets (mobile/RELEASE.md). Until they exist this workflow only says so and does
+# nothing, so no version numbers are used up on releases that cannot be built.
+# Put [skip release] in a commit message to push a phone change without releasing it.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "mobile/**"
+      - "!mobile/**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: auto-release-phone
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip release]')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.sha }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+    steps:
+      - name: The signing secrets exist
+        run: |
+          if [ "$HAS_KEYSTORE" != "true" ]; then
+            echo "::notice::The Android signing secrets are not set up yet, so the phone app is not released automatically. See mobile/RELEASE.md."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/checkout@v4
+        if: env.SKIP != '1'
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Wait for the phone CI on this commit
+        if: env.SKIP != '1'
+        run: |
+          for i in $(seq 1 45); do
+            row=$(gh run list --workflow mobile-ci.yml --commit "$SHA" --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"' || true)
+            echo "mobile-ci.yml on ${SHA::7}: ${row:-not started yet}"
+            case "$row" in
+              "completed success") exit 0 ;;
+              completed*) echo "::error::The phone CI on this commit did not pass ($row), so nothing is released."; exit 1 ;;
+            esac
+            sleep 60
+          done
+          echo "::error::The phone CI on this commit did not finish in time."; exit 1
+
+      - uses: actions/setup-python@v5
+        if: env.SKIP != '1'
+        with:
+          python-version: "3.12"
+
+      - name: Next version, version files, changelog and notes
+        if: env.SKIP != '1'
+        id: next
+        run: |
+          git pull --rebase origin main
+          python .github/scripts/auto_release.py phone | tee next.txt
+          cat next.txt >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag and push
+        if: env.SKIP != '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/pubspec.yaml mobile/lib/alerts.dart mobile/CHANGELOG.md
+          git commit -m "Release phone ${{ steps.next.outputs.version }} [skip release]"
+          git tag "${{ steps.next.outputs.tag }}"
+          git push origin main
+          git push origin "${{ steps.next.outputs.tag }}"
+
+      - name: Start the signed release build for the new tag
+        if: env.SKIP != '1'
+        run: gh workflow run phone-release.yml --ref "${{ steps.next.outputs.tag }}" -f publish=true -f minify=true

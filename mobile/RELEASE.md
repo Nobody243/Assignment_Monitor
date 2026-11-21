@@ -41,3 +41,13 @@ storage, or an encrypted drive). Never commit it; `.gitignore` already refuses `
 See [STORE.md](STORE.md) for the listing text and the data-safety answers. A one-time developer fee applies, and a new
 personal developer account has to run a closed test with real testers for a while before the first production release
 (Google's rule).
+
+## Automatic releases
+
+A change to `mobile/` that lands on `main` is released by itself (`.github/workflows/auto-release-phone.yml`), separately from the desktop app:
+
+1. it waits for the phone CI on that commit and stops if it fails;
+2. it raises the version by one patch (put `[minor]` or `[major]` in a commit subject to raise that part), writes it into `pubspec.yaml`, `lib/alerts.dart` and `CHANGELOG.md` (the "Unreleased" section, or the commit subjects), and commits it as "Release phone X.Y.Z";
+3. it tags `phone-vX.Y.Z` and starts the signed build (`phone-release.yml`), which publishes the APK and the Play bundle.
+
+It needs the four signing secrets above; until they exist the workflow only says so and releases nothing. Put `[skip release]` in a commit message to push a phone change without releasing it. The desktop app has its own workflow (`auto-release-desktop.yml`, tags `vX.Y.Z`); a change that touches only one of the two releases only that one.

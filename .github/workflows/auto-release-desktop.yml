@@ -1,0 +1,85 @@
+name: Auto release (desktop)
+
+# Every change to the DESKTOP app that lands on main is released by itself, apart from the phone app:
+#   1. wait for the normal build and tests on that commit (build.yml) to pass, and stop if they do not;
+#   2. work out the next version (patch +1; put [minor] or [major] in a commit subject to raise that part), write it into
+#      config.py, desktop/package*.json and CHANGELOG.md (the "Unreleased" section, or the commit subjects) and commit it;
+#   3. tag it vX.Y.Z and start the release build (build.yml on the tag), which tests, builds, signs when SignPath is set up,
+#      and publishes the numbered release the website and the in-app updater use.
+# Put [skip release] in a commit message to push a desktop change without releasing it.
+# Changes that only touch the phone app, the website, tests, tools or documents do not match the paths below.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "*.py"
+      - "requirements.txt"
+      - "installer.iss"
+      - "assets/**"
+      - "ui/src/**"
+      - "ui/index.html"
+      - "ui/package.json"
+      - "ui/package-lock.json"
+      - "ui/vite.config.*"
+      - "desktop/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: auto-release-desktop
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip release]')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Wait for the build and tests on this commit
+        run: |
+          for i in $(seq 1 75); do
+            row=$(gh run list --workflow build.yml --commit "$SHA" --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"' || true)
+            echo "build.yml on ${SHA::7}: ${row:-not started yet}"
+            case "$row" in
+              "completed success") exit 0 ;;
+              completed*) echo "::error::The build on this commit did not pass ($row), so nothing is released."; exit 1 ;;
+            esac
+            sleep 60
+          done
+          echo "::error::The build on this commit did not finish in time."; exit 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Next version, version files, changelog and notes
+        id: next
+        run: |
+          git pull --rebase origin main
+          python .github/scripts/auto_release.py desktop | tee next.txt
+          cat next.txt >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config.py desktop/package.json desktop/package-lock.json CHANGELOG.md
+          git commit -m "Release ${{ steps.next.outputs.version }} [skip release]"
+          git tag "${{ steps.next.outputs.tag }}"
+          git push origin main
+          git push origin "${{ steps.next.outputs.tag }}"
+
+      # A tag pushed with the workflow token does not start other workflows, so the release build is started by hand
+      # (starting a workflow by hand is the one thing this token may do).
+      - name: Start the release build for the new tag
+        run: gh workflow run build.yml --ref "${{ steps.next.outputs.tag }}"
