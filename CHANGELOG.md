@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.1 - 2026-11-21
 
 - Smoother interface: the highlight in the sidebar, the settings sections and every tab strip slides from item to item instead of jumping; pages enter from the side the sidebar item lies on; buttons give a short press response and can show a working spinner; menus open faster. The account menu now has real submenus (Theme, Palette with colour swatches) and shows its shortcuts (Ctrl B, Ctrl 9). Up and Down, Home and End walk the sidebar and the settings sections.
 - Right-click an assignment row for a menu (open details, copy course and title, show only that course). Sidebar number badges pop when the count changes, loading placeholders shimmer, and switches have a springy thumb.
