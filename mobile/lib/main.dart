@@ -247,9 +247,11 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       ),
       body: SafeArea(
         child: Column(children: [
-          if (!m.demo && m.refreshing && m.portalMode) _SyncBar(model: m),
-          if (!m.demo && (m.error != null || stale || (m.portalMode && m.syncSkipped.isNotEmpty))) _Banner(model: m),
-          if (m.offerCloud) _CloudOffer(model: m),
+          // one strip at a time, so they never crowd the content: what is being read now, else what went wrong, else the offer
+          if (!m.demo && m.refreshing && m.portalMode) _SyncBar(model: m)
+          else if (!m.demo && (m.error != null || stale || (m.portalMode && m.syncSkipped.isNotEmpty))) _Banner(model: m)
+          // the offer is a nice-to-have: on a small screen or with large text it would crowd the content out, and Settings has it anyway
+          else if (m.offerCloud && MediaQuery.sizeOf(context).height >= 640 && MediaQuery.textScalerOf(context).scale(14) <= 18.5) _CloudOffer(model: m),
           Expanded(
             child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxContentWidth), child: RefreshIndicator(
               onRefresh: _refreshHere,
@@ -352,7 +354,7 @@ class _SideMenu extends StatelessWidget {
             const Spacer(),
             staggered(items.length + 1, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _MenuRow(icon: LucideIcons.logOut, label: model.demo ? 'Leave the demo' : 'Sign out', selected: false, onTap: onSignOut),
-              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text('Your portal password is never stored on this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text(model.portalMode ? "Your login stays in this phone's secure storage and goes only to the university portal." : "Your portal password is never stored on this phone.", style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
             ])),
           ]),
         ))))),
@@ -427,18 +429,25 @@ class _CloudOffer extends StatelessWidget {
     return Material(
       color: t.colorScheme.primaryContainer,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-        child: Row(children: [
-          Icon(LucideIcons.cloud, size: 20, color: t.colorScheme.onPrimaryContainer),
-          const SizedBox(width: 12),
-          Expanded(child: Text('Want checks to keep running when the phone is off? GitHub can do that for free, in your own private repository.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onPrimaryContainer))),
-          TextButton(onPressed: model.hideCloudOffer, child: const Text('Not now')),
-          FilledButton(
-            onPressed: () async {
-              final c = await model.savedPortalLogin();
-              if (context.mounted) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model, prefill: c)));
-            },
-            child: const Text('Set up'),
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(padding: const EdgeInsets.only(top: 2), child: Icon(LucideIcons.cloud, size: 20, color: t.colorScheme.onPrimaryContainer)),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Want checks to keep running when the phone is off? GitHub can do that for free, in your own private repository.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onPrimaryContainer))),
+          ]),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(spacing: 4, children: [
+              TextButton(onPressed: model.hideCloudOffer, child: const Text('Not now')),
+              FilledButton(
+                onPressed: () async {
+                  final c = await model.savedPortalLogin();
+                  if (context.mounted) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model, prefill: c)));
+                },
+                child: const Text('Set up'),
+              ),
+            ]),
           ),
         ]),
       ),

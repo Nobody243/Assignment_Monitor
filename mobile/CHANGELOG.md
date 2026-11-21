@@ -2,6 +2,15 @@
 
 ## 1.0.6 - 2026-11-21
 
+- The privacy statements are true again: the intro, the side menu and About and privacy said the portal password never reaches the phone, which stopped being true with the university login. They now say what each way of using the app keeps, and where it goes.
+- Settings shows the real version (it said 1.0.0), and has "University login" for someone who came in through GitHub, so lectures and uploads can be added later. The Lectures screen points to it.
+- Account and data is right for the Full app (it showed GitHub details), and has "Delete downloaded files"; signing out deletes them too.
+- Empty screens can be pulled down to refresh (they could not be, though their message said to).
+- A sign-in that cannot run (the hidden browser failing) now says so instead of leaving the spinner on.
+- One strip under the top bar at a time (progress, else what is missing, else the GitHub offer), laid out so it cannot crowd out the content on a small phone or with large text; the offer waits for Settings on a very small screen.
+- Showing a newly added login no longer hides the data you already have while the portal is read.
+- Colours: the light Forest hero card is no longer neon, and Ink stays grey in both themes.
+- Rules so the code shrinker cannot remove the hidden browser's download channel in the release build.
 - Downloading a lecture file (and an assignment brief) now works: the file channel between the hidden browser and the app was added after the page had loaded, and Android only shows it to pages loaded afterwards, so the download script never reported back. It is now set up before any page loads, and a download that gets no answer from the portal stops after 25 seconds instead of waiting minutes.
 - When a file action fails, the message now says why in a few words instead of only "check the connection".
 - A progress bar under the top bar while the phone reads the portal, saying what it is reading and how far it has got ("Reading attendance · 2 of 7"), so a check that is still going can be told from one that has finished.

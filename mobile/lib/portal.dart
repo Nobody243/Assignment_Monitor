@@ -154,9 +154,14 @@ class Portal {
   /// the form (the first load of a cold browser), so it is tried once more from a fresh page. A real rejection always carries
   /// the portal's own message and is reported at once, so a wrong password is never sent twice.
   Future<SignInResult> signIn(PortalCredentials c) async {
-    var r = await _signInOnce(c);
-    if (!r.ok && r.problem == SignInProblem.wrongDetails && r.message == _noReason) r = await _signInOnce(c);
-    return r;
+    try {
+      var r = await _signInOnce(c);
+      if (!r.ok && r.problem == SignInProblem.wrongDetails && r.message == _noReason) r = await _signInOnce(c);
+      return r;
+    } catch (e) {
+      // the hidden browser itself failed (not available on this device, a platform error): say so instead of hanging
+      return const SignInResult.failed(SignInProblem.unexpected, 'The sign-in could not run on this device just now. Try again, or use the GitHub way in.');
+    }
   }
 
   Future<SignInResult> _signInOnce(PortalCredentials c) async {

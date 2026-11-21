@@ -16,7 +16,8 @@ import '../reminders.dart';
 import '../source.dart' show repoName;
 import '../theme.dart';
 import '../portal.dart' show PortalCredentials;
-import 'cloud_setup_screens.dart' show CloudSettingsPage, CloudSetupWizard;   // phone-only Cloud checks
+import 'cloud_setup_screens.dart' show CloudSettingsPage, CloudSetupWizard;
+import 'portal_signin.dart' show PortalSignInPage;   // phone-only Cloud checks
 import 'widgets.dart';
 
 /// Settings is a short list of sections; each one opens its own page, so a page only ever holds one kind of choice.
@@ -52,6 +53,10 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
+        if (!model.demo && !model.portalMode) ...[
+          row(LucideIcons.graduationCap, 'University login', 'Add it for lectures and to upload your work from this phone', () => PortalSignInPage(model: model)),
+          const Divider(height: 1, indent: 76),
+        ],
         if (!model.demo) ...[
           row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => model.portalMode && !model.cloudOn ? _WizardWithSavedLogin(model: model) : CloudSettingsPage(model: model)),
           const Divider(height: 1, indent: 76),
@@ -72,7 +77,7 @@ class SettingsHub extends StatelessWidget {
         label: Text(model.demo ? 'Leave the demo' : 'Sign out'),
       ),
       const SizedBox(height: 8),
-      Center(child: Text('Phone app 1.0.0', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+      Center(child: Text('Phone app $appVersion', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
     ]);
   }
 
@@ -205,16 +210,42 @@ class AccountSettings extends StatelessWidget {
   final AppModel model;
   @override
   Widget build(BuildContext context) {
+    final campus = _campus(summary);
+    final readAt = model.fetchedAt == null ? 'Not yet' : '${agoLabel(model.age!)} · data made ${agoLabel(DateTime.now().difference(summary.generatedAt))}';
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('Signed in'),
       ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.userRound), title: Text(summary.studentName),
-          subtitle: Text(model.demo ? 'Demo data, nothing is read from GitHub' : 'GitHub: ${model.login ?? '–'}')),
+          subtitle: Text(model.demo ? 'Demo data, nothing is read from anywhere' : model.portalMode ? 'University portal${campus.isEmpty ? '' : ' · $campus'}' : 'GitHub: ${model.login ?? '–'}')),
       if (!model.demo) ...[
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.folderGit2), title: const Text('Reading from'), subtitle: Text('${model.login ?? ''}/$repoName')),
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: const Text('Last read from GitHub'),
-            subtitle: Text(model.fetchedAt == null ? 'Not yet' : '${agoLabel(model.age!)} · summary made ${agoLabel(DateTime.now().difference(summary.generatedAt))}')),
+        ListTile(contentPadding: EdgeInsets.zero, leading: Icon(model.portalMode ? LucideIcons.graduationCap : LucideIcons.folderGit2), title: const Text('Reading from'),
+            subtitle: Text(model.portalMode ? 'The university portal, straight from this phone${model.cloudOn ? '. GitHub checks are also on (${model.login}/$repoName).' : ''}' : '${model.login ?? ''}/$repoName')),
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: Text(model.portalMode ? 'Last read from the portal' : 'Last read from GitHub'), subtitle: Text(readAt)),
+      ],
+      if (model.portalMode) ...[
+        const Divider(height: 32),
+        const _Head('Downloaded files'),
+        ListTile(
+          contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.trash2), title: const Text('Delete downloaded files'),
+          subtitle: const Text('Lecture files and assignment briefs saved on this phone. Signing out deletes them too.'),
+          onTap: () async {
+            final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+              title: const Text('Delete downloaded files?'),
+              content: const Text('They can be downloaded again from the portal.'),
+              actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep them')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete'))],
+            ));
+            if (ok != true) return;
+            final n = await model.clearDownloads();
+            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(n == 0 ? 'There were no downloaded files.' : 'Deleted $n ${n == 1 ? 'file' : 'files'}.')));
+          },
+        ),
       ],
     ]);
+  }
+
+  static String _campus(Summary s) {
+    final student = s.raw['student'];
+    final c = student is Map ? student['campus'] : null;
+    return c is String ? c : '';
   }
 }
 
@@ -227,12 +258,19 @@ class AboutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('What the phone holds'),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Portal password'), subtitle: Text('Never kept on the phone, which never contacts the portal. With the desktop app it never reaches the phone; in the phone-only setup it is typed once, encrypted and sent to your own GitHub.')),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
+      if (model.portalMode)
+        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Your university login'), subtitle: Text("Enrollment number, password and campus, in this phone's secure storage. They are sent only to the university portal, and deleted when you sign out."))
+      else
+        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Portal password'), subtitle: Text("Not kept on the phone, which does not contact the portal in this mode. With the desktop app it never reaches the phone; in the phone setup of GitHub checks it is typed once, encrypted and sent to your own repository's secret store.")),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in (only if you use GitHub checks)'), subtitle: Text("Kept in the phone's secure storage, used only to read or run the checks in your own repository.")),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last read of your data'), subtitle: Text('Assignments, attendance, grades and the rest, stored on the phone (encrypted in secure storage) so the app opens offline.')),
+      if (model.portalMode)
+        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.download), title: Text('Files you download'), subtitle: Text("Lecture files and assignment briefs are kept in the app's own storage, out of reach of other apps, until you clear the app's data or uninstall it.")),
       const Divider(height: 32),
       const _Head('Sharing'),
-      const Muted('No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
+      Muted(model.portalMode
+          ? 'No analytics and no crash reporting. The phone talks only to the university portal and, if you use GitHub checks, to GitHub. Nothing goes through a server of ours.'
+          : 'No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
       const Divider(height: 32),
       const _Head('App'),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.smartphone), title: Text('Assignment Monitor for phones'), subtitle: Text('Version $appVersion')),
@@ -240,7 +278,7 @@ class AboutSettings extends StatelessWidget {
         contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.clipboardCopy), title: const Text('Copy support info'),
         subtitle: const Text('Versions, freshness and counts for a bug report. No name, grades or sign-in.'),
         onTap: () async {
-          final text = supportInfo(summary, platform: kIsWeb ? 'web' : defaultTargetPlatform.name, lastRead: model.fetchedAt, error: model.error, reminders: model.scheduled);
+          final text = supportInfo(summary, platform: kIsWeb ? 'web' : defaultTargetPlatform.name, lastRead: model.fetchedAt, error: model.error, reminders: model.scheduled, portal: model.portalMode);
           await Clipboard.setData(ClipboardData(text: text));
           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied. Paste it into your message.')));
         },

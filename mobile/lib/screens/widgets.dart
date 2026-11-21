@@ -98,16 +98,23 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 72, height: 72, decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, shape: BoxShape.circle), child: Icon(icon, size: 32, color: t.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 16),
-          Text(title, textAlign: TextAlign.center, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-          if (hint != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(hint!, textAlign: TextAlign.center, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))),
-        ]),
+    // scrollable (and always draggable) so that pulling down still refreshes a screen that has nothing to show yet
+    return LayoutBuilder(builder: (context, box) => SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: box.maxHeight),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 72, height: 72, decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, shape: BoxShape.circle), child: Icon(icon, size: 32, color: t.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 16),
+              Text(title, textAlign: TextAlign.center, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              if (hint != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(hint!, textAlign: TextAlign.center, style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+            ]),
+          ),
+        ),
       ),
-    );
+    ));
   }
 }

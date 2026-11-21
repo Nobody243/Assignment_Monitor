@@ -48,9 +48,11 @@ class LecturesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!model.portalMode) {
-      return const EmptyState(
-        icon: LucideIcons.bookOpen, title: 'Lectures need your university login',
-        hint: 'Sign in with your enrollment number in Settings, and the lecture notes and files of every course appear here to download.',
+      return EmptyState(
+        icon: LucideIcons.bookOpen, title: model.demo ? 'Lectures are not in the demo' : 'Lectures need your university login',
+        hint: model.demo
+            ? 'Leave the demo and sign in with your university login, and the lecture notes and files of every course appear here to download.'
+            : 'Open Settings, then University login. The lecture notes and files of every course then appear here to download.',
       );
     }
     final all = summary.lectures;

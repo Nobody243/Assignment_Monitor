@@ -86,6 +86,12 @@ class _SlowList extends FakeBrowser {
   }
 }
 
+/// A browser whose scripts throw, as a platform error from the real WebView would.
+class _Broken extends FakeBrowser {
+  @override
+  Future<dynamic> js(String s) async => throw StateError('platform error');
+}
+
 void main() {
   const good = PortalCredentials('01-135232-062', 'right', '1');
 
@@ -101,6 +107,12 @@ void main() {
     await Portal(b, pause: Duration.zero).signIn(const PortalCredentials('x', 'a"); alert(1); ("b', '1'));
     final script = b.scripts.firstWhere((s) => s.contains("set('#BodyPH_tbPassword'"));
     expect(script, contains(jsonEncode('a"); alert(1); ("b')));
+  });
+
+  test('a browser that breaks while signing in gives an answer, not a hang or a crash', () async {
+    final r = await Portal(_Broken(), pause: Duration.zero, signInSeconds: 0).signIn(good);
+    expect(r.ok, isFalse);
+    expect(r.problem, SignInProblem.unexpected);
   });
 
   test('a first click the portal ignores without a message is tried once more, and then works', () async {

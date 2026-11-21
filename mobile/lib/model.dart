@@ -347,6 +347,7 @@ class AppModel extends ChangeNotifier {
   Future<void> signOut() async {
     await _store.clear();
     await _portalStore.clear();
+    await clearDownloads();   // what was downloaded with this login goes with it
     if (Reminders.supported) { await Reminders.schedule(Summary({'assignments': [], 'schema': 1}), leads: [], done: {}, snoozed: {}); }
     summary = null; login = null; etag = null; fetchedAt = null; demo = false; error = null; cloudFirstCheck = false;
     phase = Phase.signedOut;
@@ -430,7 +431,9 @@ class AppModel extends ChangeNotifier {
 
   /// After a successful sign-in: the first read of the portal starts, and the waiting screen shows what it is doing.
   void beginPortalMode() {
-    portalMode = true; phase = Phase.waiting; error = null; notifyListeners();
+    portalMode = true; error = null;
+    if (summary == null) phase = Phase.waiting;   // someone who already has data keeps seeing it while the portal is read
+    notifyListeners();
     unawaited(refresh());
   }
 
@@ -463,6 +466,21 @@ class AppModel extends ChangeNotifier {
 
   /// The saved portal login, for the GitHub setup to use so it is not typed twice.
   Future<PortalCredentials?> savedPortalLogin() => _portalStore.read();
+
+  /// Deletes every lecture file and brief saved on the phone. Returns how many files were removed.
+  Future<int> clearDownloads() async {
+    try {
+      final dir = await _filesDir();
+      if (!await dir.exists()) return 0;
+      var n = 0;
+      await for (final e in dir.list(recursive: true, followLinks: false)) { if (e is File) n++; }
+      await dir.delete(recursive: true);
+      return n;
+    } catch (e) {
+      debugPrint('clearing downloads failed');
+      return 0;
+    }
+  }
 
   Future<void> forgetPortal() => _portalStore.clear();
 

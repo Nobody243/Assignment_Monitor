@@ -11,3 +11,10 @@
 
 # local_auth shows its prompt through androidx.biometric
 -keep class androidx.biometric.** { *; }
+
+# the hidden browser (webview_flutter) talks to the app through JavaScript channels: the annotated methods must stay
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
+-keep class io.flutter.plugins.webviewflutter.** { *; }
+# the file picker and sharing plugins
+-keep class com.mr.flutter.plugin.filepicker.** { *; }
+-dontwarn android.webkit.**

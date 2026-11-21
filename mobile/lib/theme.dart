@@ -32,7 +32,7 @@ SystemUiOverlayStyle overlayStyle(Brightness b, Color page) {
 }
 
 ThemeData buildTheme(Palette p, Brightness b) {
-  final base = ColorScheme.fromSeed(seedColor: p.seed, brightness: b, dynamicSchemeVariant: b == Brightness.light ? DynamicSchemeVariant.vibrant : DynamicSchemeVariant.tonalSpot);
+  final base = ColorScheme.fromSeed(seedColor: p.seed, brightness: b, dynamicSchemeVariant: p.key == 'ink' ? DynamicSchemeVariant.neutral : (b == Brightness.light ? DynamicSchemeVariant.vibrant : DynamicSchemeVariant.tonalSpot));   // Ink stays grey; a vibrant grey turns teal
   final dark = b == Brightness.dark;
   // The surfaces take the palette's hue (a few percent of it, so a card still reads against the page and the text stays
   // above AA contrast), so Royal looks blue-grey, Forest green-grey, Ember warm and Ink neutral. Before, every palette
@@ -50,6 +50,8 @@ ThemeData buildTheme(Palette p, Brightness b) {
     onSurface: dark ? tone(0.30, 0.94) : tone(0.45, 0.10),
     onSurfaceVariant: dark ? tone(0.18, 0.80) : tone(0.25, 0.30),
     outlineVariant: dark ? tone(0.18, 0.27) : tone(0.30, 0.80),
+    // the vibrant scheme's accent is welcome, but its tinted containers (the hero card) turn neon in green and yellow palettes
+    primaryContainer: dark ? base.primaryContainer : Color.lerp(base.primaryContainer, Colors.white, 0.45),
   );
   return ThemeData(
     useMaterial3: true,

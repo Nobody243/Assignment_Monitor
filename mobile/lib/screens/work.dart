@@ -203,7 +203,7 @@ class _Detail extends StatelessWidget {
           ]),
           if (model?.portalMode ?? false) ..._files(context, t) else ...[
             const SizedBox(height: 10),
-            Text('Sign in with your university login to download the brief and upload your work from this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+            Text('Add your university login (Settings, University login) to download the brief and upload your work from this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
           ],
         ]),
       ),
