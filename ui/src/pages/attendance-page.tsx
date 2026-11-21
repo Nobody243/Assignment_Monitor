@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { AttendanceCourse, State } from '@/api'
 import { PageHeader, Stat } from '@/components/page-header'
+import { Masonry } from '@/components/masonry'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -129,7 +130,7 @@ export function AttendancePage({ state }: { state: State }) {
       {list.length === 0 ? (
         <Empty className="border border-dashed"><EmptyHeader><EmptyTitle>No attendance yet</EmptyTitle><EmptyDescription>Run a check to read it from the portal.</EmptyDescription></EmptyHeader></Empty>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">{list.map(c => <CourseCard key={c.code} c={c} minimum={att.minimum} />)}</div>
+        <Masonry>{list.map(c => <CourseCard key={c.code} c={c} minimum={att.minimum} />)}</Masonry>
       )}
     </div>
   )

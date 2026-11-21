@@ -3,6 +3,7 @@ import { Bell, Cloud, HardDrive, History, Info, ListChecks, Palette, User } from
 import { setAutomation, type State } from '@/api'
 import { ConfirmDialog } from '@/components/feedback'
 import { Alert } from '@/components/inline-alert'
+import { Masonry } from '@/components/masonry'
 import { PageHeader } from '@/components/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/lib/notify'
@@ -65,7 +66,7 @@ export function SettingsPage(p: Props) {
   }
   const loading = !view && !p.demo
   const wait = <Skeleton className="h-64 w-full rounded-2xl" />
-  const two = (children: ReactNode) => <div className="grid items-start gap-5 2xl:grid-cols-2">{children}</div>
+  const two = (children: ReactNode) => <Masonry minWidth={1536} className="gap-5 [&>div]:gap-5">{children}</Masonry>
 
   const content: Record<SettingsTab, ReactNode> = {
     profile: view ? (

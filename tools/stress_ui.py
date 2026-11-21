@@ -344,7 +344,7 @@ with sync_playwright() as p:
         print("12. drop-down, semester tabs, theme switch")
         nav(pg, "Attendance"); settle(pg, 600)
         trig = pg.locator("[data-slot=collapsible-trigger]").first
-        others_before = pg.evaluate("() => Math.round(document.querySelectorAll('.rounded-2xl.p-5')[1]?.getBoundingClientRect().height ?? 0)")
+        others_before = pg.evaluate("() => [...document.querySelectorAll('.rounded-2xl.p-5')].filter(e => e.getBoundingClientRect().left > innerWidth / 2).map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.top + scrollY), Math.round(r.height)] })")
         for _ in range(ROUNDS):
             trig.click(timeout=3000, delay=0)
             pg.wait_for_timeout(rng.choice([0, 20, 90, 320]))
@@ -352,8 +352,8 @@ with sync_playwright() as p:
         state = trig.get_attribute("data-state")
         shown = pg.evaluate("() => [...document.querySelectorAll('[data-slot=collapsible-content]')].filter(e => e.getBoundingClientRect().height > 1).length")
         check((shown == 1) == (state == "open"), f"drop-down state {state!r} but {shown} visible content block(s)")
-        others_after = pg.evaluate("() => Math.round(document.querySelectorAll('.rounded-2xl.p-5')[1]?.getBoundingClientRect().height ?? 0)")
-        check(others_before == others_after, f"the neighbouring card changed height {others_before} -> {others_after}")
+        others_after = pg.evaluate("() => [...document.querySelectorAll('.rounded-2xl.p-5')].filter(e => e.getBoundingClientRect().left > innerWidth / 2).map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.top + scrollY), Math.round(r.height)] })")
+        check(others_before == others_after, f"a card in the other column moved or changed height {others_before} -> {others_after}")
         nav(pg, "Results"); settle(pg, 600)
         stabs = pg.locator("[role=tab]")
         if stabs.count() >= 2:
