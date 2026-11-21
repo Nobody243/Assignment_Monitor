@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.3 - 2026-11-21
 
 - The status bar (clock, battery and notification icons) is readable on a light page: it was drawing white icons on the light background. It now follows the theme in every palette, and the bottom navigation bar does too.
 - Richer colours in the light themes: each palette has a clearer accent (Royal blue, Forest green, Ember orange) while the dark themes stay calm.
