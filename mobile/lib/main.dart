@@ -26,9 +26,16 @@ import 'reminders.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Reminders.init();
-  await BackgroundCheck.applySaved();   // keeps the two-hourly check in step with the setting (Android only)
+  // The first frame comes first: until it is drawn Android keeps showing its still launch screen, so nothing slow or
+  // stuck below may hold it up. Reminders and the background check set themselves up beside the splash, each with a limit.
   runApp(const AssignmentMonitorApp());
+  unawaited(_setUpPlugins());
+}
+
+Future<void> _setUpPlugins() async {
+  try { await Reminders.init().timeout(const Duration(seconds: 15)); } catch (e) { debugPrint('reminders: $e'); }
+  // keeps the two-hourly check in step with the setting (Android only)
+  try { await BackgroundCheck.applySaved().timeout(const Duration(seconds: 15)); } catch (e) { debugPrint('background: $e'); }
 }
 
 class AssignmentMonitorApp extends StatefulWidget {
