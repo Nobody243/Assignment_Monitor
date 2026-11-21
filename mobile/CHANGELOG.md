@@ -1,11 +1,14 @@
 # Phone app changelog
 
-## 1.0.3 - 2026-11-21
+## Unreleased
 
 - The GitHub background-checks setup now explains, before GitHub's approval screen appears, that it will say "full control of private repositories" and "update GitHub Action workflows": what those words mean here, that GitHub cannot limit them to one repository, and how to remove the access afterwards.
 - Signing in to the portal no longer needs a second try: the app waits until the portal's sign-in page and campus list are ready, checks the fields before pressing the button, and if the portal answers with no reason it tries once more from a fresh page. A wrong password still stops at once (the portal gives a reason), so it is never sent twice.
 - The launch screen shows the same rounded orange tile as the app's own splash, instead of a hard-edged square, so the two look like one screen.
 - A shorter, smoother start: the app's own splash screen now uses the same background as Android's launch screen (so they no longer flash between two colours) and stays for under a second unless the data takes longer to load.
+
+## 1.0.3 - 2026-11-21
+
 - The status bar (clock, battery and notification icons) is readable on a light page: it was drawing white icons on the light background. It now follows the theme in every palette, and the bottom navigation bar does too.
 - Richer colours in the light themes: each palette has a clearer accent (Royal blue, Forest green, Ember orange) while the dark themes stay calm.
 - The first screen has one main button: sign in with your university login. Someone who already uses the GitHub checks has a small link below it.
