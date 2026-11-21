@@ -1,11 +1,14 @@
 # Phone app changelog
 
-## 1.0.5 - 2026-11-21
+## Unreleased
 
 - A progress bar under the top bar while the phone reads the portal, saying what it is reading and how far it has got ("Reading attendance · 2 of 7"), so a check that is still going can be told from one that has finished.
 - The hidden browser now presents itself as a desktop browser, so the portal sends the same pages the readers were written for (a phone can be sent a different layout, which may be why lecture notes came back empty).
 - The course list gets a second look, through single sign-on again, before the phone gives up with "No courses were found", which a lecture refresh could run into.
 - Settings has "What the phone read": for each part, what came back and how long it took, and for an empty lecture page what the page was made of (counts only), with a Copy button.
+
+## 1.0.5 - 2026-11-21
+
 - Each screen now refreshes only itself: pull down (or tap the refresh button) on Assignments, Attendance, Exams, Announcements, Timetable, Results or Lectures and the phone reads just that part of the portal again, not everything. Today still does the full check, and so do the two-hourly background check and coming back to the app.
 - Reading the portal is much faster: the phone used to ask the portal for a course and then start waiting for the page after it had already loaded, so every course sat out a long timeout. It now starts waiting before it asks, and does not wait at all for a page that updates in place.
 - Each part now appears as soon as it is read (assignments first, then attendance, exams, results, timetable, announcements, lectures) instead of everything at the end, and a part that is not read yet keeps showing the last full read.
