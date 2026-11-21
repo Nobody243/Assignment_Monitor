@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:assignment_monitor_mobile/model.dart';
 import 'package:assignment_monitor_mobile/portal.dart';
@@ -33,6 +34,12 @@ class FakeBrowser implements PortalBrowser {
   Future<String> url() async => current;
   @override
   Future<String> html() async => pageHtml;
+  @override
+  Future<void> jsThenSettle(String source, {Duration timeout = const Duration(seconds: 20)}) async {}
+  @override
+  Future<FetchedFile> fetchFile(String url, {int maxBytes = maxDownloadBytes}) async => throw UnimplementedError();
+  @override
+  Future<void> attachFile(String selector, String name, String mime, Uint8List bytes) async {}
   @override
   Future<void> close() async => closed = true;
 
@@ -127,7 +134,7 @@ void main() {
   });
 
   group('model and screen', () {
-    AppModel make(FakeBrowser b, MemoryVault v) => AppModel(Prefs(), store: Store(vault: v), portalStore: PortalStore(v), portalFactory: () => Portal(b, pause: Duration.zero, signInSeconds: 0));
+    AppModel make(FakeBrowser b, MemoryVault v) => AppModel(Prefs(), store: Store(vault: v), portalStore: PortalStore(v), portalFactory: ({credentials}) => Portal(b, pause: Duration.zero, signInSeconds: 0, credentials: credentials));
 
     test('details are kept only after the portal accepts them', () async {
       SharedPreferences.setMockInitialValues({});

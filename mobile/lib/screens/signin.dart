@@ -119,8 +119,12 @@ class SignInScreen extends StatelessWidget {
   List<Widget> _waiting(BuildContext context) {
     final t = Theme.of(context);
     return [
-      Text('Signed in as ${model.login ?? ''}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      Text(model.portalMode ? 'Signed in to the portal' : 'Signed in as ${model.login ?? ''}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
+      if (model.portalMode)
+        Text(model.error != null ? 'The portal could not be read yet.' : 'Reading the portal${model.syncStep.isEmpty ? '' : ': ${model.syncStep}'}. This takes a minute or two the first time.',
+            style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))
+      else
       Text(model.cloudFirstCheck
               ? 'Your first check is running on GitHub. It takes about three minutes. Your deadlines appear here when it is done; you can close the app meanwhile.'
               : 'No summary yet in ${model.login ?? 'your'}/$repoName. It appears after the next cloud check (they run twice a day). To get it now, open the repository on GitHub, Actions, run the check by hand.',

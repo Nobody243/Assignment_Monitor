@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -75,8 +76,28 @@ abstract class PortalBrowser {
   /// Runs JavaScript in the page and returns its result.
   Future<dynamic> js(String source);
 
+  /// Runs JavaScript that makes the page reload or post (a course change, a button) and waits for the page to settle again.
+  /// A page that updates without reloading is fine: the wait simply ends after [timeout].
+  Future<void> jsThenSettle(String source, {Duration timeout = const Duration(seconds: 20)});
+
+  /// Downloads a file with the page's own session (cookies). The page must be on the same host as [url].
+  Future<FetchedFile> fetchFile(String url, {int maxBytes = maxDownloadBytes});
+
+  /// Puts a file into a file input of the current page, as if the student had picked it.
+  Future<void> attachFile(String selector, String name, String mime, Uint8List bytes);
+
   /// Forgets the session (cookies) and frees the view.
   Future<void> close();
+}
+
+/// The largest file the phone downloads in one go (it is held in memory while it is carried over from the page).
+const maxDownloadBytes = 60 * 1024 * 1024;
+
+class FetchedFile {
+  FetchedFile(this.status, this.contentType, this.disposition, this.bytes);
+  final int status;
+  final String contentType, disposition;
+  final Uint8List bytes;
 }
 
 enum SignInProblem { wrongDetails, blocked, offline, unexpected }
@@ -95,8 +116,11 @@ class PortalCourse {
 }
 
 class Portal {
-  Portal(this.browser, {this.pause = const Duration(milliseconds: 500), this.signInSeconds = 30});
+  Portal(this.browser, {this.pause = const Duration(milliseconds: 500), this.signInSeconds = 30, this.credentials});
   final PortalBrowser browser;
+
+  /// Kept so a dropped session can sign in again without asking (the portal expires sessions quietly).
+  final PortalCredentials? credentials;
 
   /// How long a sign-in may take before the portal is judged to have said no.
   final int signInSeconds;
@@ -195,6 +219,55 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
     return [for (final e in list) PortalCourse((e as List)[0] as String, e[1] as String)];
   }
 
+  /// Opens a CMS page and returns its HTML, signing in again once if the portal sent the session back to the login page.
+  Future<String> cmsPage(String url) async {
+    await browser.open(url);
+    if (await _onLogin()) {
+      final c = credentials;
+      if (c == null || !(await signIn(c)).ok) throw StateError('The portal session ended.');
+      await browser.open(url);
+      if (await _onLogin()) throw StateError('The page could not be opened.');
+    }
+    return browser.html();
+  }
+
+  /// Opens an LMS page (through single sign-on first) and returns its HTML; one retry if the session was lost.
+  Future<String> lmsPage(String url) async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (!await enterLms()) { _inLms = false; if (attempt == 0) continue; throw StateError('The LMS could not be opened.'); }
+      await browser.open(url);
+      if (Uri.tryParse(await browser.url())?.host == lmsHost) return browser.html();
+      _inLms = false;
+    }
+    throw StateError('The LMS session was lost.');
+  }
+
+  /// Chooses a course by its name in the LMS course selector and returns the page after the change. The option values are
+  /// re-issued each time the list reloads, so the value is read from the page as it is now.
+  Future<String> selectCourse(String name) async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final raw = await browser.js("""
+(() => {
+  const s = document.querySelector('#courseId'); if (!s) return '';
+  const o = Array.from(s.options).find(o => (o.innerText || '').trim() === ${_q(name)});
+  if (!o) return '';
+  s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true})); return 'ok';
+})()""");
+      if (raw == 'ok') { await browser.jsThenSettle('0', timeout: const Duration(seconds: 15)); await Future<void>.delayed(pause * 2); return browser.html(); }
+      await Future<void>.delayed(pause);
+    }
+    throw StateError('Course not found in the course list: $name');
+  }
+
+  /// Chooses an option of a select by its value (the exam type, for one) and returns the page after the change.
+  Future<String> selectOption(String selector, String value) async {
+    await browser.js("""
+(() => { const s = document.querySelector(${_q(selector)}); if (s) { s.value = ${_q(value)}; s.dispatchEvent(new Event('change', {bubbles: true})); } })()""");
+    await browser.jsThenSettle('0', timeout: const Duration(seconds: 15));
+    await Future<void>.delayed(pause * 2);
+    return browser.html();
+  }
+
   Future<void> close() => browser.close();
 }
 
@@ -249,6 +322,83 @@ class WebViewBrowser implements PortalBrowser {
       try { return jsonDecode(r); } catch (_) { return r; }
     }
     return r;
+  }
+
+  /// Messages from the page's download script (a file arrives in pieces, base64 text, because a script result is small).
+  BytesBuilder? _incoming;
+  Completer<FetchedFile>? _fetch;
+  int _status = 0, _limit = 0;
+  String _type = '', _disp = '';
+
+  void _onMessage(String raw) {
+    final m = jsonDecode(raw) as Map<String, dynamic>;
+    final done = _fetch;
+    if (done == null || done.isCompleted) return;
+    switch (m['k']) {
+      case 'head':
+        _status = (m['status'] as num).toInt(); _type = '${m['type']}'; _disp = '${m['cd']}';
+        if ((m['size'] as num) > _limit) { done.completeError(StateError('The file is too big for the phone to carry (over ${_limit ~/ (1024 * 1024)} MB).')); }
+      case 'chunk':
+        _incoming?.add(base64Decode(m['d'] as String));
+      case 'end':
+        done.complete(FetchedFile(_status, _type, _disp, _incoming?.takeBytes() ?? Uint8List(0)));
+      case 'err':
+        done.completeError(StateError('${m['m']}'));
+    }
+  }
+
+  @override
+  Future<FetchedFile> fetchFile(String url, {int maxBytes = maxDownloadBytes}) async {
+    final uri = Uri.parse(url);
+    if (uri.scheme != 'https' || !isPortalHost(uri.host)) throw ArgumentError('Not a portal address.');
+    final c = await _ready();
+    if (!_channel) { await c.addJavaScriptChannel('AM', onMessageReceived: (m) => _onMessage(m.message)); _channel = true; }
+    _incoming = BytesBuilder(copy: false); _limit = maxBytes;
+    final done = _fetch = Completer<FetchedFile>();
+    await c.runJavaScript('''
+(async () => {
+  try {
+    const r = await fetch(${jsonEncode(url)}, {credentials: 'include'});
+    const buf = await r.arrayBuffer();
+    AM.postMessage(JSON.stringify({k: 'head', status: r.status, type: r.headers.get('content-type') || '', cd: r.headers.get('content-disposition') || '', size: buf.byteLength}));
+    const bytes = new Uint8Array(buf), STEP = 240000;
+    for (let i = 0; i < bytes.length; i += STEP) {
+      const part = bytes.subarray(i, i + STEP); let s = '';
+      for (let j = 0; j < part.length; j += 8192) s += String.fromCharCode.apply(null, part.subarray(j, j + 8192));
+      AM.postMessage(JSON.stringify({k: 'chunk', d: btoa(s)}));
+    }
+    AM.postMessage(JSON.stringify({k: 'end'}));
+  } catch (e) { AM.postMessage(JSON.stringify({k: 'err', m: String(e)})); }
+})()''');
+    return done.future.timeout(const Duration(minutes: 4));
+  }
+
+  bool _channel = false;
+
+  @override
+  Future<void> attachFile(String selector, String name, String mime, Uint8List bytes) async {
+    final c = await _ready();
+    await c.runJavaScript('window.__am = "";');
+    final text = base64Encode(bytes);
+    for (var i = 0; i < text.length; i += 200000) {
+      await c.runJavaScript('window.__am += ${jsonEncode(text.substring(i, i + 200000 > text.length ? text.length : i + 200000))};');
+    }
+    await c.runJavaScript('''
+(() => {
+  const bin = atob(window.__am), arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const dt = new DataTransfer(); dt.items.add(new File([arr], ${jsonEncode(name)}, {type: ${jsonEncode(mime)}}));
+  const input = document.querySelector(${jsonEncode(selector)}); input.files = dt.files;
+  input.dispatchEvent(new Event('change', {bubbles: true})); window.__am = '';
+})()''');
+  }
+
+  @override
+  Future<void> jsThenSettle(String source, {Duration timeout = const Duration(seconds: 20)}) async {
+    final c = await _ready();
+    _loaded = Completer<void>();
+    await c.runJavaScript(source);
+    try { await _loaded!.future.timeout(timeout); } catch (_) {/* no reload happened */}
   }
 
   @override

@@ -10,6 +10,7 @@ import 'screens/announcements.dart';
 import 'screens/attendance.dart';
 import 'screens/first_run.dart';
 import 'screens/intro.dart';
+import 'screens/lectures.dart';
 import 'screens/lock_screen.dart';
 import 'data.dart' show Summary;
 import 'screens/more.dart';
@@ -114,7 +115,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
   Animation<double> get _t => _menu;
 
-  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Announcements', 'Timetable', 'Results & GPA', 'Settings'];
+  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Announcements', 'Timetable', 'Results & GPA', 'Lectures', 'Settings'];
   int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
 
   @override
@@ -204,12 +205,13 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
     final t = Theme.of(context);
     final pages = [
       TodayScreen(summary: s, now: now, prefs: widget.prefs, onOpenWork: () => goto(1), onOpenAttendance: () => goto(2), onOpenAnnouncements: () => goto(4)),
-      WorkScreen(summary: s, now: now, prefs: widget.prefs),
+      WorkScreen(summary: s, now: now, prefs: widget.prefs, model: m),
       AttendanceScreen(summary: s),
       ExamsPage(summary: s, now: now),
       AnnouncementsScreen(summary: s, prefs: widget.prefs, now: now),
       TimetableScreen(summary: s, now: now),
       ResultsPage(summary: s),
+      LecturesScreen(summary: s, model: m),
       SettingsHub(summary: s, prefs: widget.prefs, model: m),
     ];
     final stale = !m.demo && (m.age?.inHours ?? 0) >= 24;
@@ -295,7 +297,8 @@ class _SideMenu extends StatelessWidget {
       (4, LucideIcons.megaphone, 'Announcements'),
       (5, LucideIcons.calendarRange, 'Timetable'),
       (6, LucideIcons.chartNoAxesColumn, 'Results & GPA'),
-      (7, LucideIcons.settings, 'Settings'),
+      (7, LucideIcons.bookOpen, 'Lectures'),
+      (8, LucideIcons.settings, 'Settings'),
     ];
     // row i is fully in by the time the app has moved (0.25 + 0.06 i) of the way; it starts at 0.06 i
     Widget staggered(int i, Widget child) => AnimatedBuilder(

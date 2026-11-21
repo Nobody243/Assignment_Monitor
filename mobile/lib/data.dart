@@ -31,6 +31,7 @@ class Summary {
   List<Course> get attendance => [for (final a in _list(raw['attendance'])) Course(a)];
   List<Exam> get exams => [for (final e in _list(raw['exams'])) Exam(e)];
   List<ClassSlot> get timetable => [for (final t in _list(raw['timetable'])) ClassSlot(t)].where((c) => c.valid).toList();
+  List<Lecture> get lectures => [for (final l in _list(raw['lectures'])) Lecture(l)];
   List<Note> get announcements => [for (final a in _list(raw['announcements'])) Note(a)];
   List<Term> get terms => [for (final s in _list(_map(raw['results'])['semesters'])) Term(s)];
   double? get cgpa => raw['results'] == null ? null : (_map(raw['results'])['cgpa'] is num ? (_map(raw['results'])['cgpa'] as num).toDouble() : null);
@@ -61,8 +62,20 @@ class Work {
   String? get marks => _strOrNull(m['marks']);
   String get urgency => _str(m['urgency']);
   bool get canSubmit => _bool(m['can_submit']);
+  bool get hasBrief => _bool(m['has_brief']);
   bool get overdue => !submitted && urgency == 'missed';
   bool get todo => !submitted && !overdue;
+}
+
+/// A week of lecture notes (or a miscellaneous file) the phone read from the portal. Links are not kept: they expire.
+class Lecture {
+  Lecture(this.m);
+  final Map<String, dynamic> m;
+  String get course => _str(m['course'], 'Course');
+  String get title => _str(m['title'], 'Lecture');
+  String get kind => _str(m['kind'], 'lecture');
+  Object? get week => m['week'];
+  List<({String label, String filename})> get files => [for (final f in _list(m['files'])) (label: _str(f['label'], 'Download'), filename: _str(f['filename']))];
 }
 
 class Course {

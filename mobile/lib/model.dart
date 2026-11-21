@@ -10,6 +10,12 @@ import 'lock.dart';
 import 'secure_screen.dart';
 import 'reminders.dart';
 import 'portal.dart';
+import 'dart:io';
+
+import 'package:path_provider/path_provider.dart';
+
+import 'portal_files.dart';
+import 'portal_sync.dart';
 import 'source.dart';
 import 'widget.dart';
 import 'theme.dart';
@@ -76,14 +82,16 @@ class Prefs extends ChangeNotifier {
 
 /// Signed in or not, what was last read, and how fresh it is. The screens only read from here.
 class AppModel extends ChangeNotifier {
-  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy(), PortalStore? portalStore, Portal Function()? portalFactory})
-      : _portalStore = portalStore ?? PortalStore((store ?? Store()).vault), _portalFactory = portalFactory ?? (() => Portal(WebViewBrowser())), _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed, locker = locker ?? DeviceLocker(), _lockPolicy = lockPolicy {
+  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy(), PortalStore? portalStore, Portal Function({PortalCredentials? credentials})? portalFactory, Future<Directory> Function()? filesDir})
+      : _filesDir = filesDir ?? _defaultFilesDir, _portalStore = portalStore ?? PortalStore((store ?? Store()).vault), _portalFactory = portalFactory ?? (({PortalCredentials? credentials}) => Portal(WebViewBrowser(), credentials: credentials)), _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed, locker = locker ?? DeviceLocker(), _lockPolicy = lockPolicy {
     prefs.onChanged = replan;
   }
   final Prefs prefs;
   final Store _store;
   final PortalStore _portalStore;
-  final Portal Function() _portalFactory;
+  final Portal Function({PortalCredentials? credentials}) _portalFactory;
+  final Future<Directory> Function() _filesDir;
+  static Future<Directory> _defaultFilesDir() async => Directory('${(await getApplicationDocumentsDirectory()).path}/downloads');
   final GithubAuth _auth;
   final SummarySource _source;
 
@@ -185,7 +193,9 @@ class AppModel extends ChangeNotifier {
     await _applyLockAtStart();
     unawaited(SecureScreen.set(prefs.secureScreen));
     final token = await _store.token();
-    if (token != null) {
+    portalMode = await hasPortal();
+    final signedIn = token != null || portalMode;
+    if (signedIn) {
       login = await _store.login();
       final c = await _store.cached();
       summary = c.summary; etag = c.etag; fetchedAt = c.fetchedAt;
@@ -196,10 +206,10 @@ class AppModel extends ChangeNotifier {
       }
       if (summary != null) { _step('Planning your reminders'); await replan(); }
     }
-    _step(token == null ? 'Almost there' : 'Opening your deadlines');
+    _step(!signedIn ? 'Almost there' : 'Opening your deadlines');
     final left = _splashMin - spent();
     if (!left.isNegative) await Future.delayed(left);
-    if (token == null) { phase = Phase.signedOut; notifyListeners(); return; }
+    if (!signedIn) { phase = Phase.signedOut; notifyListeners(); return; }
     phase = summary == null ? Phase.waiting : Phase.ready;
     notifyListeners();
     if (summary == null) unawaited(refresh());
@@ -290,8 +300,13 @@ class AppModel extends ChangeNotifier {
     if (demo || refreshing) return;
     refreshing = true;   // claimed before the first await, so a pull-to-refresh and a resume together cannot both run
     final token = await _store.token();
-    if (token == null || login == null) { refreshing = false; return; }
-    error = null;
+    portalMode = await hasPortal();
+    if (portalMode) {
+      // straight from the portal; if that fails and a cloud sign-in also exists, its summary still fills the screens
+      final ok = await _refreshFromPortal();
+      if (ok || token == null || login == null) { refreshing = false; notifyListeners(); return; }
+    } else if (token == null || login == null) { refreshing = false; return; }
+    error = portalMode ? null : error;
     notifyListeners();
     try {
       final f = await _source.fetch(token, login!, etag: etag);
@@ -334,6 +349,39 @@ class AppModel extends ChangeNotifier {
   // ---------------------------------------------------------------------------------------------- standalone (portal) mode
   // The phone signs in to the university portal itself (lib/portal.dart). Built in phases: see mobile/STANDALONE.md.
 
+  /// True when the phone holds a portal sign-in: the data then comes straight from the portal.
+  bool portalMode = false;
+
+  /// What the portal read is doing right now ("Reading attendance"), and the parts it had to skip.
+  String syncStep = '';
+  List<String> syncSkipped = const [];
+
+  /// Reads the whole portal with the saved sign-in and replaces the summary. Returns false (with [error] worded for the
+  /// student) when it could not.
+  Future<bool> _refreshFromPortal() async {
+    final c = await _portalStore.read();
+    if (c == null) return false;
+    error = null; syncStep = 'Signing in'; notifyListeners();
+    final portal = _portalFactory(credentials: c);
+    try {
+      final r = await portal.signIn(c);
+      if (!r.ok) { error = r.message; return false; }
+      final campus = campuses.where((x) => x.$2 == c.instituteId).map((x) => x.$1).firstOrNull ?? '';
+      final out = await PortalSync(portal).run(say: (s) { syncStep = s; notifyListeners(); }, campus: campus);
+      summary = out.summary; syncSkipped = out.skipped; fetchedAt = DateTime.now(); etag = null;
+      await _store.saveSummary(summary!, null);
+      if (phase != Phase.loading) phase = Phase.ready;
+      unawaited(replan());
+      return true;
+    } catch (e) {
+      error = 'The portal could not be read just now. ${e is StateError ? e.message : 'Check the connection and try again.'}';
+      return false;
+    } finally {
+      syncStep = '';
+      await portal.close();
+    }
+  }
+
   /// True when the phone holds a portal sign-in (enrollment number and password, in the keystore).
   Future<bool> hasPortal() async => (await _portalStore.read()) != null;
 
@@ -341,7 +389,7 @@ class AppModel extends ChangeNotifier {
   /// success, the number of courses the LMS lists (a first proof that the whole path works, not just the CMS).
   Future<({SignInResult result, int courses})> connectPortal(PortalCredentials c) async {
     if (!c.complete) return (result: const SignInResult.failed(SignInProblem.wrongDetails, 'Enter the enrollment number and the password.'), courses: 0);
-    final portal = _portalFactory();
+    final portal = _portalFactory(credentials: c);
     try {
       final r = await portal.signIn(c);
       if (!r.ok) return (result: r, courses: 0);
@@ -349,6 +397,27 @@ class AppModel extends ChangeNotifier {
       try { n = (await portal.courses()).length; } catch (e) { debugPrint('portal courses unavailable'); }
       await _portalStore.save(c);
       return (result: r, courses: n);
+    } finally {
+      await portal.close();
+    }
+  }
+
+  /// After a successful sign-in: the first read of the portal starts, and the waiting screen shows what it is doing.
+  void beginPortalMode() {
+    portalMode = true; phase = Phase.waiting; error = null; notifyListeners();
+    unawaited(refresh());
+  }
+
+  /// Runs [job] with a signed-in portal and a folder for downloads, then throws the session away. Each file action signs in
+  /// on its own (about 15 seconds), so nothing stays open between taps and a dropped session is never reused.
+  Future<T> withPortalFiles<T>(Future<T> Function(PortalFiles files) job) async {
+    final c = await _portalStore.read();
+    if (c == null) throw FileProblem('Sign in with your university login (Settings) to use files.');
+    final portal = _portalFactory(credentials: c);
+    try {
+      final r = await portal.signIn(c);
+      if (!r.ok) throw FileProblem(r.message);
+      return await job(PortalFiles(portal, await _filesDir()));
     } finally {
       await portal.close();
     }

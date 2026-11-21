@@ -29,6 +29,10 @@ class _PortalSignInState extends State<PortalSignInPage> {
     final r = await widget.model.connectPortal(PortalCredentials(enrollment.text, password.text, institute));
     if (!mounted) return;
     setState(() { busy = false; failed = r.result.ok ? null : r.result; connected = r.result.ok ? r.courses : null; });
+    if (r.result.ok) {
+      widget.model.beginPortalMode();
+      if (mounted) Navigator.of(context).popUntil((x) => x.isFirst);   // the app's own screens take over
+    }
   }
 
   bool get _retryWontHelp => failed?.problem == SignInProblem.blocked || failed?.problem == SignInProblem.unexpected;

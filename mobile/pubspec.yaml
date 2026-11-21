@@ -48,6 +48,8 @@ dependencies:
   home_widget: ^0.10.0
   pinenacl: ^0.6.0
   webview_flutter: ^4.14.1
+  html: ^0.15.7
+  file_picker: ^13.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
