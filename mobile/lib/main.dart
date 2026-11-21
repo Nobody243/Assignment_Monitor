@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, SystemUiOverlayStyle;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'data.dart' show Clock;
@@ -80,6 +80,11 @@ class _AppState extends State<AssignmentMonitorApp> with WidgetsBindingObserver 
       themeMode: prefs.mode,
       theme: buildTheme(prefs.palette, Brightness.light),
       darkTheme: buildTheme(prefs.palette, Brightness.dark),
+      // screens without an app bar (sign-in, splash, lock) also get a status bar that can be read on their page
+      builder: (context, child) {
+        final th = Theme.of(context);
+        return AnnotatedRegion<SystemUiOverlayStyle>(value: overlayStyle(th.brightness, th.colorScheme.surface), child: child ?? const SizedBox.shrink());
+      },
       home: AnimatedSwitcher(
         duration: const Duration(milliseconds: 420),
         switchInCurve: Curves.easeOut,

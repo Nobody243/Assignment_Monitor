@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 
 /// The four desktop palettes as Material 3 color schemes. Ember (the website's orange) is the default.
 class Palette {
@@ -15,8 +16,23 @@ const palettes = [
   Palette('forest', 'Forest', Color(0xFF2F8F4E)),
 ];
 
+/// The phone's status bar and navigation bar to match the page: dark icons and clock on a light page, light ones on a dark
+/// page. A transparent AppBar makes Flutter guess "dark background" and draw white icons, which vanish on a light page.
+SystemUiOverlayStyle overlayStyle(Brightness b, Color page) {
+  final lightPage = b == Brightness.light;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: lightPage ? Brightness.dark : Brightness.light,
+    statusBarBrightness: b,   // iOS: the same, named from the bar's side
+    systemNavigationBarColor: page,
+    systemNavigationBarIconBrightness: lightPage ? Brightness.dark : Brightness.light,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarContrastEnforced: false,
+  );
+}
+
 ThemeData buildTheme(Palette p, Brightness b) {
-  final base = ColorScheme.fromSeed(seedColor: p.seed, brightness: b);
+  final base = ColorScheme.fromSeed(seedColor: p.seed, brightness: b, dynamicSchemeVariant: b == Brightness.light ? DynamicSchemeVariant.vibrant : DynamicSchemeVariant.tonalSpot);
   final dark = b == Brightness.dark;
   // The surfaces take the palette's hue (a few percent of it, so a card still reads against the page and the text stays
   // above AA contrast), so Royal looks blue-grey, Forest green-grey, Ember warm and Ink neutral. Before, every palette
@@ -45,7 +61,7 @@ ThemeData buildTheme(Palette p, Brightness b) {
     progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary, linearTrackColor: scheme.primaryContainer),
     switchTheme: SwitchThemeData(trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.primary : null)),
     chipTheme: ChipThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-    appBarTheme: const AppBarTheme(centerTitle: false, scrolledUnderElevation: 0, backgroundColor: Colors.transparent),
+    appBarTheme: AppBarTheme(centerTitle: false, scrolledUnderElevation: 0, backgroundColor: Colors.transparent, systemOverlayStyle: overlayStyle(b, scheme.surface)),
   );
 }
 

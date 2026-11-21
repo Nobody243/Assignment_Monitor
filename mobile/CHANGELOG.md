@@ -2,6 +2,8 @@
 
 ## 1.0.2 - 2026-11-21
 
+- The status bar (clock, battery and notification icons) is readable on a light page: it was drawing white icons on the light background. It now follows the theme in every palette, and the bottom navigation bar does too.
+- Richer colours in the light themes: each palette has a clearer accent (Royal blue, Forest green, Ember orange) while the dark themes stay calm.
 - The phone app can now work on its own, with no desktop app and no GitHub repository: sign in with your university login (enrollment number, password and campus) and the phone reads the portal itself. Your login stays in the phone's secure storage and goes only to the university portal.
 - New Lectures section: the notes and files of every course, with a download that opens in your viewer or saves to your files.
 - Assignments: download the brief, upload your work, replace or delete a submission, from the phone.
