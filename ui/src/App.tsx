@@ -81,7 +81,6 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Assignment | null>(null)
-  const syncToast = useRef<string | number | null>(null)
   const activity = useActivity()
 
   const all = useMemo(() => state?.assignments ?? [], [state])
@@ -109,11 +108,9 @@ export default function App() {
   // ---- actions. Each one names what it is doing, shows progress, and reports how it ended (and the report is kept in Activity)
   const doSync = useCallback(async () => {
     if (demo) return void toast.info('Sample data: start the engine to check the portal.')
-    syncToast.current = toast.loading('Checking the portal…')
-    const id = syncToast.current
+    // progress is shown once, by the pill at the bottom (RunningPill); the toast only reports how it ended
     const r = await run('sync', startSync)
-    syncToast.current = null
-    if (r.ok) toast.success(r.message || 'Checked the portal.', { id }); else toast.error('The check did not finish', { id, description: r.message })
+    if (r.ok) toast.success(r.message || 'Checked the portal.'); else toast.error('The check did not finish', { description: r.message })
   }, [demo, run])
   const loaded = !!state && !demo
   // a file dropped anywhere but on a row must not make the window open it
@@ -165,7 +162,6 @@ export default function App() {
     const r = await run('update', installUpdate)
     if (r.ok) toast.success(r.message); else toast.error('The update did not install', { description: r.message })
   }
-  useEffect(() => { if (running?.kind === 'sync' && syncToast.current != null) toast.loading(`Checking the portal · ${running.step.replace(/[….]+$/, '')}`, { id: syncToast.current }) }, [running])
 
   const doUpload = async ({ a, file, replace }: PendingUpload) => {
     const r = await run('upload', () => uploadFile(a.id, file, replace), a.id)
@@ -181,18 +177,16 @@ export default function App() {
   const folderAction = { label: 'Open folder', onClick: () => openFolderSafe('lectures') }
   const doDownload = async (items: Assignment[], kind: FileKind) => {
     let saved = 0, failed = 0
-    const id = toast.loading(items.length > 1 ? `Downloading ${items.length} files…` : 'Downloading…')
     for (const a of items) {
       const r = await run('download', () => downloadAssignmentFiles(a.id, kind), a.id)
       if (r.ok) saved++
-      else { failed++; if (items.length === 1) { toast.error(`${a.title}: download failed`, { id, description: r.message }); return } }
+      else { failed++; if (items.length === 1) { toast.error(`${a.title}: download failed`, { description: r.message }); return } }
     }
-    if (failed) toast.error(`${saved} downloaded, ${failed} failed`, { id }); else toast.success(items.length > 1 ? `${saved} files downloaded` : 'File downloaded', { id, action: folderAction })
+    if (failed) toast.error(`${saved} downloaded, ${failed} failed`); else toast.success(items.length > 1 ? `${saved} files downloaded` : 'File downloaded', { action: folderAction })
   }
   const doLectureDownload = async (ids: string[]) => {
-    const id = toast.loading(`Downloading ${ids.length} item${ids.length > 1 ? 's' : ''}…`)
     const r = await run('download', () => downloadLectures(ids))
-    if (r.ok) toast.success(r.message, { id, action: folderAction }); else toast.error('Lecture download failed', { id, description: r.message })
+    if (r.ok) toast.success(r.message, { action: folderAction }); else toast.error('Lecture download failed', { description: r.message })
   }
 
   // keyboard: Ctrl/Cmd+K or / search, ? help, u pick a file for the open assignment
