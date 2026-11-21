@@ -325,6 +325,8 @@ class WebViewBrowser implements PortalBrowser {
         onPageFinished: (_) { final l = _loaded; if (l != null && !l.isCompleted) l.complete(); },
         onWebResourceError: (e) { final l = _loaded; if (l != null && !l.isCompleted && (e.isForMainFrame ?? true)) l.completeError(StateError(e.description)); },
       ));
+    // the download channel is set up before any page loads: Android only shows a channel to pages loaded after it is added
+    await c.addJavaScriptChannel('AM', onMessageReceived: (m) => _onMessage(m.message));
     await WebViewCookieManager().clearCookies();
     await c.clearCache();
     await c.clearLocalStorage();
@@ -362,6 +364,7 @@ class WebViewBrowser implements PortalBrowser {
   /// Messages from the page's download script (a file arrives in pieces, base64 text, because a script result is small).
   BytesBuilder? _incoming;
   Completer<FetchedFile>? _fetch;
+  Completer<void>? _gotHead;
   int _status = 0, _limit = 0;
   String _type = '', _disp = '';
 
@@ -371,6 +374,7 @@ class WebViewBrowser implements PortalBrowser {
     if (done == null || done.isCompleted) return;
     switch (m['k']) {
       case 'head':
+        final h = _gotHead; if (h != null && !h.isCompleted) h.complete();
         _status = (m['status'] as num).toInt(); _type = '${m['type']}'; _disp = '${m['cd']}';
         if ((m['size'] as num) > _limit) { done.completeError(StateError('The file is too big for the phone to carry (over ${_limit ~/ (1024 * 1024)} MB).')); }
       case 'chunk':
@@ -387,9 +391,9 @@ class WebViewBrowser implements PortalBrowser {
     final uri = Uri.parse(url);
     if (uri.scheme != 'https' || !isPortalHost(uri.host)) throw ArgumentError('Not a portal address.');
     final c = await _ready();
-    if (!_channel) { await c.addJavaScriptChannel('AM', onMessageReceived: (m) => _onMessage(m.message)); _channel = true; }
     _incoming = BytesBuilder(copy: false); _limit = maxBytes;
     final done = _fetch = Completer<FetchedFile>();
+    final head = _gotHead = Completer<void>();
     await c.runJavaScript('''
 (async () => {
   try {
@@ -405,10 +409,10 @@ class WebViewBrowser implements PortalBrowser {
     AM.postMessage(JSON.stringify({k: 'end'}));
   } catch (e) { AM.postMessage(JSON.stringify({k: 'err', m: String(e)})); }
 })()''');
+    // the portal must start answering within a short time; a script that never reports back means the page cannot take the file
+    try { await head.future.timeout(const Duration(seconds: 25)); } on TimeoutException { throw StateError('The portal did not start sending the file.'); }
     return done.future.timeout(const Duration(minutes: 4));
   }
-
-  bool _channel = false;
 
   @override
   Future<void> attachFile(String selector, String name, String mime, Uint8List bytes) async {

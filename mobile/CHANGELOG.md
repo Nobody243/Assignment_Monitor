@@ -2,6 +2,8 @@
 
 ## 1.0.6 - 2026-11-21
 
+- Downloading a lecture file (and an assignment brief) now works: the file channel between the hidden browser and the app was added after the page had loaded, and Android only shows it to pages loaded afterwards, so the download script never reported back. It is now set up before any page loads, and a download that gets no answer from the portal stops after 25 seconds instead of waiting minutes.
+- When a file action fails, the message now says why in a few words instead of only "check the connection".
 - A progress bar under the top bar while the phone reads the portal, saying what it is reading and how far it has got ("Reading attendance · 2 of 7"), so a check that is still going can be told from one that has finished.
 - The hidden browser now presents itself as a desktop browser, so the portal sends the same pages the readers were written for (a phone can be sent a different layout, which may be why lecture notes came back empty).
 - The course list gets a second look, through single sign-on again, before the phone gives up with "No courses were found", which a lecture refresh could run into.

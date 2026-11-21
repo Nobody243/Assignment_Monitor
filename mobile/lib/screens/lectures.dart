@@ -28,7 +28,9 @@ Future<T?> runFileJob<T>(BuildContext context, String working, Future<T> Functio
     messenger.showSnackBar(SnackBar(content: Text(e.message), duration: const Duration(seconds: 6)));
     return null;
   } catch (e) {
-    messenger.showSnackBar(const SnackBar(content: Text('That did not work. Check the connection and try again.')));
+    // the reason in a few words (no page text, no links), so a failure can be told apart from a lost connection
+    final why = e is StateError ? e.message : e is ArgumentError ? '${e.message}' : e.runtimeType.toString();
+    messenger.showSnackBar(SnackBar(content: Text('That did not work ($why). Try again.'), duration: const Duration(seconds: 7)));
     return null;
   } finally {
     nav.pop();
