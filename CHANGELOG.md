@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The search palette (Ctrl+K) is larger and sized to the window: a wider box, bigger text, a taller list and a full-length hint in the search field.
+- Update check on every launch: a few seconds after the app opens it looks for a newer version, and if there is one it says so with an Update now button (it asks before installing, as before). Still only for an installed build with update checks on.
+
 ## 1.9.1 - 2026-11-21
 
 - Smoother interface: the highlight in the sidebar, the settings sections and every tab strip slides from item to item instead of jumping; pages enter from the side the sidebar item lies on; buttons give a short press response and can show a working spinner; menus open faster. The account menu now has real submenus (Theme, Palette with colour swatches) and shows its shortcuts (Ctrl B, Ctrl 9). Up and Down, Home and End walk the sidebar and the settings sections.

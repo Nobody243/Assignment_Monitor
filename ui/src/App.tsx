@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CircleHelp, RefreshCw, Search } from 'lucide-react'
-import { patchSettings, deleteSubmission, downloadAssignmentFiles, downloadLectures, getSettings, getUpdate, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
+import { patchSettings, deleteSubmission, downloadAssignmentFiles, downloadLectures, getSettings, getUpdate, installUpdate, openFolder, startSync, uploadFile, type Assignment, type FileKind } from '@/api'
 import { AppSidebar, NAV_ORDER } from '@/components/app-sidebar'
 import { AssignmentSheet } from '@/components/assignment-sheet'
 import { CommandMenu } from '@/components/command-menu'
@@ -137,21 +137,34 @@ export default function App() {
     window.addEventListener('am:setup', open)
     return () => window.removeEventListener('am:setup', open)
   }, [])
-  // once per launch, a while after start: tell the student a newer version exists (installed build, and only if they allow update checks)
+  // every time the app opens, shortly after the engine answers: look for a newer version (installed build, and only if update checks are on).
+  // A newer one is announced with an Update now button; nothing is installed until the student says yes.
+  const [newVersion, setNewVersion] = useState<string | null>(null)
+  const checkedForUpdate = useRef(false)
   useEffect(() => {
-    if (!loaded) return
+    if (demo || checkedForUpdate.current) return
+    checkedForUpdate.current = true
     const t = setTimeout(() => {
       void (async () => {
         try {
           const s = await getSettings()
           if (!s.about.installed || !s.background.check_updates) return
           const u = await getUpdate()
-          if (u.newer) toast.info(`Version ${u.version} is available`, { duration: 15000, action: { label: 'Update', onClick: () => navigate('settings', 'about') } })
+          if (!u.newer || !u.version) return
+          const v = u.version
+          toast.info(`Version ${v} is available`, {
+            description: 'Your data and settings are kept.', duration: 30000,
+            action: { label: 'Update now', onClick: () => setNewVersion(v) }, cancel: { label: 'Later', onClick: () => {} },
+          })
         } catch { /* offline or GitHub unreachable: say nothing */ }
       })()
-    }, 8000)
+    }, 3000)
     return () => clearTimeout(t)
-  }, [loaded, navigate])
+  }, [demo])
+  const installNow = async () => {
+    const r = await run('update', installUpdate)
+    if (r.ok) toast.success(r.message); else toast.error('The update did not install', { description: r.message })
+  }
   useEffect(() => { if (running?.kind === 'sync' && syncToast.current != null) toast.loading(`Checking the portal · ${running.step.replace(/[….]+$/, '')}`, { id: syncToast.current }) }, [running])
 
   const doUpload = async ({ a, file, replace }: PendingUpload) => {
@@ -273,6 +286,9 @@ export default function App() {
         <AssignmentSheet a={sel} now={now} demo={demo} running={running} onClose={() => setSelId(null)}
           onUpload={(file, replace) => sel && setPendingUpload({ a: sel, file, replace })} onDelete={() => sel && setPendingDelete(sel)} onDownload={kind => sel && void doDownload([sel], kind)} />
 
+        <ConfirmDialog open={!!newVersion} onOpenChange={o => { if (!o) setNewVersion(null) }} title={`Install version ${newVersion ?? ''}?`}
+          description="The app downloads the update, checks it against the checksum published with the release, then closes and reopens by itself. Your data and settings are kept."
+          yes="Yes, update now" no="Not now" onYes={() => void installNow()} />
         <ConfirmDialog open={!!pendingUpload} onOpenChange={o => { if (!o) setPendingUpload(null) }}
           title={pendingUpload?.replace ? 'Replace your submission?' : 'Upload this file?'}
           description="You are graded on exactly what you upload. Check the file and the assignment."

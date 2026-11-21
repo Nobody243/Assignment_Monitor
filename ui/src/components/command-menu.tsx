@@ -10,7 +10,7 @@ export function CommandMenu({ open, onOpenChange, assignments, dark, onPick, onS
 }) {
   const run = (fn: () => void) => () => { onOpenChange(false); fn() }
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title="Search" description="Go to a page, search assignments or run a command">
+    <CommandDialog className="top-[14%] sm:max-w-[min(46rem,calc(100vw-3rem))]" open={open} onOpenChange={onOpenChange} title="Search" description="Go to a page, search assignments or run a command">
       <CommandInput placeholder="Go to a page, search assignments, or type a command" />
       <CommandList>
         <CommandEmpty>Nothing matches.</CommandEmpty>
