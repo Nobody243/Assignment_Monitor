@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.4 - 2026-11-21
 
 - Lectures: the "selected / Download" bar is now a small pill fixed in the middle of the window, so scrolling and the sidebar never move it; it slides in and out, shows the count in a badge, and sits above the progress pill while something is running. Fixed underneath: every page was wrapped in a layer that made fixed elements scroll with the page.
 - Checking the portal and downloading no longer show two progress indicators: the one at the bottom centre stays, the extra toast at the bottom right is gone (the toast now only appears when the action finishes, with the result).
