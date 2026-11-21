@@ -238,13 +238,13 @@ class _Transcript extends StatelessWidget {
         ]),
       )),
       const SizedBox(height: 12),
-      Reveal(index: 1, child: Row(children: [
+      Reveal(index: 1, child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(child: _Tile(value: '${graded.round()}', label: 'credit hours graded')),
         const SizedBox(width: 10),
         Expanded(child: _Tile(value: '$courseCount', label: 'courses graded')),
         const SizedBox(width: 10),
         Expanded(child: _Tile(value: '${done.length}', label: done.length == 1 ? 'semester done' : 'semesters done')),
-      ])),
+      ]))),
       const SizedBox(height: 20),
       const SectionTitle('Semesters'),
       for (final (i, term) in terms.reversed.indexed) Reveal(index: i + 2, child: Padding(padding: const EdgeInsets.only(bottom: 10), child: _TermCard(term: term, startOpen: i == 0))),
@@ -303,7 +303,7 @@ class _Tile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(22)),
-      child: Column(children: [
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Text(value, style: t.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: t.colorScheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
         Text(label, textAlign: TextAlign.center, style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
       ]),

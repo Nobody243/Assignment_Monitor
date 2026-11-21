@@ -18,18 +18,22 @@ const palettes = [
 ThemeData buildTheme(Palette p, Brightness b) {
   final base = ColorScheme.fromSeed(seedColor: p.seed, brightness: b);
   final dark = b == Brightness.dark;
-  // Same seed, but surfaces are warm neutrals one step apart (so a card reads against the page) and the
-  // secondary text is kept well above AA contrast. The accent only appears where something is actionable.
+  // The surfaces take the palette's hue (a few percent of it, so a card still reads against the page and the text stays
+  // above AA contrast), so Royal looks blue-grey, Forest green-grey, Ember warm and Ink neutral. Before, every palette
+  // shared the same warm surfaces and only the small accents changed.
+  final hue = HSLColor.fromColor(p.seed).hue;
+  final neutral = p.key == 'ink';
+  Color tone(double s, double l) => HSLColor.fromAHSL(1, hue, neutral ? 0.03 : s, l).toColor();
   final scheme = base.copyWith(
-    surface: dark ? const Color(0xFF16120F) : const Color(0xFFFFFAF6),
-    surfaceContainerLowest: dark ? const Color(0xFF110E0C) : const Color(0xFFFFFFFF),
-    surfaceContainerLow: dark ? const Color(0xFF1E1916) : const Color(0xFFFBF1EA),
-    surfaceContainer: dark ? const Color(0xFF241E1A) : const Color(0xFFF6EAE1),
-    surfaceContainerHigh: dark ? const Color(0xFF2D2621) : const Color(0xFFF0E2D8),
-    surfaceContainerHighest: dark ? const Color(0xFF383029) : const Color(0xFFE9D8CB),
-    onSurface: dark ? const Color(0xFFF4EBE5) : const Color(0xFF241A15),
-    onSurfaceVariant: dark ? const Color(0xFFCDBFB6) : const Color(0xFF5A4A41),
-    outlineVariant: dark ? const Color(0xFF4A3F37) : const Color(0xFFD9C6B9),
+    surface: dark ? tone(0.22, 0.075) : tone(0.60, 0.975),
+    surfaceContainerLowest: dark ? tone(0.22, 0.05) : const Color(0xFFFFFFFF),
+    surfaceContainerLow: dark ? tone(0.22, 0.105) : tone(0.50, 0.96),
+    surfaceContainer: dark ? tone(0.22, 0.135) : tone(0.45, 0.94),
+    surfaceContainerHigh: dark ? tone(0.20, 0.17) : tone(0.42, 0.91),
+    surfaceContainerHighest: dark ? tone(0.20, 0.21) : tone(0.40, 0.87),
+    onSurface: dark ? tone(0.30, 0.94) : tone(0.45, 0.10),
+    onSurfaceVariant: dark ? tone(0.18, 0.80) : tone(0.25, 0.30),
+    outlineVariant: dark ? tone(0.18, 0.27) : tone(0.30, 0.80),
   );
   return ThemeData(
     useMaterial3: true,
@@ -37,7 +41,9 @@ ThemeData buildTheme(Palette p, Brightness b) {
     colorScheme: scheme,
     scaffoldBackgroundColor: scheme.surface,
     cardTheme: CardThemeData(elevation: 0, color: scheme.surfaceContainer, margin: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-    navigationBarTheme: NavigationBarThemeData(height: 64, backgroundColor: scheme.surfaceContainer, indicatorColor: scheme.primaryContainer),
+    navigationBarTheme: NavigationBarThemeData(height: 64, backgroundColor: scheme.surfaceContainer, indicatorColor: scheme.primaryContainer, labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(fontSize: 12, fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500, color: s.contains(WidgetState.selected) ? scheme.primary : scheme.onSurfaceVariant))),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary, linearTrackColor: scheme.primaryContainer),
+    switchTheme: SwitchThemeData(trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.primary : null)),
     chipTheme: ChipThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
     appBarTheme: const AppBarTheme(centerTitle: false, scrolledUnderElevation: 0, backgroundColor: Colors.transparent),
   );
