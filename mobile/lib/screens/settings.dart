@@ -56,6 +56,10 @@ class SettingsHub extends StatelessWidget {
           row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => model.portalMode && !model.cloudOn ? _WizardWithSavedLogin(model: model) : CloudSettingsPage(model: model)),
           const Divider(height: 1, indent: 76),
         ],
+        if (model.portalMode) ...[
+          row(LucideIcons.listChecks, 'What the phone read', 'Per part: what came back and how long it took', () => SyncReportPage(model: model)),
+          const Divider(height: 1, indent: 76),
+        ],
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
         const Divider(height: 1, indent: 76),
         row(LucideIcons.info, 'About and privacy', 'What this app stores and sends', () => AboutSettings(summary: summary, model: model)),
@@ -344,4 +348,35 @@ class _WizardWithSavedLogin extends StatelessWidget {
             ? const Scaffold(body: Center(child: CircularProgressIndicator()))
             : CloudSetupWizard(model: model, prefill: snap.data),
       );
+}
+
+
+/// What the last read of the portal brought back, part by part: for seeing why something is missing, and to copy into a
+/// message about it. It holds counts and timings only, nothing from the pages themselves.
+class SyncReportPage extends StatelessWidget {
+  const SyncReportPage({super.key, required this.model});
+  final AppModel model;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final lines = model.syncReport;
+    final text = lines.isEmpty ? 'Nothing has been read yet in this session. Pull down on Today to read the portal.' : lines.join('\n');
+    return Scaffold(
+      appBar: AppBar(title: const Text('What the phone read', style: TextStyle(fontWeight: FontWeight.w700))),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(20), children: [
+          if (model.syncSkipped.isNotEmpty) Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text('Not read: ${model.syncSkipped.join(', ')}', style: TextStyle(color: t.colorScheme.error, fontWeight: FontWeight.w600)),
+          ),
+          SelectableText(text, style: t.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace', height: 1.5)),
+          const SizedBox(height: 16),
+          if (lines.isNotEmpty) OutlinedButton.icon(
+            icon: const Icon(LucideIcons.copy, size: 18), label: const Text('Copy'),
+            onPressed: () { Clipboard.setData(ClipboardData(text: text)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied'))); },
+          ),
+        ]),
+      ),
+    );
+  }
 }

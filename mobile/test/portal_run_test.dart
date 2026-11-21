@@ -13,7 +13,7 @@ class _B implements PortalBrowser {
   @override Future<dynamic> js(String s) async => s.contains('semesterId') ? '{"name":"MUHAMMAD SAAD","semester":"Fall 2026"}' : '[]';
   @override Future<void> open(String url, {Duration timeout = const Duration(seconds: 40)}) async {}
   @override Future<String> url() async => '';
-  @override Future<String> html() async => lecturesHtml;
+  @override Future<String> html() async => courseTableHtml;
   @override Future<void> jsThenSettle(String source, {Duration timeout = const Duration(seconds: 20)}) async {}
   @override Future<FetchedFile> fetchFile(String url, {int maxBytes = maxDownloadBytes}) async => throw UnimplementedError();
   @override Future<void> attachFile(String selector, String name, String mime, Uint8List bytes) async {}
@@ -100,7 +100,7 @@ void main() {
     expect(p.order.where((u) => u == lecturesUrl || u == miscUrl).length, 2);
     expect(p.order.contains(attendanceUrl), isFalse);
     expect(p.order.contains(announcementsUrl), isFalse);
-    expect(out.report.single, startsWith('lectures:'));
+    expect(out.report.last, startsWith('lectures:'));
   });
 
   test('each screen refreshes its own section and Today refreshes everything', () {
@@ -113,6 +113,22 @@ void main() {
     expect(sectionOfTab[7], 'lectures');
     expect(sectionOfTab[0], isNull, reason: 'Today is the full check');
     expect(sectionOfTab[8], isNull, reason: 'Settings has no data of its own');
+  });
+
+  test('progress is reported part by part: seven for everything, one for a single screen', () async {
+    final full = <(int, int)>[];
+    await PortalSync(_Portal()).run(onProgress: (d, n) => full.add((d, n)));
+    expect(full.first, (0, 7));
+    expect(full.last, (7, 7));
+    final one = <(int, int)>[];
+    await PortalSync(_Portal()).run(only: {'results'}, onProgress: (d, n) => one.add((d, n)));
+    expect(one.first, (0, 1));
+    expect(one.last, (1, 1));
+  });
+
+  test('when the lecture page shows nothing the report says what the page looked like', () async {
+    final out = await PortalSync(_Portal()).run(only: {'lectures'});
+    expect(out.report.any((l) => l.startsWith('lecture page for Cyber Security:')), isTrue);
   });
 
   test('no courses at all stops with a message instead of an empty summary', () async {

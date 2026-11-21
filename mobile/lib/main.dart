@@ -247,6 +247,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       ),
       body: SafeArea(
         child: Column(children: [
+          if (!m.demo && m.refreshing && m.portalMode) _SyncBar(model: m),
           if (!m.demo && (m.error != null || stale || (m.portalMode && m.syncSkipped.isNotEmpty))) _Banner(model: m),
           if (m.offerCloud) _CloudOffer(model: m),
           Expanded(
@@ -391,6 +392,31 @@ class _MenuRow extends StatelessWidget {
 }
 
 /// Said plainly when the phone cannot be sure the numbers are current: offline, or the repository has gone quiet.
+/// A progress bar under the app bar while the portal is being read, with what it is doing and how far it has got, so a check
+/// that is still going can be told from one that has finished.
+class _SyncBar extends StatelessWidget {
+  const _SyncBar({required this.model});
+  final AppModel model;
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final n = model.syncTotal, d = model.syncDone;
+    final step = model.syncStep.isEmpty ? 'Working' : model.syncStep;
+    return Material(
+      color: t.colorScheme.surfaceContainer,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        LinearProgressIndicator(value: n == 0 ? null : ((d + 0.35) / n).clamp(0.0, 1.0), minHeight: 3, color: t.colorScheme.primary, backgroundColor: t.colorScheme.primaryContainer),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(children: [
+            Expanded(child: Text(n == 0 ? step : '$step  ·  ${(d + 1).clamp(1, n)} of $n', maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
 /// Offered once, after the portal works: let GitHub also check while the phone is off. The portal login is reused, not asked for again.
 class _CloudOffer extends StatelessWidget {
   const _CloudOffer({required this.model});

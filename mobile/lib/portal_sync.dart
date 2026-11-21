@@ -31,9 +31,12 @@ class PortalSync {
   /// what a screen's own refresh does. `report` says, per part, what came back and how long it took.
   Future<({Summary summary, List<String> skipped, List<String> report})> run({
     void Function(String)? say, String campus = '', Map<String, dynamic>? previous, Future<void> Function(Summary)? onPartial,
-    Set<String>? only,
+    Set<String>? only, void Function(int done, int total)? onProgress,
   }) async {
     bool want(String k) => only == null || only.contains(k);
+    const all = ['assignments', 'attendance', 'exams', 'results', 'timetable', 'announcements', 'lectures'];
+    final total = all.where(want).length;
+    var finished = 0;
     void tell(String s) => say?.call(s);
     final skipped = <String>[], report = <String>[];
     final read = <String>{};
@@ -63,6 +66,7 @@ class PortalSync {
     Future<void> part(String name, String key, Future<String> Function() f) async {
       if (!want(key)) return;   // a section refresh reads only its own part
       tell(name);
+      onProgress?.call(finished, total);
       final began = DateTime.now();
       try {
         final what = await f();
@@ -72,6 +76,9 @@ class PortalSync {
       } catch (e) {
         skipped.add(key);
         report.add('$key: could not be read (${e is StateError ? e.message : e.runtimeType})');
+      } finally {
+        finished++;
+        onProgress?.call(finished, total);
       }
     }
 
@@ -121,6 +128,7 @@ JSON.stringify({name: ((document.querySelector('a.dropdown-toggle span.hidden-xs
         var html = await portal.selectCourse(c.name);
         var rows = parseLectures(html, c.name);
         if (rows.isEmpty) { await Future<void>.delayed(const Duration(seconds: 2)); html = await portal.browser.html(); rows = parseLectures(html, c.name); }   // a table that fills in late
+        if (rows.isEmpty) report.add('lecture page for ${c.name}: ${await _shape()}');   // what the page looked like, to see why nothing was found
         lectures.addAll(rows);
       });
       await portal.lmsPage(miscUrl);
@@ -129,6 +137,19 @@ JSON.stringify({name: ((document.querySelector('a.dropdown-toggle span.hidden-xs
     });
 
     return (summary: Summary(build()), skipped: skipped, report: report);
+  }
+
+  /// What the current page is made of (counts and names only, no text from it): for finding out why a reader found nothing.
+  Future<String> _shape() async {
+    try {
+      final raw = await portal.browser.js('''
+JSON.stringify({host: location.host, path: location.pathname, tables: document.querySelectorAll('table').length,
+  rows: document.querySelectorAll('table tr').length, links: document.querySelectorAll('a[href*="Download"]').length,
+  selects: Array.from(document.querySelectorAll('select')).map(s => s.id + ':' + s.options.length).join(','), width: window.innerWidth})''');
+      return '$raw';
+    } catch (_) {
+      return 'unreadable';
+    }
   }
 
   Future<List<Json>> _attendance() async {

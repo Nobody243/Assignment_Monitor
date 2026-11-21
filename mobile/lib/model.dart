@@ -366,6 +366,9 @@ class AppModel extends ChangeNotifier {
   /// Per part, what the last read of the portal brought back and how long it took (for finding out why something is missing).
   List<String> syncReport = const [];
 
+  /// How far the read has got: parts finished and parts to read (0 of 0 when nothing is being read).
+  int syncDone = 0, syncTotal = 0;
+
   /// Reads the whole portal with the saved sign-in and replaces the summary. Returns false (with [error] worded for the
   /// student) when it could not.
   Future<bool> _refreshFromPortal({Set<String>? only}) async {
@@ -379,6 +382,7 @@ class AppModel extends ChangeNotifier {
       final campus = campuses.where((x) => x.$2 == c.instituteId).map((x) => x.$1).firstOrNull ?? '';
       final out = await PortalSync(portal).run(
         say: (s) { syncStep = s; notifyListeners(); }, campus: campus, previous: summary?.raw, only: only,
+        onProgress: (d, n) { syncDone = d; syncTotal = n; notifyListeners(); },
         // each part fills its screens as soon as it is read; the rest keeps showing the last full read meanwhile
         onPartial: (s) async {
           summary = s; fetchedAt = DateTime.now(); etag = null;
@@ -399,7 +403,7 @@ class AppModel extends ChangeNotifier {
       error = 'The portal could not be read just now. ${e is StateError ? e.message : 'Check the connection and try again.'}';
       return false;
     } finally {
-      syncStep = '';
+      syncStep = ''; syncDone = 0; syncTotal = 0;
       await portal.close();
     }
   }

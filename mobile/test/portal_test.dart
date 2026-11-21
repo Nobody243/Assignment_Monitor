@@ -75,6 +75,17 @@ class FakeBrowser implements PortalBrowser {
   }
 }
 
+/// A portal whose course list only appears on the second look.
+class _SlowList extends FakeBrowser {
+  _SlowList({required super.courses});
+  @override
+  Future<dynamic> js(String s) async {
+    // the list only shows once the courses page has been opened a second time
+    if (s.contains('option[value]:not')) return opened.where((u) => u == assignmentsUrl).length > 1;
+    return super.js(s);
+  }
+}
+
 void main() {
   const good = PortalCredentials('01-135232-062', 'right', '1');
 
@@ -143,6 +154,21 @@ void main() {
     final list = await p.courses();
     expect(list.map((c) => c.name), ['Data Structures', 'Calculus']);
     expect(b.opened, containsAllInOrder([loginUrl, ssoUrl, assignmentsUrl]));
+  });
+
+  test('a course list that does not show on the first look is looked for again through single sign-on', () async {
+    final b = _SlowList(courses: [['t1', 'Calculus']]);
+    final p = Portal(b, pause: Duration.zero, signInSeconds: 0, listSeconds: 0);
+    await p.signIn(good);
+    final list = await p.courses();
+    expect(list.map((c) => c.name), ['Calculus']);
+    expect(b.opened.where((u) => u == ssoUrl).length, 2, reason: 'the second look signs through again');
+  });
+
+  test('a portal that never lists the courses says so, not an empty list', () async {
+    final p = Portal(FakeBrowser(), pause: Duration.zero, signInSeconds: 0, listSeconds: 0);
+    await p.signIn(good);
+    expect(p.courses, throwsA(isA<StateError>()));
   });
 
   test('only the two university hosts are portal hosts', () {

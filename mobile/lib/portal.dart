@@ -19,6 +19,9 @@ const assignmentsUrl = 'https://$lmsHost/Student/Assignments.php';
 /// The direct-from-the-phone mode (mobile/STANDALONE.md): its sign-in entry on the first screen.
 const standaloneReady = bool.fromEnvironment('STANDALONE', defaultValue: true);   // --dart-define=STANDALONE=false hides it
 
+/// What the hidden browser calls itself: an ordinary desktop Chrome, so the portal sends the same pages the desktop app reads.
+const desktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
 /// Only these hosts are ever opened; the password is typed into nothing else.
 bool isPortalHost(String? host) => host == cmsHost || host == lmsHost;
 
@@ -115,7 +118,7 @@ class PortalCourse {
 }
 
 class Portal {
-  Portal(this.browser, {this.pause = const Duration(milliseconds: 500), this.signInSeconds = 30, this.credentials});
+  Portal(this.browser, {this.pause = const Duration(milliseconds: 500), this.signInSeconds = 30, this.listSeconds = 20, this.credentials});
   final PortalBrowser browser;
 
   /// Kept so a dropped session can sign in again without asking (the portal expires sessions quietly).
@@ -123,6 +126,9 @@ class Portal {
 
   /// How long a sign-in may take before the portal is judged to have said no.
   final int signInSeconds;
+
+  /// How long to wait for the course list to appear on the page.
+  final int listSeconds;
 
   /// How long to wait between looks at the page; tests make it zero.
   final Duration pause;
@@ -228,14 +234,21 @@ class Portal {
   /// The courses in the LMS course selector. The option values are one-time tokens that the portal re-issues, so they are
   /// only good for the page they were read from; use the names.
   Future<List<PortalCourse>> courses() async {
-    if (!await enterLms()) throw StateError('The LMS could not be opened.');
-    await browser.open(assignmentsUrl);
-    final there = await _waitFor(() async => await browser.js("document.querySelectorAll('#courseId option[value]:not([value=\"\"])').length > 0") == true, seconds: 20);
-    if (!there) return const [];
-    final raw = await browser.js('''
+    // two looks: if the first finds no course list the single sign-on may have lapsed or the page been slow, so the second goes
+    // through single sign-on again
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (!await enterLms()) { _inLms = false; continue; }
+      await browser.open(assignmentsUrl);
+      final there = await _waitFor(() async => await browser.js("document.querySelectorAll('#courseId option[value]:not([value=\"\"])').length > 0") == true, seconds: listSeconds);
+      if (there) {
+        final raw = await browser.js('''
 JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o => [o.value, (o.innerText || '').trim()]).filter(x => x[0] && x[1] && x[1] !== 'Select Course'))''');
-    final list = jsonDecode(raw as String) as List;
-    return [for (final e in list) PortalCourse((e as List)[0] as String, e[1] as String)];
+        final list = jsonDecode(raw as String) as List;
+        return [for (final e in list) PortalCourse((e as List)[0] as String, e[1] as String)];
+      }
+      _inLms = false;
+    }
+    throw StateError('The portal did not list your courses this time.');
   }
 
   /// Opens a CMS page and returns its HTML, signing in again once if the portal sent the session back to the login page.
@@ -301,6 +314,8 @@ class WebViewBrowser implements PortalBrowser {
     if (have != null) return have;
     final c = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      // the portal serves a different layout to a phone; the readers are written for the desktop pages
+      ..setUserAgent(desktopUserAgent)
       ..setNavigationDelegate(NavigationDelegate(
         onNavigationRequest: (r) {
           final u = Uri.tryParse(r.url);
