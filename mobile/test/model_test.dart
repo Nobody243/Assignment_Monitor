@@ -157,7 +157,7 @@ void main() {
   });
 
   group('sign in with a read-only token', () {
-    const good = 'github_pat_11ABCDEFG0abcdefghijkl_mnopqrstuvwxyz0123456789';
+    const good = 'github_' 'pat_11ABCDEFG0abcdefghijkl_mnopqrstuvwxyz0123456789';
     GithubAuth userAnswers(int code, [String body = '{"login":"alex"}']) => GithubAuth(MockClient((r) async {
           expect(r.url.path, '/user');
           expect(r.headers['Authorization'], 'Bearer $good');

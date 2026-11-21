@@ -1,9 +1,10 @@
 import { Fragment, useMemo, useState } from 'react'
-import { Download, FileCheck, FileText, Lightbulb, Reply, Search } from 'lucide-react'
+import { Copy, Download, FileCheck, FileText, Filter as FilterIcon, Lightbulb, PanelRight, Reply, Search } from 'lucide-react'
 import type { Assignment, FileKind } from '@/api'
 import { StatusBadge } from '@/components/assignments-table'
 import { PageHeader, Stat } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -24,6 +25,10 @@ export const fileKinds = (a: Assignment) => (['brief', 'submission', 'returned',
 const hasMarks = (a: Assignment) => !!a.marks && !/not marked/i.test(a.marks)
 
 type Group = { title: string; items: Assignment[] }
+
+function copyText(text: string) {
+  navigator.clipboard.writeText(text).then(() => toast.success('Copied'), () => toast.error('Could not copy', { description: 'The clipboard is not available.' }))
+}
 
 export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCourse, selectedId, onSelect, onDownload, onDropFile, busy, demo }: {
   onDropFile: (a: Assignment, file: File) => void
@@ -121,7 +126,9 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
                   {g.items.map(a => {
                     const d = dueParts(a.due_at)
                     return (
-                      <TableRow key={a.id} id={`row-${a.id}`} tabIndex={0} data-state={a.id === selectedId ? 'selected' : undefined} className={cn('group cursor-pointer', dropId === a.id && 'bg-primary/10 outline-primary outline-2 -outline-offset-2')}
+                      <ContextMenu key={a.id}>
+                      <ContextMenuTrigger asChild>
+                      <TableRow id={`row-${a.id}`} tabIndex={0} data-state={a.id === selectedId ? 'selected' : undefined} className={cn('group cursor-pointer', dropId === a.id && 'bg-primary/10 outline-primary outline-2 -outline-offset-2')}
                         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = (a.can_upload || a.can_replace) && !demo && !busy ? 'copy' : 'none'; setDropId(a.id) } }}
                         onDragLeave={() => setDropId(cur => (cur === a.id ? null : cur))}
                         onDrop={e => {
@@ -172,6 +179,15 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
                           )}
                         </TableCell>
                       </TableRow>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuLabel className="max-w-64 truncate">{a.title}</ContextMenuLabel>
+                        <ContextMenuItem onSelect={() => onSelect(a.id === selectedId ? null : a.id)}><PanelRight />{a.id === selectedId ? 'Close details' : 'Open details'}</ContextMenuItem>
+                        <ContextMenuItem onSelect={() => copyText(`${a.course}: ${a.title}`)}><Copy />Copy course and title</ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem disabled={course === a.course} onSelect={() => setCourse(a.course)}><FilterIcon />Show only {a.course}</ContextMenuItem>
+                      </ContextMenuContent>
+                      </ContextMenu>
                     )
                   })}
                 </Fragment>

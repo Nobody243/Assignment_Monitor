@@ -307,6 +307,39 @@ with sync_playwright() as p:
         marker_matches(pg, "[data-sidebar=content]", "[data-sidebar=menu-button][data-active=true]", "sidebar marker with reduced motion")
         clean_state(pg, "reduced motion")
 
+        # ---- 11. the right-click menu on assignment rows
+        print("11. row context menu")
+        pg.emulate_media(reduced_motion="no-preference")
+        nav(pg, "Assignments"); settle(pg, 600)
+        tabs = pg.locator("[data-slot=tabs-trigger]")
+        tabs.last.click(); settle(pg, 300)   # "All": the most rows
+        rows = pg.locator("tbody tr[id^=row-]")
+        check(rows.count() >= 3, f"assignment rows present ({rows.count()})")
+        for _ in range(ROUNDS // 2):
+            rows.nth(rng.randrange(rows.count())).click(button="right", timeout=3000)
+            pg.wait_for_timeout(rng.choice([0, 30, 120]))
+            how = rng.choice(["escape", "copy", "course", "details", "outside"])
+            if how == "escape":
+                pg.keyboard.press("Escape")
+            elif how == "outside":
+                pg.mouse.click(5, 400)
+            else:
+                label = {"copy": "Copy course and title", "course": "Show only", "details": "details"}[how]
+                item = pg.get_by_role("menuitem", name=label).first
+                if item.count() and item.get_attribute("aria-disabled") != "true":
+                    item.click(timeout=3000)
+                else:
+                    pg.keyboard.press("Escape")
+            pg.wait_for_timeout(rng.choice([60, 200]))
+            if pg.locator("[role=menu]").count():
+                pg.keyboard.press("Escape")
+                pg.wait_for_timeout(250)
+            if pg.locator("[role=dialog][data-state=open]").count():   # the details sheet may have opened: close it like a person would
+                pg.keyboard.press("Escape")
+                pg.wait_for_timeout(350)
+        settle(pg)
+        clean_state(pg, "after context menu storm")
+
     except Exception as exc:  # noqa: BLE001
         # say what the window looked like when it stopped answering
         shot = Path(__file__).with_name("stress_ui_failure.png")

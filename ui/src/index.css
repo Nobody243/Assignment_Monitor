@@ -308,6 +308,18 @@
 }
 @keyframes bar-shine { to { transform: translateX(100%); } }
 
+/* the number badge pops when its count changes (the sidebar keys it by count); skeletons shimmer instead of pulsing; switches spring */
+@keyframes badge-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+[data-sidebar='menu-badge'] { animation: badge-pop 380ms var(--ease-spring) both; }
+[data-slot='skeleton'] { position: relative; overflow: hidden; animation: none; }
+[data-slot='skeleton']::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--foreground) 7%, transparent), transparent);
+  animation: bar-shine 1.5s var(--ease-in-out) infinite;
+}
+[data-slot='switch-thumb'] { transition-timing-function: var(--ease-spring); }
+[data-slot='dialog-content'], [data-slot='alert-dialog-content'] { transition-timing-function: var(--ease-out); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
   .top-progress::after { animation: none; width: 100%; opacity: 0.6; }

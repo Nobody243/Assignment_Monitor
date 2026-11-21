@@ -73,7 +73,7 @@ export function AppSidebar({ name, semester, badges, dark, onToggleTheme, page, 
                       <n.icon />
                       <span>{PAGE_TITLES[n.key]}</span>
                     </SidebarMenuButton>
-                    {(badges[n.key] ?? 0) > 0 && <SidebarMenuBadge>{badges[n.key]}</SidebarMenuBadge>}
+                    {(badges[n.key] ?? 0) > 0 && <SidebarMenuBadge key={badges[n.key]}>{badges[n.key]}</SidebarMenuBadge>}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
