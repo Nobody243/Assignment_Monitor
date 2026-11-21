@@ -71,7 +71,11 @@ class BrandSplash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    // the same background as Android's own launch screen (see flutter_native_splash in pubspec.yaml), so the two read as one
+    // screen instead of a flash between two colours; the palette's colours arrive with the app itself
+    final launch = t.brightness == Brightness.dark ? const Color(0xFF16120F) : const Color(0xFFFFFAF6);
     return Scaffold(
+      backgroundColor: launch,
       body: Center(
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),

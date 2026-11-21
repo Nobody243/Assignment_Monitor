@@ -2,6 +2,7 @@
 
 ## 1.0.3 - 2026-11-21
 
+- A shorter, smoother start: the app's own splash screen now uses the same background as Android's launch screen (so they no longer flash between two colours) and stays for under a second unless the data takes longer to load.
 - The status bar (clock, battery and notification icons) is readable on a light page: it was drawing white icons on the light background. It now follows the theme in every palette, and the bottom navigation bar does too.
 - Richer colours in the light themes: each palette has a clearer accent (Royal blue, Forest green, Ember orange) while the dark themes stay calm.
 - The first screen has one main button: sign in with your university login. Someone who already uses the GitHub checks has a small link below it.

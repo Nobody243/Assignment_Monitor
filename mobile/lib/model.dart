@@ -82,7 +82,7 @@ class Prefs extends ChangeNotifier {
 
 /// Signed in or not, what was last read, and how fresh it is. The screens only read from here.
 class AppModel extends ChangeNotifier {
-  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 1800), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy(), PortalStore? portalStore, Portal Function({PortalCredentials? credentials})? portalFactory, Future<Directory> Function()? filesDir})
+  AppModel(this.prefs, {Store? store, GithubAuth? auth, SummarySource? source, Duration splashMin = const Duration(milliseconds: 900), Duration splashMax = const Duration(milliseconds: 3500), Future<bool> Function()? askPermission, Locker? locker, LockPolicy lockPolicy = const LockPolicy(), PortalStore? portalStore, Portal Function({PortalCredentials? credentials})? portalFactory, Future<Directory> Function()? filesDir})
       : _filesDir = filesDir ?? _defaultFilesDir, _portalStore = portalStore ?? PortalStore((store ?? Store()).vault), _portalFactory = portalFactory ?? (({PortalCredentials? credentials}) => Portal(WebViewBrowser(), credentials: credentials)), _store = store ?? Store(), _auth = auth ?? GithubAuth(), _source = source ?? SummarySource(), _splashMin = splashMin, _splashMax = splashMax, _askPermission = askPermission ?? Reminders.allowed, locker = locker ?? DeviceLocker(), _lockPolicy = lockPolicy {
     prefs.onChanged = replan;
   }
