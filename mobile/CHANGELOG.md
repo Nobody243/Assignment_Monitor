@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.5 - 2026-11-21
 
 - Each screen now refreshes only itself: pull down (or tap the refresh button) on Assignments, Attendance, Exams, Announcements, Timetable, Results or Lectures and the phone reads just that part of the portal again, not everything. Today still does the full check, and so do the two-hourly background check and coming back to the app.
 - Reading the portal is much faster: the phone used to ask the portal for a course and then start waiting for the page after it had already loaded, so every course sat out a long timeout. It now starts waiting before it asks, and does not wait at all for a page that updates in place.
