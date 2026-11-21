@@ -29,7 +29,7 @@ function Panel({ title, action, children, className }: { title: string; action?:
 }
 
 const MoreLink = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
-  <button type="button" onClick={onClick} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors">
+  <button type="button" onClick={onClick} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 -mx-2 -my-1.5 flex min-h-8 items-center gap-1 rounded-md px-2 text-xs transition-colors">
     {children}<ArrowRight className="size-3" />
   </button>
 )
@@ -405,6 +405,7 @@ export function Home({ state, now, onOpen, onGo }: { state: State; now: number; 
         <Week state={state} now={now} colors={colors} onOpen={onOpen} />
         <Load all={all} now={now} />
         <CoursesPanel state={state} onGo={onGo} />
+        <ResultsPanel state={state} />
       </div>
       <div className="order-1 flex min-w-0 flex-col gap-4 xl:order-2">
         <UpNext a={next} now={now} onOpen={onOpen} />
@@ -412,7 +413,6 @@ export function Home({ state, now, onOpen, onGo }: { state: State; now: number; 
         <Deadlines all={all} colors={colors} onOpen={onOpen} onGo={onGo} />
         <ExamsPanel state={state} now={now} />
         <AnnouncementsPanel state={state} now={now} onGo={onGo} />
-        <ResultsPanel state={state} />
       </div>
     </div>
   )

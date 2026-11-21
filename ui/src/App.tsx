@@ -113,6 +113,15 @@ export default function App() {
     if (r.ok) toast.success(r.message || 'Checked the portal.'); else toast.error('The check did not finish', { description: r.message })
   }, [demo, run])
   const loaded = !!state && !demo
+  // text cut short with an ellipsis gets its full text as a tooltip the moment the pointer is over it
+  useEffect(() => {
+    const over = (e: MouseEvent) => {
+      const t = (e.target as HTMLElement | null)?.closest?.('.truncate') as HTMLElement | null
+      if (t && !t.title && t.scrollWidth > t.clientWidth + 1) t.title = (t.textContent ?? '').trim()
+    }
+    document.addEventListener('mouseover', over)
+    return () => document.removeEventListener('mouseover', over)
+  }, [])
   // a file dropped anywhere but on a row must not make the window open it
   useEffect(() => {
     const stop = (e: DragEvent) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() }
