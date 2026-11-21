@@ -76,8 +76,8 @@ function CourseCard({ c, minimum }: { c: AttendanceCourse; minimum: number }) {
 
       {sessions.length > 0 && (
         <Collapsible open={open} onOpenChange={setOpen}>
-          <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between text-xs font-medium transition-colors">
-            Class by class ({sessions.length})<ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
+          <CollapsibleTrigger className="text-muted-foreground hover:text-foreground hover:bg-muted/60 focus-visible:ring-ring/50 flex min-h-11 w-full cursor-pointer items-center justify-between rounded-xl px-3 text-sm font-medium transition-colors outline-none focus-visible:ring-3">
+            Class by class ({sessions.length})<ChevronDown className={cn('size-4 transition-transform duration-300 ease-[var(--ease-out)]', open && 'rotate-180')} />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <ul className="mt-3 flex flex-col divide-y rounded-xl border">
@@ -129,7 +129,7 @@ export function AttendancePage({ state }: { state: State }) {
       {list.length === 0 ? (
         <Empty className="border border-dashed"><EmptyHeader><EmptyTitle>No attendance yet</EmptyTitle><EmptyDescription>Run a check to read it from the portal.</EmptyDescription></EmptyHeader></Empty>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">{list.map(c => <CourseCard key={c.code} c={c} minimum={att.minimum} />)}</div>
+        <div className="grid items-start gap-4 lg:grid-cols-2">{list.map(c => <CourseCard key={c.code} c={c} minimum={att.minimum} />)}</div>
       )}
     </div>
   )

@@ -320,6 +320,13 @@
 [data-slot='switch-thumb'] { transition-timing-function: var(--ease-spring); }
 [data-slot='dialog-content'], [data-slot='alert-dialog-content'] { transition-timing-function: var(--ease-out); }
 
+/* drop-downs (Collapsible) open and close by growing and shrinking to their own height, with the content easing in */
+[data-slot='collapsible-content'] { overflow: hidden; }
+[data-slot='collapsible-content'][data-state='open'] { animation: collapse-open 300ms var(--ease-out); }
+[data-slot='collapsible-content'][data-state='closed'] { animation: collapse-close 220ms var(--ease-in-out); }
+@keyframes collapse-open { from { height: 0; opacity: 0; } to { height: var(--radix-collapsible-content-height); opacity: 1; } }
+@keyframes collapse-close { from { height: var(--radix-collapsible-content-height); opacity: 1; } to { height: 0; opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
   .top-progress::after { animation: none; width: 100%; opacity: 0.6; }

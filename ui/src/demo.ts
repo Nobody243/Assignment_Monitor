@@ -42,7 +42,8 @@ export const DEMO: State = {
     minimum: 75, overall: 82.5,
     courses: [
       { code: 'HCI 301', title: 'Human Computer Interaction', present: 22, absent: 3, recorded: true, percent: 88, ok: true, can_miss: 4, need: 0 },
-      { code: 'DB 310', title: 'Database Systems', present: 14, absent: 6, recorded: true, percent: 70, ok: false, can_miss: 0, need: 4 },
+      { code: 'DB 310', title: 'Database Systems', present: 14, absent: 6, recorded: true, percent: 70, ok: false, can_miss: 0, need: 4, credit_hours: '2', teacher: 'Sample Teacher', class: 'BS (IT)-7 (B)',
+        sessions: ['Indexes', 'Query plans', 'Transactions', 'Locking', 'Recovery', 'Replication'].map((topics, i) => ({ date: `${['Thursday, 3', 'Thursday, 10', 'Thursday, 17', 'Thursday, 24', 'Thursday, 1', 'Thursday, 8'][i]} ${i < 4 ? 'September' : 'October'} 2026`, type: 'Lecture', topics, room: 'HL-18', hours: 2, present: i === 2 || i === 4 ? 0 : 2, absent: i === 2 || i === 4 ? 2 : 0 })) },
       { code: 'OS 320', title: 'Operating Systems', present: 20, absent: 5, recorded: true, percent: 80, ok: true, can_miss: 1, need: 0 },
     ],
   },

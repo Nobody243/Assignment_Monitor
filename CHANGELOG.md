@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Attendance: the whole "Class by class" row is the button (not just the small arrow), it opens and closes with a smooth slide, and opening it no longer stretches the course card beside it.
+
 ## 1.9.2 - 2026-11-21
 
 - The search palette (Ctrl+K) is larger and sized to the window: a wider box, bigger text, a taller list and a full-length hint in the search field.
