@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.6 - 2026-11-21
 
 - Home: the two columns are balanced (the Results card moved under Courses), so there is no large empty block beside the long right-hand column. Text cut short with an ellipsis now shows in full as a tooltip when you point at it, and the small "View all" links have a larger click area.
 - New `tools/audit_layout.py`: opens every page and Settings section at four window sizes and reports sideways scroll, dead space beside taller cards, fixed elements that scroll with the page, tiny click targets and clipped text. It reports nothing on the current build, with your real data.
