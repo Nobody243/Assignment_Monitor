@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import 'source.dart' show Vault;
 
@@ -17,7 +17,7 @@ const assignmentsUrl = 'https://$lmsHost/Student/Assignments.php';
 
 /// The direct-from-the-phone mode is built phase by phase (mobile/STANDALONE.md); its sign-in entry stays hidden until the data
 /// screens behind it work, so nobody signs in to a path that leads nowhere.
-const standaloneReady = false;
+const standaloneReady = bool.fromEnvironment('STANDALONE');   // test builds: --dart-define=STANDALONE=true
 
 /// Only these hosts are ever opened; the password is typed into nothing else.
 bool isPortalHost(String? host) => host == cmsHost || host == lmsHost;
@@ -198,35 +198,30 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
   Future<void> close() => browser.close();
 }
 
-/// The real browser: a headless WebView with its own empty cookie jar that is thrown away at the end, limited to the two
-/// university hosts.
+/// The real browser: a WebView the student never sees, with its cookies and cache cleared before and after, limited to the
+/// two university hosts.
 class WebViewBrowser implements PortalBrowser {
-  HeadlessInAppWebView? _view;
-  InAppWebViewController? _c;
+  WebViewController? _c;
   Completer<void>? _loaded;
 
-  Future<InAppWebViewController> _ready() async {
+  Future<WebViewController> _ready() async {
     final have = _c;
     if (have != null) return have;
-    final ready = Completer<InAppWebViewController>();
-    final view = HeadlessInAppWebView(
-      initialSettings: InAppWebViewSettings(
-        javaScriptEnabled: true, incognito: true, clearCache: true, cacheEnabled: false,
-        thirdPartyCookiesEnabled: false, mediaPlaybackRequiresUserGesture: true, allowFileAccess: false,
-        allowContentAccess: false, javaScriptCanOpenWindowsAutomatically: false,
-      ),
-      onWebViewCreated: (c) { if (!ready.isCompleted) ready.complete(c); },
-      onLoadStop: (c, u) { final l = _loaded; if (l != null && !l.isCompleted) l.complete(); },
-      onReceivedError: (c, r, e) { final l = _loaded; if (l != null && !l.isCompleted && (r.isForMainFrame ?? true)) l.completeError(StateError(e.description)); },
-      shouldOverrideUrlLoading: (c, a) async {
-        final u = a.request.url;
-        return (u != null && u.scheme == 'https' && isPortalHost(u.host)) ? NavigationActionPolicy.ALLOW : NavigationActionPolicy.CANCEL;
-      },
-    );
-    _view = view;
-    await view.run();
-    _c = await ready.future.timeout(const Duration(seconds: 20));
-    return _c!;
+    final c = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (r) {
+          final u = Uri.tryParse(r.url);
+          return (u != null && u.scheme == 'https' && isPortalHost(u.host)) ? NavigationDecision.navigate : NavigationDecision.prevent;
+        },
+        onPageFinished: (_) { final l = _loaded; if (l != null && !l.isCompleted) l.complete(); },
+        onWebResourceError: (e) { final l = _loaded; if (l != null && !l.isCompleted && (e.isForMainFrame ?? true)) l.completeError(StateError(e.description)); },
+      ));
+    await WebViewCookieManager().clearCookies();
+    await c.clearCache();
+    await c.clearLocalStorage();
+    _c = c;
+    return c;
   }
 
   @override
@@ -235,23 +230,35 @@ class WebViewBrowser implements PortalBrowser {
     if (uri.scheme != 'https' || !isPortalHost(uri.host)) throw ArgumentError('Not a portal address.');
     final c = await _ready();
     _loaded = Completer<void>();
-    await c.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+    await c.loadRequest(uri);
     await _loaded!.future.timeout(timeout);
   }
 
   @override
-  Future<String> url() async => (await (await _ready()).getUrl())?.toString() ?? '';
+  Future<String> url() async => (await (await _ready()).currentUrl()) ?? '';
 
   @override
-  Future<String> html() async => (await (await _ready()).getHtml()) ?? '';
+  Future<String> html() async => (await js('document.documentElement.outerHTML'))?.toString() ?? '';
 
+  /// On Android the result of a script comes back JSON-encoded (a string arrives with quotes); this undoes that once.
   @override
-  Future<dynamic> js(String source) async => (await _ready()).evaluateJavascript(source: source);
+  Future<dynamic> js(String source) async {
+    final r = await (await _ready()).runJavaScriptReturningResult(source);
+    if (r is String) {
+      if (r == 'null' || r == 'undefined') return null;
+      try { return jsonDecode(r); } catch (_) { return r; }
+    }
+    return r;
+  }
 
   @override
   Future<void> close() async {
-    try { await CookieManager.instance().deleteAllCookies(); } catch (e) { debugPrint('cookies: $e'); }
-    await _view?.dispose();
-    _view = null; _c = null;
+    final c = _c;
+    _c = null;
+    try {
+      await WebViewCookieManager().clearCookies();
+      await c?.clearCache();
+      await c?.clearLocalStorage();
+    } catch (e) { debugPrint('portal cleanup: $e'); }
   }
 }
