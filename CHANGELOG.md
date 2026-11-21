@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.2 - 2026-11-21
 
 - The search palette (Ctrl+K) is larger and sized to the window: a wider box, bigger text, a taller list and a full-length hint in the search field.
 - Update check on every launch: a few seconds after the app opens it looks for a newer version, and if there is one it says so with an Update now button (it asks before installing, as before). Still only for an installed build with update checks on.
