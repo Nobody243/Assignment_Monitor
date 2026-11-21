@@ -65,7 +65,8 @@ void main() {
     expect(find.text('What this does'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Continue'), 150, scrollable: find.byType(Scrollable).first);
     expect(tester.widget<FilledButton>(find.ancestor(of: find.text('Continue'), matching: find.byWidgetPredicate((w) => w is FilledButton))).onPressed, isNull, reason: 'consent first');
-    await tester.tap(find.byType(CheckboxListTile));
+    await tester.scrollUntilVisible(find.byType(CheckboxListTile), 150, scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.byType(CheckboxListTile));
     await tester.pump();
     await tapText(tester, 'Continue');
     await tester.pump(const Duration(seconds: 1));
@@ -193,11 +194,15 @@ void main() {
       await tester.pumpAndSettle();
       await tapText(tester, 'I already use the GitHub checks');
       await tapText(tester, 'Set up from this phone');
+      await tester.scrollUntilVisible(find.byType(CheckboxListTile), 150, scrollable: find.byType(Scrollable).first);
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));   // clear of the button bar under it
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pump();
       await tapText(tester, 'Continue');
       await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('You declined the request on GitHub.'), 150, scrollable: find.byType(Scrollable).first);
       expect(find.text('You declined the request on GitHub.'), findsOneWidget);
       expect(find.text('Try again'), findsOneWidget);
     });

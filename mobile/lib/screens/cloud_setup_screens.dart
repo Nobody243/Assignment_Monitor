@@ -171,6 +171,7 @@ class _WizardState extends State<CloudSetupWizard> {
       _point(context, LucideIcons.cloud, 'GitHub checks the university portal for you, twice a day, on its own machines. The desktop app is not needed.'),
       _point(context, LucideIcons.folderGit2, 'It runs in a private repository in your own GitHub account (assignment-monitor-cloud). This app reads the result from there.'),
       _point(context, LucideIcons.keyRound, 'You will sign in to GitHub with a code, then type your portal login once. The login is encrypted on this phone and sent to GitHub\'s secret store in your own repository. It is never sent to us, and this phone does not keep it.'),
+      _point(context, LucideIcons.shieldAlert, 'GitHub\'s approval screen will say this app wants "full control of private repositories" and to "update GitHub Action workflows". That is GitHub\'s wording for the two permissions it needs to create the repository and its schedule, and GitHub cannot limit it to one repository. The app only ever touches assignment-monitor-cloud, the sign-in is kept in this phone\'s secure storage, and you can remove the access any time in GitHub, Settings, Applications.'),
       _point(context, LucideIcons.clock, 'It takes about a minute, and the first check about three more.'),
       const SizedBox(height: 4),
       CheckboxListTile(
@@ -201,7 +202,7 @@ class _WizardState extends State<CloudSetupWizard> {
         const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
         const Center(child: Text('Asking GitHub for a code')),
       ] else ...[
-        Text('Enter this code on GitHub. Approve both "repo" and "workflow": the phone needs them to create the repository and its schedule.', style: t.textTheme.bodyMedium?.copyWith(height: 1.4)),
+        Text('Enter this code on GitHub. Its screen will sound alarming ("full control of private repositories"): that is GitHub\'s standard wording for the "repo" and "workflow" permissions the phone needs to create your private repository and its schedule. Approve both.', style: t.textTheme.bodyMedium?.copyWith(height: 1.4)),
         const SizedBox(height: 14),
         InkWell(
           onTap: () { Clipboard.setData(ClipboardData(text: c.userCode)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code copied'))); },
