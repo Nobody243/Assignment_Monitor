@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.5 - 2026-11-21
 
 - Attendance and the two-column Settings sections now lay their cards out as two independent columns. Opening "Class by class" only pushes down the cards below it in its own column; the other column is neither stretched nor left with an empty gap beside the open card.
 
