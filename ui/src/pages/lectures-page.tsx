@@ -41,6 +41,9 @@ export function LecturesPage({ lectures, colors, now, busy, demo, folder, onDown
     return n
   })
   const chosen = [...picked].filter(id => lectures.some(l => l.id === id))
+  // the pill keeps showing the last count while it slides away, instead of flashing "0"
+  const [shownCount, setShownCount] = useState(0)
+  if (chosen.length > 0 && chosen.length !== shownCount) setShownCount(chosen.length)
 
   return (
     <div className="flex flex-col gap-5 pb-20">
@@ -110,15 +113,19 @@ export function LecturesPage({ lectures, colors, now, busy, demo, folder, onDown
         )
       })}
 
-      {chosen.length > 0 && (
-        <div className="bg-card fixed right-6 bottom-6 left-6 z-30 mx-auto flex max-w-xl items-center justify-between gap-3 rounded-2xl border p-3 shadow-lg md:left-[calc(var(--sidebar-width,16rem)+1.5rem)]">
-          <span className="text-sm"><span className="num font-medium">{chosen.length}</span> selected</span>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>Clear</Button>
-            <Button size="sm" disabled={busy || demo} onClick={() => { onDownload(chosen); setPicked(new Set()) }}><Download />Download</Button>
-          </div>
-        </div>
-      )}
+      {/* the selection pill: centred on the window and fixed, so scrolling and the sidebar do not move it; it slides in and out */}
+      <div
+        role="region" aria-label="Selected lectures" aria-hidden={chosen.length === 0} inert={chosen.length === 0}
+        className={cn(
+          'bg-popover/90 text-popover-foreground fixed left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-full border py-1.5 pr-1.5 pl-4 shadow-xl backdrop-blur-md transition-[transform,opacity,bottom] duration-300 ease-[var(--ease-out)]',
+          busy ? 'bottom-20' : 'bottom-6',
+          chosen.length > 0 ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-6 opacity-0',
+        )}>
+        <span className="num bg-primary text-primary-foreground grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-semibold">{shownCount}</span>
+        <span className="mr-1 text-sm">selected</span>
+        <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setPicked(new Set())}>Clear</Button>
+        <Button size="sm" className="rounded-full pr-3.5" disabled={busy || demo} onClick={() => { onDownload(chosen); setPicked(new Set()) }}><Download />Download</Button>
+      </div>
     </div>
   )
 }

@@ -57,7 +57,10 @@ export const DEMO: State = {
     ],
   },
   standing: { semester: 'Spring-2026', gpa: 3.4, cgpa: 3.3, semesters: 4, series: [{ name: 'Fall-2024', gpa: 3.1, cgpa: 3.1 }, { name: 'Spring-2025', gpa: 3.4, cgpa: 3.25 }, { name: 'Fall-2025', gpa: 3.2, cgpa: 3.23 }, { name: 'Spring-2026', gpa: 3.4, cgpa: 3.3 }] },
-  exams: [], exams_all: [], announcements: [], lectures: [], results: {
+  exams: [], exams_all: [], announcements: [], lectures: [
+    ...['Introduction to indexing', 'Query plans', 'Transactions and locking', 'Recovery'].map((title, i) => ({ id: `db-${i}`, course: 'Database Systems', week: i + 1, title, files: [{ label: `${title} (1)`, href: '#', filename: `db-${i}.pdf` }], first_seen: '2026-11-18T09:00:00' })),
+    ...['Processes and threads', 'Scheduling'].map((title, i) => ({ id: `os-${i}`, course: 'Operating Systems', week: i + 1, title, files: [{ label: `${title} (1)`, href: '#', filename: `os-${i}.pdf` }], first_seen: '2026-10-02T09:00:00' })),
+  ], results: {
     semesters: [
       { name: 'Fall-2024', gpa: 3.1, cgpa: 3.1, complete: true, courses: [
         { code: 'CS 101', title: 'Programming Fundamentals', credits: 3, grade: 'B+', points: 3.33, product: 10 },

@@ -371,6 +371,31 @@ with sync_playwright() as p:
         marker_matches(pg, "[role=group][aria-label=Theme]", "[aria-pressed=true]", "theme switch marker")
         clean_state(pg, "after drop-down and tab storms")
 
+        # ---- 13. the lecture selection pill stays centred on the window, whatever the scroll and the clicking
+        print("13. lecture selection pill")
+        nav(pg, "Lectures"); settle(pg, 600)
+        boxes = pg.get_by_role("checkbox")
+        if boxes.count() >= 3:
+            for _ in range(ROUNDS):
+                boxes.nth(rng.randrange(1, boxes.count())).click(timeout=3000, delay=0)
+                if rng.random() < 0.3:
+                    pg.mouse.wheel(0, rng.choice([-400, 300, 900]))
+                pg.wait_for_timeout(rng.choice([0, 20, 90]))
+            settle(pg, 500)
+            info = pg.evaluate("""() => { const el = document.querySelector('[aria-label="Selected lectures"]'); const r = el.getBoundingClientRect();
+                return {inert: el.inert, cx: r.left + r.width / 2, bottom: r.bottom, vw: innerWidth, vh: innerHeight} }""")
+            if not info["inert"]:
+                check(abs(info["cx"] - info["vw"] / 2) < 2, f"the pill is not centred on the window ({info['cx']} vs {info['vw'] / 2})")
+                check(info["bottom"] <= info["vh"], "the pill is below the visible window")
+            for _ in range(8):
+                pg.mouse.wheel(0, rng.choice([-600, 600]))
+            pg.wait_for_timeout(300)
+            info2 = pg.evaluate("() => { const r = document.querySelector('[aria-label=\"Selected lectures\"]').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)] }")
+            pg.mouse.wheel(0, -800); pg.wait_for_timeout(300)
+            info3 = pg.evaluate("() => { const r = document.querySelector('[aria-label=\"Selected lectures\"]').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)] }")
+            check(info2 == info3, f"the pill moved when scrolling {info2} -> {info3}")
+        clean_state(pg, "after lecture selection storm")
+
     except Exception as exc:  # noqa: BLE001
         # say what the window looked like when it stopped answering
         shot = Path(__file__).with_name("stress_ui_failure.png")
