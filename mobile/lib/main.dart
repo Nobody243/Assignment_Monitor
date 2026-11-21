@@ -40,6 +40,9 @@ Future<void> _setUpPlugins() async {
   try { await BackgroundCheck.applySaved().timeout(const Duration(seconds: 15)); } catch (e) { debugPrint('background: $e'); }
 }
 
+/// The data section each screen shows, for its own refresh: Today (0) and anything unlisted refresh everything.
+const sectionOfTab = <int, String>{1: 'assignments', 2: 'attendance', 3: 'exams', 4: 'announcements', 5: 'timetable', 6: 'results', 7: 'lectures'};
+
 class AssignmentMonitorApp extends StatefulWidget {
   const AssignmentMonitorApp({super.key});
   @override
@@ -120,6 +123,12 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   Timer? tick;
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
   Animation<double> get _t => _menu;
+
+  /// Pull-to-refresh and the refresh button: a screen reads only its own part of the portal again; Today reads everything.
+  Future<void> _refreshHere() {
+    final s = sectionOfTab[tab];
+    return s == null ? widget.model.refresh() : widget.model.refreshSection(s);
+  }
 
   static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Announcements', 'Timetable', 'Results & GPA', 'Lectures', 'Settings'];
   int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
@@ -233,7 +242,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
         actions: [
           if (!m.demo) m.refreshing
               ? const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-              : IconButton(icon: const Icon(LucideIcons.refreshCw, size: 20), tooltip: 'Check for new data', onPressed: m.refresh),
+              : IconButton(icon: const Icon(LucideIcons.refreshCw, size: 20), tooltip: sectionOfTab.containsKey(tab) ? 'Check for new ${_titles[tab].toLowerCase()}' : 'Check for new data', onPressed: _refreshHere),
         ],
       ),
       body: SafeArea(
@@ -242,7 +251,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
           if (m.offerCloud) _CloudOffer(model: m),
           Expanded(
             child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxContentWidth), child: RefreshIndicator(
-              onRefresh: m.refresh,
+              onRefresh: _refreshHere,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 320),
                 switchInCurve: Curves.easeOutCubic,

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:assignment_monitor_mobile/data.dart';
+import 'package:assignment_monitor_mobile/main.dart' show sectionOfTab;
 import 'package:assignment_monitor_mobile/portal.dart';
 import 'package:assignment_monitor_mobile/portal_sync.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +79,40 @@ void main() {
     expect(out.skipped, isEmpty, reason: 'the part as a whole worked');
     expect(out.report.any((l) => l.contains('1 of 2 courses could not be read')), isTrue);
     expect(out.summary.work, isNotEmpty);
+  });
+
+  test('a section refresh reads only its own page and leaves the rest as it was', () async {
+    final previous = {'schema': 1, 'exams': [{'title': 'Old exam', 'scheduled': false}], 'lectures': [{'id': 'x', 'course': 'C', 'week': 1, 'title': 'Old week', 'files': []}]};
+    final p = _Portal();
+    final out = await PortalSync(p).run(only: {'attendance'}, previous: previous);
+    expect(p.order, [attendanceUrl, ...p.order.where((u) => u.contains('Attendance') && u != attendanceUrl)], reason: 'attendance and its detail pages only');
+    expect(p.order.contains(examsUrl), isFalse);
+    expect(p.order.contains(lecturesUrl), isFalse);
+    expect(out.summary.attendance, isNotEmpty);
+    expect(out.summary.exams.single.title, 'Old exam', reason: 'untouched sections keep the last read');
+    expect(out.summary.raw['lectures'], isNotEmpty);
+    expect(out.report.length, 1);
+  });
+
+  test('refreshing the lectures looks up the courses but reads nothing else', () async {
+    final p = _Portal();
+    final out = await PortalSync(p).run(only: {'lectures'});
+    expect(p.order.where((u) => u == lecturesUrl || u == miscUrl).length, 2);
+    expect(p.order.contains(attendanceUrl), isFalse);
+    expect(p.order.contains(announcementsUrl), isFalse);
+    expect(out.report.single, startsWith('lectures:'));
+  });
+
+  test('each screen refreshes its own section and Today refreshes everything', () {
+    expect(sectionOfTab[1], 'assignments');
+    expect(sectionOfTab[2], 'attendance');
+    expect(sectionOfTab[3], 'exams');
+    expect(sectionOfTab[4], 'announcements');
+    expect(sectionOfTab[5], 'timetable');
+    expect(sectionOfTab[6], 'results');
+    expect(sectionOfTab[7], 'lectures');
+    expect(sectionOfTab[0], isNull, reason: 'Today is the full check');
+    expect(sectionOfTab[8], isNull, reason: 'Settings has no data of its own');
   });
 
   test('no courses at all stops with a message instead of an empty summary', () async {

@@ -299,15 +299,19 @@ class AppModel extends ChangeNotifier {
 
   void cancelSignIn() { _cancelSignIn = true; code = null; phase = Phase.signedOut; notifyListeners(); }
 
-  Future<void> refresh() async {
+  /// Reads only one section's data (the screen's own pull-to-refresh), not the whole portal again. Without a portal login the
+  /// summary comes whole from GitHub, so this is the same as [refresh].
+  Future<void> refreshSection(String section) => refresh(only: {section});
+
+  Future<void> refresh({Set<String>? only}) async {
     if (demo || refreshing) return;
     refreshing = true;   // claimed before the first await, so a pull-to-refresh and a resume together cannot both run
     final token = await _store.token();
     portalMode = await hasPortal();
     if (portalMode) {
       // straight from the portal; if that fails and a cloud sign-in also exists, its summary still fills the screens
-      final ok = await _refreshFromPortal();
-      if (ok || token == null || login == null) { refreshing = false; notifyListeners(); return; }
+      final ok = await _refreshFromPortal(only: only);
+      if (ok || only != null || token == null || login == null) { refreshing = false; notifyListeners(); return; }
     } else if (token == null || login == null) { refreshing = false; return; }
     error = portalMode ? null : error;
     notifyListeners();
@@ -364,7 +368,7 @@ class AppModel extends ChangeNotifier {
 
   /// Reads the whole portal with the saved sign-in and replaces the summary. Returns false (with [error] worded for the
   /// student) when it could not.
-  Future<bool> _refreshFromPortal() async {
+  Future<bool> _refreshFromPortal({Set<String>? only}) async {
     final c = await _portalStore.read();
     if (c == null) return false;
     error = null; syncStep = 'Signing in'; notifyListeners();
@@ -374,7 +378,7 @@ class AppModel extends ChangeNotifier {
       if (!r.ok) { error = r.message; return false; }
       final campus = campuses.where((x) => x.$2 == c.instituteId).map((x) => x.$1).firstOrNull ?? '';
       final out = await PortalSync(portal).run(
-        say: (s) { syncStep = s; notifyListeners(); }, campus: campus, previous: summary?.raw,
+        say: (s) { syncStep = s; notifyListeners(); }, campus: campus, previous: summary?.raw, only: only,
         // each part fills its screens as soon as it is read; the rest keeps showing the last full read meanwhile
         onPartial: (s) async {
           summary = s; fetchedAt = DateTime.now(); etag = null;
@@ -383,7 +387,10 @@ class AppModel extends ChangeNotifier {
           notifyListeners();
         },
       );
-      summary = out.summary; syncSkipped = out.skipped; syncReport = out.report; fetchedAt = DateTime.now(); etag = null;
+      summary = out.summary; fetchedAt = DateTime.now(); etag = null;
+      // a section refresh only knows about its own part: what failed before in other parts stays listed
+      syncSkipped = only == null ? out.skipped : [...syncSkipped.where((k) => !only.contains(k)), ...out.skipped];
+      syncReport = out.report;
       await _store.saveSummary(summary!, null);
       if (phase != Phase.loading) phase = Phase.ready;
       unawaited(replan());

@@ -26,10 +26,14 @@ class PortalSync {
   /// Reads everything. [say] is told what is happening ("Reading attendance"). A part that fails is skipped and named in
   /// `skipped`, so one slow page never loses the rest; a course that fails inside a part is skipped on its own. After each part
   /// [onPartial] gets the summary as far as it is read (the parts not read yet keep what [previous] had), so the screens can
-  /// fill in while the rest is still being read. `report` says, per part, what came back and how long it took.
+  /// fill in while the rest is still being read. With [only] set to some of the section names (assignments, attendance, exams,
+  /// results, timetable, announcements, lectures) just those are read and everything else keeps what [previous] had: that is
+  /// what a screen's own refresh does. `report` says, per part, what came back and how long it took.
   Future<({Summary summary, List<String> skipped, List<String> report})> run({
     void Function(String)? say, String campus = '', Map<String, dynamic>? previous, Future<void> Function(Summary)? onPartial,
+    Set<String>? only,
   }) async {
+    bool want(String k) => only == null || only.contains(k);
     void tell(String s) => say?.call(s);
     final skipped = <String>[], report = <String>[];
     final read = <String>{};
@@ -57,6 +61,7 @@ class PortalSync {
     }
 
     Future<void> part(String name, String key, Future<String> Function() f) async {
+      if (!want(key)) return;   // a section refresh reads only its own part
       tell(name);
       final began = DateTime.now();
       try {
@@ -80,6 +85,13 @@ class PortalSync {
       if (failed == courses.length && courses.isNotEmpty) throw StateError('no course could be read');
     }
 
+    if (!want('assignments') && (want('announcements') || want('lectures'))) {
+      // the courses are needed to read each one's announcements or lecture notes
+      tell('Looking up your courses');
+      try { courses = await portal.courses(); } catch (_) {/* reported below */}
+      if (courses.isEmpty) throw StateError('No courses were found. Sign in again, or try later.');
+    }
+
     await part('Reading your courses and assignments', 'assignments', () async {
       courses = await portal.courses();
       final head = await portal.browser.js('''
@@ -92,7 +104,7 @@ JSON.stringify({name: ((document.querySelector('a.dropdown-toggle span.hidden-xs
       await eachCourse('assignments', (c) async { assignments.addAll(parseCourseTable(await portal.selectCourse(c.name), c.name)); });
       return '${assignments.length} assignments in ${courses.length} courses';
     });
-    if (courses.isEmpty) throw StateError('No courses were found. Sign in again, or try later.');
+    if (want('assignments') && courses.isEmpty) throw StateError('No courses were found. Sign in again, or try later.');
 
     await part('Reading attendance', 'attendance', () async { attendance = await _attendance(); return '${attendance.length} courses'; });
     await part('Reading exam seats', 'exams', () async { exams = await _exams(); return '${exams.length} rows'; });
