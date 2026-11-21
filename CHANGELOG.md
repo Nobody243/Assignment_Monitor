@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.3 - 2026-11-21
 
 - Attendance: the whole "Class by class" row is the button (not just the small arrow), it opens and closes with a smooth slide, and opening it no longer stretches the course card beside it. The same treatment elsewhere: Settings, Notifications, "Advanced: mail server" is now a full-width row with an arrow and a slide; the semester tabs in Results and the Light/Dark switch in Appearance slide their highlight like the other tab strips.
 
