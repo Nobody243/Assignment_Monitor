@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.8 - 2026-11-22
 
 - Lecture downloads find their file more reliably: a list that is still filling in is read again a few times before the file is called missing, weeks and titles are compared loosely (case, spacing, a renumbered week), and a file is matched by name, then by its position in the week; a different week's file is never taken. The message names the course when it truly is not listed.
 - Refreshing several times in a row no longer breaks the portal read: one hidden browser is reused (a new one each time piled up until the portal could not be read), and portal jobs (a read, a lecture list, a download) run one after another instead of signing in over each other.

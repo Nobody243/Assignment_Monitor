@@ -3,7 +3,7 @@ import 'logic.dart';
 
 /// Everything the phone says or exports that is worked out from a summary, as plain functions with no plugin in sight, so
 /// each is tested without a phone. The wording follows the desktop app.
-const appVersion = '1.0.7';   // keep in step with pubspec.yaml
+const appVersion = '1.0.8';   // keep in step with pubspec.yaml
 
 typedef AlertText = ({String title, String body});
 
