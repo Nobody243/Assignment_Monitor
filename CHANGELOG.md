@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.7 - 2026-11-22
 
 - Text follows the golden ratio: every size is the 14px body size times phi to a quarter-step (12.4, 14, 15.8, 17.8, 20.1, 22.7, 28.8, 36.7 px), and the line height follows the same ratio (airy for small text, tighter for headings). Nothing is below 12.4px now; the 10 and 11px labels were raised to it.
 - The outlines of checkboxes, text boxes and dropdowns are clearly visible (about 3.5:1 against the page, in every theme and palette) instead of nearly invisible, and the keyboard focus ring is stronger.
