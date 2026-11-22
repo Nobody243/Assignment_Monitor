@@ -50,6 +50,15 @@ The packaged app was checked with `AssignmentMonitor.exe --smoke` and `--status`
 The installer itself is built and tested in CI (`desktop-build.yml`); it is not run on a developer machine, because it would replace
 the real shortcuts and tasks.
 
+## Releases and the in-app update check
+
+Desktop releases are tagged `v1.9.7` and published automatically when a desktop change lands on `main` and its build passes
+(`.github/workflows/auto-release-desktop.yml`). The phone app's releases live in the same repository, tagged `phone-v1.0.8`, so
+GitHub's "latest release" could be either. Two rules keep the desktop app's update check right:
+
+- the build marks each desktop release as the latest (`make_latest: true`), and the phone release never is;
+- `updater.py` only ever offers a tag that looks like `v1.2.3`, and searches the release list when "latest" is not one.
+
 ## Not done yet
 
 Code signing (the SignPath hook in `build.yml` still applies once the release build switches to `build_desktop.py`), and switching
