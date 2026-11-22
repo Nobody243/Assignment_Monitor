@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.9 - 2026-11-22
 
 - The campus list is complete: Finishing School, National School of Hydrography and PN Nursing College were missing, so a student of those could not sign in; the list now matches the portal's own sign-in page exactly (a test pins it).
 - A wrong password shows the portal's own sentence cleanly ("Error! Invalid credentials provided."), without the close symbol and stray spacing the portal's alert carries.
