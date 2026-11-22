@@ -5,9 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../model.dart';
 import 'intro.dart' show BrandMark;
-import '../portal.dart' show standaloneReady;
 import '../source.dart' show DeviceCode, repoName;
-import 'portal_signin.dart' show PortalSignInPage;
 import 'cloud_setup_screens.dart' show CloudSetupWizard;   // setup from the phone
 
 /// First run: sign in to GitHub (device flow) or look at the demo. Also shown while the first summary is awaited.
@@ -43,7 +41,7 @@ class SignInScreen extends StatelessWidget {
               for (final (icon, text) in const [
                 (LucideIcons.timer, 'Live countdowns and reminders that work offline'),
                 (LucideIcons.calendarCheck, 'Attendance: exactly how many hours you can still miss'),
-                (LucideIcons.lock, 'Your portal password stays off the phone, unless you add it later for lecture downloads (then in secure storage).'),
+                (LucideIcons.lock, 'Your portal password never reaches the phone. It only reads a small summary file from your own private GitHub repository.'),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -64,22 +62,10 @@ class SignInScreen extends StatelessWidget {
 
   List<Widget> _start(BuildContext context) => [
         if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-        Text('Your deadlines, attendance, exams, results and timetable are read from your desktop app or your own private GitHub repository, so they open in a second. Notifications come from there too. Lecture notes need your university login, which you can add later in Settings.',
+        Text('Your deadlines, attendance, exams, results and timetable are read from your desktop app or your own private GitHub repository, so they open in a second, and reminders come from there too. The phone only reads: nothing here can change anything on the portal.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
-        if (standaloneReady) ...[
-          // one main way in; GitHub background checks are offered once the phone is working (and for someone who already uses them, here)
-          FilledButton.icon(
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
-            onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PortalSignInPage(model: model))),
-            icon: const Icon(LucideIcons.graduationCap), label: const Text('Sign in with my university login'),
-          ),
-          const SizedBox(height: 4),
-          TextButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudChoicePage(model: model))),
-            child: const Text('I already use the GitHub checks'),
-          ),
-        ] else ..._cloudOptions(context),
+        ..._cloudOptions(context),
         TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
       ];
 
@@ -128,12 +114,8 @@ class SignInScreen extends StatelessWidget {
   List<Widget> _waiting(BuildContext context) {
     final t = Theme.of(context);
     return [
-      Text(model.portalMode ? 'Signed in to the portal' : 'Signed in as ${model.login ?? ''}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      Text('Signed in as ${model.login ?? ''}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
-      if (model.portalMode)
-        Text(model.error != null ? 'The portal could not be read yet.' : 'Reading the portal${model.syncStep.isEmpty ? '' : ': ${model.syncStep}'}. This takes a minute or two the first time.',
-            style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant))
-      else
       Text(model.cloudFirstCheck
               ? 'Your first check is running on GitHub. It takes about three minutes. Your deadlines appear here when it is done; you can close the app meanwhile.'
               : 'No summary yet in ${model.login ?? 'your'}/$repoName. It appears after the next cloud check (they run twice a day). To get it now, open the repository on GitHub, Actions, run the check by hand.',
@@ -147,34 +129,6 @@ class SignInScreen extends StatelessWidget {
   }
 }
 
-
-/// The GitHub way in, on its own page so the first screen stays short: the same three choices as before.
-class CloudChoicePage extends StatelessWidget {
-  const CloudChoicePage({super.key, required this.model});
-  final AppModel model;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return ListenableBuilder(
-      listenable: model,
-      builder: (context, _) {
-        // signed in, or waiting for the first summary: the app's own screens take over
-        if (model.phase == Phase.ready || model.phase == Phase.waiting) WidgetsBinding.instance.addPostFrameCallback((_) { if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst); });
-        final code = model.code;
-        return Scaffold(
-          appBar: AppBar(title: const Text('GitHub checks', style: TextStyle(fontWeight: FontWeight.w700))),
-          body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
-            Text('Already running the checks on GitHub (from the desktop app or the cloud setup)? The phone can read what they found, with no portal password on the phone.',
-                style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant, height: 1.4)),
-            const SizedBox(height: 18),
-            if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: t.colorScheme.error))),
-            if (code != null) ...SignInScreen(model: model)._code(context, code) else ...SignInScreen(model: model)._cloudOptions(context),
-          ])),
-        );
-      },
-    );
-  }
-}
 
 /// The tighter way to sign in: a token that can read one repository and nothing else. The steps are on the screen, and the
 /// GitHub page opens with the name, description, permission and expiry already filled in.

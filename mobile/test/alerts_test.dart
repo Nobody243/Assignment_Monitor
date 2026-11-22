@@ -6,7 +6,6 @@ import 'package:assignment_monitor_mobile/data.dart';
 import 'package:assignment_monitor_mobile/reminders.dart';
 import 'package:assignment_monitor_mobile/source.dart';
 import 'package:assignment_monitor_mobile/widget.dart';
-import 'package:assignment_monitor_mobile/portal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -175,37 +174,6 @@ void main() {
       expect(shown.single.title, 'New announcement: Quiz moved');
       expect((await st.cached()).etag, 'e2');
       expect((await st.cached()).summary!.announcements.length, 2);
-    });
-
-    group('with a university login on the phone', () {
-      const creds = PortalCredentials('01-1-1', 'pw', '1');
-      PortalStore portal(MemoryStore st) => PortalStore(st.vault)..save(creds);
-
-      test('reads the portal, shows what is new, saves it without a GitHub etag, and never asks GitHub', () async {
-        final st = MemoryStore()..summaryV = old;   // no GitHub sign-in at all
-        final shown = <AlertText>[];
-        final n = await BackgroundCheck.run(store: st, portalStore: portal(st), portalRead: (_) async => fresh, notify: (m, id) async => shown.add(m),
-            source: SummarySource(MockClient((_) async => fail('GitHub must not be asked'))));
-        expect(n, 1);
-        expect(shown.single.title, 'New announcement: Quiz moved');
-        expect((await st.cached()).summary!.announcements.length, 2);
-      });
-
-      test('when the portal cannot be read the GitHub copy still fills in, if there is one', () async {
-        final st = store();
-        final shown = <AlertText>[];
-        final n = await BackgroundCheck.run(store: st, portalStore: portal(st), portalRead: (_) async => null,
-            source: SummarySource(MockClient((_) async => http.Response(json(fresh), 200, headers: {'etag': 'e2'}))), notify: (m, id) async => shown.add(m));
-        expect(n, 1);
-        expect((await st.cached()).etag, 'e2');
-      });
-
-      test('a portal that fails with no GitHub sign-in leaves the saved copy alone and does not throw', () async {
-        final st = MemoryStore()..summaryV = old;
-        final n = await BackgroundCheck.run(store: st, portalStore: portal(st), portalRead: (_) async => throw StateError('offline'), notify: (m, id) async => fail('nothing to show'));
-        expect(n, 0);
-        expect((await st.cached()).summary!.announcements.length, 1);
-      });
     });
 
     test('nothing new, nothing shown', () async {

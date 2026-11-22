@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 
 import '../data.dart';
 import '../model.dart';
-import '../portal_parse.dart' show submitExtensions, checkSubmissionFileBytes;
 import '../theme.dart';
-import 'lectures.dart' show runFileJob, openSavedFile;
 import 'widgets.dart';
 
 enum _Filter { todo, extended, overdue, submitted, all }
@@ -15,8 +12,7 @@ enum _Filter { todo, extended, overdue, submitted, all }
 const _filterLabels = {_Filter.todo: 'To do', _Filter.extended: 'Extended', _Filter.overdue: 'Overdue', _Filter.submitted: 'Submitted', _Filter.all: 'All'};
 
 class WorkScreen extends StatefulWidget {
-  const WorkScreen({super.key, required this.summary, required this.now, required this.prefs, this.model});
-  final AppModel? model;
+  const WorkScreen({super.key, required this.summary, required this.now, required this.prefs});
   final Summary summary;
   final DateTime now;
   final Prefs prefs;
@@ -69,7 +65,7 @@ class _WorkState extends State<WorkScreen> {
                 for (final g in order)
                   if (groups[g] != null) ...[
                     Padding(padding: const EdgeInsets.only(top: 12, bottom: 6), child: Text('$g  ·  ${groups[g]!.length}', style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700))),
-                    for (final (i, w) in groups[g]!.indexed) Reveal(index: i, child: _WorkTile(work: w, now: widget.now, prefs: widget.prefs, model: widget.model)),
+                    for (final (i, w) in groups[g]!.indexed) Reveal(index: i, child: _WorkTile(work: w, now: widget.now, prefs: widget.prefs)),
                   ],
               ]),
       ),
@@ -78,8 +74,7 @@ class _WorkState extends State<WorkScreen> {
 }
 
 class _WorkTile extends StatelessWidget {
-  const _WorkTile({required this.work, required this.now, required this.prefs, this.model});
-  final AppModel? model;
+  const _WorkTile({required this.work, required this.now, required this.prefs});
   final Work work;
   final DateTime now;
   final Prefs prefs;
@@ -99,7 +94,7 @@ class _WorkTile extends StatelessWidget {
     final card = Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () { HapticFeedback.selectionClick(); showModalBottomSheet(context: context, showDragHandle: true, isScrollControlled: true, builder: (_) => _Detail(work: w, now: now, prefs: prefs, model: model)); },
+        onTap: () { HapticFeedback.selectionClick(); showModalBottomSheet(context: context, showDragHandle: true, isScrollControlled: true, builder: (_) => _Detail(work: w, now: now, prefs: prefs)); },
         child: IntrinsicHeight(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(child: Padding(
@@ -153,13 +148,8 @@ class _WorkTile extends StatelessWidget {
   }
 }
 
-/// Uploading, replacing and deleting a submission from the phone is built and tested but switched off: the phone shows and
-/// reminds, and work is submitted on the portal or the PC app.
-const phoneUploads = false;
-
 class _Detail extends StatelessWidget {
-  const _Detail({required this.work, required this.now, required this.prefs, this.model});
-  final AppModel? model;
+  const _Detail({required this.work, required this.now, required this.prefs});
   final Work work;
   final DateTime now;
   final Prefs prefs;
@@ -205,82 +195,11 @@ class _Detail extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: FilledButton.icon(icon: const Icon(LucideIcons.check), onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, label: const Text('Done'))),
           ]),
-          if (model?.hasLogin ?? false) ..._files(context, t) else ...[
-            const SizedBox(height: 10),
-            Text('Add your university login (Settings, University login) to download the brief from this phone. Submit your work on the portal or the PC app.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-          ],
+          const SizedBox(height: 10),
+          Text('Submit on the portal or the PC app. This phone shows deadlines and reminds you.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
         ]),
       ),
     );
-  }
-
-  /// Brief, upload, replace and delete: the same steps as the desktop app, through the portal on this phone. The portal
-  /// decides what is allowed; if it does not offer a button the answer says so.
-  List<Widget> _files(BuildContext context, ThemeData t) {
-    final w = work, m = model!;
-    Future<void> upload({required bool replace}) async {
-      final pick = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: [for (final e in submitExtensions) e.substring(1)]);
-      final f = pick.firstOrNull;
-      if (f == null || !context.mounted) return;
-      final size = await f.length() ?? 0;
-      final bad = checkSubmissionFileBytes(f.name, size);
-      if (bad.isNotEmpty) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(bad))); return; }
-      final bytes = await f.readAsBytes();
-      if (!context.mounted) return;
-      final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-        title: Text(replace ? 'Replace your submission?' : 'Upload your work?'),
-        content: Text('${f.name} (${(bytes.length / 1048576).toStringAsFixed(1)} MB)\n\nfor ${w.title}, ${w.course}.${replace ? '\n\nYour current submission is deleted first.' : ''}'),
-        actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(replace ? 'Replace' : 'Upload'))],
-      ));
-      if (ok != true || !context.mounted) return;
-      final r = await runFileJob(context, 'Uploading to the portal. This can take a minute.', () => m.withPortalFiles((files) =>
-          files.submit(course: w.course, id: w.id, title: w.title, number: w.number, path: f.name, bytes: bytes, replace: replace)));
-      if (r == null || !context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r.message), duration: const Duration(seconds: 6)));
-      if (r.ok || r.deleted) { Navigator.pop(context); m.refresh(); }
-    }
-
-    return [
-      const SizedBox(height: 10),
-      if (w.hasBrief)
-        OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-          icon: const Icon(LucideIcons.download, size: 18), label: const Text('Download the brief'),
-          onPressed: () async {
-            final saved = await runFileJob(context, 'Downloading the brief', () => m.withPortalFiles((files) =>
-                files.assignmentFile(course: w.course, id: w.id, kind: 'brief', title: w.title, number: w.number)));
-            if (saved != null) await openSavedFile(saved);
-          },
-        ),
-      if (phoneUploads && w.canSubmit) ...[
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-          icon: const Icon(LucideIcons.upload, size: 18), label: Text(w.submitted ? 'Replace your submission' : 'Upload your work'),
-          onPressed: () => upload(replace: w.submitted),
-        ),
-        if (w.submitted) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: t.colorScheme.error),
-            icon: const Icon(LucideIcons.trash2, size: 18), label: const Text('Delete your submission'),
-            onPressed: () async {
-              final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-                title: const Text('Delete your submission?'),
-                content: Text('This removes the file you submitted for ${w.title}. You can upload again until the deadline.'),
-                actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep it')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete'))],
-              ));
-              if (ok != true || !context.mounted) return;
-              final r = await runFileJob(context, 'Deleting your submission', () => m.withPortalFiles((files) =>
-                  files.deleteSubmission(course: w.course, id: w.id, title: w.title, number: w.number)));
-              if (r == null || !context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r.message), duration: const Duration(seconds: 6)));
-              if (r.ok || r.deleted) { Navigator.pop(context); m.refresh(); }
-            },
-          ),
-        ],
-      ],
-    ];
   }
 }
 

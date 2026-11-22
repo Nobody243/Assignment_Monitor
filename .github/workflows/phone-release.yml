@@ -12,7 +12,7 @@ on:
       minify:
         description: "Shrink the code with R8 (try on a phone before publishing)"
         type: boolean
-        default: true
+        default: false
       publish:
         description: "Publish the release (the automatic release does); otherwise it is a draft to review first"
         type: boolean
@@ -28,7 +28,7 @@ jobs:
       run:
         working-directory: mobile
     env:
-      MINIFY: ${{ github.event_name == 'workflow_dispatch' && inputs.minify || 'true' }}
+      MINIFY: ${{ github.event_name == 'workflow_dispatch' && inputs.minify || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - name: The signing secrets are there

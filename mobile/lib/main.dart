@@ -9,9 +9,7 @@ import 'model.dart';
 import 'screens/announcements.dart';
 import 'screens/attendance.dart';
 import 'screens/first_run.dart';
-import 'screens/cloud_setup_screens.dart' show CloudSetupWizard;
 import 'screens/intro.dart';
-import 'screens/lectures.dart';
 import 'screens/lock_screen.dart';
 import 'data.dart' show Summary;
 import 'screens/more.dart';
@@ -39,9 +37,6 @@ Future<void> _setUpPlugins() async {
   // keeps the two-hourly check in step with the setting (Android only)
   try { await BackgroundCheck.applySaved().timeout(const Duration(seconds: 15)); } catch (e) { debugPrint('background: $e'); }
 }
-
-/// The data section each screen shows, for its own refresh: Today (0) and anything unlisted refresh everything.
-const sectionOfTab = <int, String>{1: 'assignments', 2: 'attendance', 3: 'exams', 4: 'announcements', 5: 'timetable', 6: 'results', 7: 'lectures'};
 
 class AssignmentMonitorApp extends StatefulWidget {
   const AssignmentMonitorApp({super.key});
@@ -124,13 +119,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
   late final AnimationController _menu = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
   Animation<double> get _t => _menu;
 
-  /// Pull-to-refresh and the refresh button: a screen reads only its own part of the portal again; Today reads everything.
-  Future<void> _refreshHere() {
-    final s = sectionOfTab[tab];
-    return s == null ? widget.model.refresh() : widget.model.refreshSection(s);
-  }
-
-  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Announcements', 'Timetable', 'Results & GPA', 'Lectures', 'Settings'];
+  static const _titles = ['Today', 'Assignments', 'Attendance', 'Exams', 'Announcements', 'Timetable', 'Results & GPA', 'Settings'];
   int _dir = 1;   // which way the last tab change went, so the new screen arrives from that side
 
   @override
@@ -220,13 +209,12 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
     final t = Theme.of(context);
     final pages = [
       TodayScreen(summary: s, now: now, prefs: widget.prefs, onOpenWork: () => goto(1), onOpenAttendance: () => goto(2), onOpenAnnouncements: () => goto(4)),
-      WorkScreen(summary: s, now: now, prefs: widget.prefs, model: m),
+      WorkScreen(summary: s, now: now, prefs: widget.prefs),
       AttendanceScreen(summary: s),
       ExamsPage(summary: s, now: now),
       AnnouncementsScreen(summary: s, prefs: widget.prefs, now: now),
       TimetableScreen(summary: s, now: now),
       ResultsPage(summary: s),
-      LecturesScreen(summary: s, model: m),
       SettingsHub(summary: s, prefs: widget.prefs, model: m),
     ];
     final stale = !m.demo && (m.age?.inHours ?? 0) >= 24;
@@ -242,19 +230,15 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
         actions: [
           if (!m.demo) m.refreshing
               ? const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-              : IconButton(icon: const Icon(LucideIcons.refreshCw, size: 20), tooltip: sectionOfTab.containsKey(tab) ? 'Check for new ${_titles[tab].toLowerCase()}' : 'Check for new data', onPressed: _refreshHere),
+              : IconButton(icon: const Icon(LucideIcons.refreshCw, size: 20), tooltip: 'Check for new data', onPressed: m.refresh),
         ],
       ),
       body: SafeArea(
         child: Column(children: [
-          // one strip at a time, so they never crowd the content: what is being read now, else what went wrong, else the offer
-          if (!m.demo && m.refreshing && (m.portalMode || m.syncStep.isNotEmpty)) _SyncBar(model: m)
-          else if (!m.demo && (m.error != null || stale || (m.portalMode && m.syncSkipped.isNotEmpty))) _Banner(model: m)
-          // the offer is a nice-to-have: on a small screen or with large text it would crowd the content out, and Settings has it anyway
-          else if (m.offerCloud && MediaQuery.sizeOf(context).height >= 640 && MediaQuery.textScalerOf(context).scale(14) <= 18.5) _CloudOffer(model: m),
+          if (!m.demo && (m.error != null || stale)) _Banner(model: m),
           Expanded(
             child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxContentWidth), child: RefreshIndicator(
-              onRefresh: _refreshHere,
+              onRefresh: m.refresh,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 320),
                 switchInCurve: Curves.easeOutCubic,
@@ -316,8 +300,7 @@ class _SideMenu extends StatelessWidget {
       (4, LucideIcons.megaphone, 'Announcements'),
       (5, LucideIcons.calendarRange, 'Timetable'),
       (6, LucideIcons.chartNoAxesColumn, 'Results & GPA'),
-      (7, LucideIcons.bookOpen, 'Lectures'),
-      (8, LucideIcons.settings, 'Settings'),
+      (7, LucideIcons.settings, 'Settings'),
     ];
     // row i is fully in by the time the app has moved (0.25 + 0.06 i) of the way; it starts at 0.06 i
     Widget staggered(int i, Widget child) => AnimatedBuilder(
@@ -354,7 +337,7 @@ class _SideMenu extends StatelessWidget {
             const Spacer(),
             staggered(items.length + 1, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _MenuRow(icon: LucideIcons.logOut, label: model.demo ? 'Leave the demo' : 'Sign out', selected: false, onTap: onSignOut),
-              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text(model.hasLogin ? "Your university login (for lectures) stays in this phone's secure storage and goes only to the portal." : "Your portal password is never stored on this phone.", style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text("Your portal password is never stored on this phone.", style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
             ])),
           ]),
         ))))),
@@ -394,67 +377,6 @@ class _MenuRow extends StatelessWidget {
 }
 
 /// Said plainly when the phone cannot be sure the numbers are current: offline, or the repository has gone quiet.
-/// A progress bar under the app bar while the portal is being read, with what it is doing and how far it has got, so a check
-/// that is still going can be told from one that has finished.
-class _SyncBar extends StatelessWidget {
-  const _SyncBar({required this.model});
-  final AppModel model;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final n = model.syncTotal, d = model.syncDone;
-    final step = model.syncStep.isEmpty ? 'Working' : model.syncStep;
-    return Material(
-      color: t.colorScheme.surfaceContainer,
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        LinearProgressIndicator(value: n == 0 ? null : ((d + 0.35) / n).clamp(0.0, 1.0), minHeight: 3, color: t.colorScheme.primary, backgroundColor: t.colorScheme.primaryContainer),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(children: [
-            Expanded(child: Text(n == 0 ? step : '$step  ·  ${(d + 1).clamp(1, n)} of $n', maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
-/// Offered once, after the portal works: let GitHub also check while the phone is off. The portal login is reused, not asked for again.
-class _CloudOffer extends StatelessWidget {
-  const _CloudOffer({required this.model});
-  final AppModel model;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Material(
-      color: t.colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 8, 6),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.only(top: 2), child: Icon(LucideIcons.cloud, size: 20, color: t.colorScheme.onPrimaryContainer)),
-            const SizedBox(width: 12),
-            Expanded(child: Text('Want checks to keep running when the phone is off? GitHub can do that for free, in your own private repository.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onPrimaryContainer))),
-          ]),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Wrap(spacing: 4, children: [
-              TextButton(onPressed: model.hideCloudOffer, child: const Text('Not now')),
-              FilledButton(
-                onPressed: () async {
-                  final c = await model.savedPortalLogin();
-                  if (context.mounted) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model, prefill: c)));
-                },
-                child: const Text('Set up'),
-              ),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
 class _Banner extends StatelessWidget {
   const _Banner({required this.model});
   final AppModel model;
@@ -462,12 +384,9 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final made = DateTime.now().difference(model.summary!.generatedAt);
-    final missing = model.syncSkipped.map((k) => const {'assignments': 'assignments', 'attendance': 'attendance', 'exams': 'exam seats', 'results': 'results', 'timetable': 'timetable', 'announcements': 'announcements', 'lectures': 'lectures'}[k] ?? k).join(', ');
-    final text = model.error == null && model.portalMode && model.syncSkipped.isNotEmpty
-        ? 'The portal did not give back: $missing. Pull down to try again.'
-        : model.error != null
+    final text = model.error != null
         ? '${model.error} Showing what was read ${model.fetchedAt == null ? 'earlier' : agoLabel(model.age!)}.'
-        : model.portalMode ? 'The phone last read the portal ${agoLabel(made)}. Pull down to read it again.' : 'The last cloud check was ${agoLabel(made)}. Check that cloud checks are still on.';
+        : 'The last cloud check was ${agoLabel(made)}. Check that cloud checks are still on.';
     return Material(
       color: t.colorScheme.errorContainer,
       child: InkWell(

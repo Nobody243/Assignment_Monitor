@@ -191,7 +191,7 @@ String calendarIcs(Summary s, DateTime now) {
 
 // ------------------------------------------------------------------------------------------------ support info
 /// What to paste into a bug report: versions, freshness and counts. No name, no course titles, no grades, no token.
-String supportInfo(Summary? s, {required String platform, DateTime? lastRead, DateTime? now, String? error, int reminders = 0, bool portal = false}) {
+String supportInfo(Summary? s, {required String platform, DateTime? lastRead, DateTime? now, String? error, int reminders = 0}) {
   final at = now ?? DateTime.now();
   String ago(DateTime? d) => d == null ? 'never' : agoLabel(at.difference(d));
   final b = StringBuffer()
@@ -200,7 +200,7 @@ String supportInfo(Summary? s, {required String platform, DateTime? lastRead, Da
     ..writeln('Summary schema: ${s == null ? 'none' : (s.raw['schema'] ?? '?')}')
     ..writeln('Desktop app that made it: ${s?.raw['app_version'] ?? '?'}')
     ..writeln('Summary made: ${s == null ? 'never' : ago(s.generatedAt)}')
-    ..writeln('Last read from ${portal ? 'the portal' : 'GitHub'}: ${ago(lastRead)}')
+    ..writeln('Last read from GitHub: ${ago(lastRead)}')
     ..writeln('Counts: ${s?.work.length ?? 0} assignments, ${s?.attendance.length ?? 0} courses with attendance, ${s?.exams.length ?? 0} exams, '
         '${s?.timetable.length ?? 0} classes, ${s?.announcements.length ?? 0} announcements, ${s?.terms.length ?? 0} semesters')
     ..writeln('Reminders scheduled: $reminders')

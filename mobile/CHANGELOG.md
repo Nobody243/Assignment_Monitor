@@ -2,8 +2,9 @@
 
 ## 1.0.10 - 2026-11-22
 
-- When the course list cannot be found, the message now says where the hidden browser got stuck (the page's host and path, never anything after a "?"), for each of the two looks, so a stalled single sign-on can be told from a missing course list.
-- A frozen hidden browser or a portal job that never ends can no longer hold every later job behind it (which showed as "Looking up your courses" for minutes and then nothing): each call into the hidden browser gives up after 45 seconds, a whole job after six minutes, and the next job then builds a fresh browser. The message says where it stopped.
+- The phone app is read-only again. The university login, the Lectures screen, downloads and the hidden browser are gone (they stalled on some phones and were not worth the risk of holding a portal password). Everything comes from the GitHub cloud check, as before.
+- Reminders and notifications: the release build no longer drops what the notification plugin needs (Gson type information), which could stop scheduled reminders from ever appearing.
+
 ## 1.0.9 - 2026-11-22
 
 - The campus list is complete: Finishing School, National School of Hydrography and PN Nursing College were missing, so a student of those could not sign in; the list now matches the portal's own sign-in page exactly (a test pins it).

@@ -15,9 +15,7 @@ import '../model.dart';
 import '../reminders.dart';
 import '../source.dart' show repoName;
 import '../theme.dart';
-import '../portal.dart' show PortalCredentials;
-import 'cloud_setup_screens.dart' show CloudSettingsPage, CloudSetupWizard;
-import 'portal_signin.dart' show PortalSignInPage;   // phone-only Cloud checks
+import 'cloud_setup_screens.dart' show CloudSettingsPage;   // phone-only Cloud checks
 import 'widgets.dart';
 
 /// Settings is a short list of sections; each one opens its own page, so a page only ever holds one kind of choice.
@@ -35,15 +33,13 @@ class SettingsHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    // [bar] false for a page that brings its own Scaffold and app bar (University login, the read report, the setup): wrapping it
-    // again gave two bars, and so two back buttons side by side
-    Widget row(IconData i, String title, String sub, Widget Function() page, {bool bar = true}) => ListTile(
+    Widget row(IconData i, String title, String sub, Widget Function() page) => ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: Container(width: 44, height: 44, decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)), child: Icon(i, size: 22)),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
           trailing: const Icon(LucideIcons.chevronRight, size: 20),
-          onTap: () => bar ? _open(context, title, page) : Navigator.of(context).push(slideRoute<void>(page())),
+          onTap: () => _open(context, title, page),
         );
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
       Card(child: Column(children: [
@@ -55,20 +51,8 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
-        if (!model.demo && !model.hasLogin) ...[
-          row(LucideIcons.graduationCap, 'University login', 'Add it to see lecture notes and download them', () => PortalSignInPage(model: model), bar: false),
-          const Divider(height: 1, indent: 76),
-        ],
-        if (!model.demo && model.hasLogin && !model.portalMode) ...[
-          row(LucideIcons.graduationCap, 'University login', 'Saved, used for lecture notes and downloads. Tap to remove it', () => _RemoveLogin(model: model), bar: false),
-          const Divider(height: 1, indent: 76),
-        ],
         if (!model.demo) ...[
-          row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => model.portalMode && !model.cloudOn ? _WizardWithSavedLogin(model: model) : CloudSettingsPage(model: model), bar: !(model.portalMode && !model.cloudOn)),
-          const Divider(height: 1, indent: 76),
-        ],
-        if (model.portalMode) ...[
-          row(LucideIcons.listChecks, 'What the phone read', 'Per part: what came back and how long it took', () => SyncReportPage(model: model), bar: false),
+          row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => CloudSettingsPage(model: model)),
           const Divider(height: 1, indent: 76),
         ],
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),
@@ -216,42 +200,16 @@ class AccountSettings extends StatelessWidget {
   final AppModel model;
   @override
   Widget build(BuildContext context) {
-    final campus = _campus(summary);
-    final readAt = model.fetchedAt == null ? 'Not yet' : '${agoLabel(model.age!)} · data made ${agoLabel(DateTime.now().difference(summary.generatedAt))}';
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('Signed in'),
       ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.userRound), title: Text(summary.studentName),
-          subtitle: Text(model.demo ? 'Demo data, nothing is read from anywhere' : model.portalMode ? 'University portal${campus.isEmpty ? '' : ' · $campus'}' : 'GitHub: ${model.login ?? '–'}')),
+          subtitle: Text(model.demo ? 'Demo data, nothing is read from GitHub' : 'GitHub: ${model.login ?? '–'}')),
       if (!model.demo) ...[
-        ListTile(contentPadding: EdgeInsets.zero, leading: Icon(model.portalMode ? LucideIcons.graduationCap : LucideIcons.folderGit2), title: const Text('Reading from'),
-            subtitle: Text(model.portalMode ? 'The university portal, straight from this phone${model.cloudOn ? '. GitHub checks are also on (${model.login}/$repoName).' : ''}' : '${model.login ?? ''}/$repoName')),
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: Text(model.portalMode ? 'Last read from the portal' : 'Last read from GitHub'), subtitle: Text(readAt)),
-      ],
-      if (model.hasLogin) ...[
-        const Divider(height: 32),
-        const _Head('Downloaded files'),
-        ListTile(
-          contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.trash2), title: const Text('Delete downloaded files'),
-          subtitle: const Text('Lecture files and assignment briefs saved on this phone. Signing out deletes them too.'),
-          onTap: () async {
-            final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-              title: const Text('Delete downloaded files?'),
-              content: const Text('They can be downloaded again from the portal.'),
-              actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep them')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete'))],
-            ));
-            if (ok != true) return;
-            final n = await model.clearDownloads();
-            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(n == 0 ? 'There were no downloaded files.' : 'Deleted $n ${n == 1 ? 'file' : 'files'}.')));
-          },
-        ),
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.folderGit2), title: const Text('Reading from'), subtitle: Text('${model.login ?? ''}/$repoName')),
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: const Text('Last read from GitHub'),
+            subtitle: Text(model.fetchedAt == null ? 'Not yet' : '${agoLabel(model.age!)} · summary made ${agoLabel(DateTime.now().difference(summary.generatedAt))}')),
       ],
     ]);
-  }
-
-  static String _campus(Summary s) {
-    final student = s.raw['student'];
-    final c = student is Map ? student['campus'] : null;
-    return c is String ? c : '';
   }
 }
 
@@ -264,19 +222,12 @@ class AboutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('What the phone holds'),
-      if (model.hasLogin)
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.lock), title: const Text('Your university login'), subtitle: Text(model.portalMode ? "Enrollment number, password and campus, in this phone's secure storage. They are sent only to the university portal, and deleted when you sign out." : "Enrollment number, password and campus, in this phone's secure storage, used only for the lecture list and downloads. They are sent only to the university portal, and deleted when you remove the login or sign out."))
-      else
-        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Portal password'), subtitle: Text("Not kept on the phone, which does not contact the portal in this mode. With the desktop app it never reaches the phone; in the phone setup of GitHub checks it is typed once, encrypted and sent to your own repository's secret store.")),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in (only if you use GitHub checks)'), subtitle: Text("Kept in the phone's secure storage, used only to read or run the checks in your own repository.")),
-      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last read of your data'), subtitle: Text('Assignments, attendance, grades and the rest, stored on the phone (encrypted in secure storage) so the app opens offline.')),
-      if (model.hasLogin)
-        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.download), title: Text('Files you download'), subtitle: Text("Lecture files and assignment briefs are kept in the app's own storage, out of reach of other apps, until you clear the app's data or uninstall it.")),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Portal password'), subtitle: Text('Never kept on the phone, which never contacts the portal. With the desktop app it never reaches the phone; in the phone-only setup it is typed once, encrypted and sent to your own GitHub.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in'), subtitle: Text('Kept in the phone\'s secure storage, used only to read your own repository.')),
+      const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last summary'), subtitle: Text('Stored on the phone so the app opens offline.')),
       const Divider(height: 32),
       const _Head('Sharing'),
-      Muted(model.hasLogin
-          ? 'No analytics and no crash reporting. The phone talks only to GitHub (your summary file) and, for lecture notes, to the university portal. Nothing goes through a server of ours.'
-          : 'No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
+      const Muted('No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
       const Divider(height: 32),
       const _Head('App'),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.smartphone), title: Text('Assignment Monitor for phones'), subtitle: Text('Version $appVersion')),
@@ -284,7 +235,7 @@ class AboutSettings extends StatelessWidget {
         contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.clipboardCopy), title: const Text('Copy support info'),
         subtitle: const Text('Versions, freshness and counts for a bug report. No name, grades or sign-in.'),
         onTap: () async {
-          final text = supportInfo(summary, platform: kIsWeb ? 'web' : defaultTargetPlatform.name, lastRead: model.fetchedAt, error: model.error, reminders: model.scheduled, portal: model.portalMode);
+          final text = supportInfo(summary, platform: kIsWeb ? 'web' : defaultTargetPlatform.name, lastRead: model.fetchedAt, error: model.error, reminders: model.scheduled);
           await Clipboard.setData(ClipboardData(text: text));
           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied. Paste it into your message.')));
         },
@@ -378,72 +329,4 @@ class _SecurityState extends State<SecuritySettings> {
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Sign-in token'), subtitle: Text('Kept in the phone\'s secure storage whether or not the lock is on.')),
     ]);
   }
-}
-
-
-/// Turning on GitHub background checks from Settings in the Full app: the saved portal login is used, not typed again.
-class _WizardWithSavedLogin extends StatelessWidget {
-  const _WizardWithSavedLogin({required this.model});
-  final AppModel model;
-  @override
-  Widget build(BuildContext context) => FutureBuilder<PortalCredentials?>(
-        future: model.savedPortalLogin(),
-        builder: (context, snap) => snap.connectionState != ConnectionState.done
-            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-            : CloudSetupWizard(model: model, prefill: snap.data),
-      );
-}
-
-
-/// What the last read of the portal brought back, part by part: for seeing why something is missing, and to copy into a
-/// message about it. It holds counts and timings only, nothing from the pages themselves.
-class SyncReportPage extends StatelessWidget {
-  const SyncReportPage({super.key, required this.model});
-  final AppModel model;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final lines = model.syncReport;
-    final text = lines.isEmpty ? 'Nothing has been read yet in this session. Pull down on Today to read the portal.' : lines.join('\n');
-    return Scaffold(
-      appBar: AppBar(title: const Text('What the phone read', style: TextStyle(fontWeight: FontWeight.w700))),
-      body: SafeArea(
-        child: ListView(padding: const EdgeInsets.all(20), children: [
-          if (model.syncSkipped.isNotEmpty) Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text('Not read: ${model.syncSkipped.join(', ')}', style: TextStyle(color: t.colorScheme.error, fontWeight: FontWeight.w600)),
-          ),
-          SelectableText(text, style: t.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace', height: 1.5)),
-          const SizedBox(height: 16),
-          if (lines.isNotEmpty) OutlinedButton.icon(
-            icon: const Icon(LucideIcons.copy, size: 18), label: const Text('Copy'),
-            onPressed: () { Clipboard.setData(ClipboardData(text: text)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied'))); },
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-
-/// Asks before forgetting the saved university login.
-class _RemoveLogin extends StatelessWidget {
-  const _RemoveLogin({required this.model});
-  final AppModel model;
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('University login', style: TextStyle(fontWeight: FontWeight.w700))),
-        body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
-          Text("Your university login is saved in this phone's secure storage and used only for the lecture list and downloads. Everything else is read from GitHub.", style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)),
-          const SizedBox(height: 18),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-            icon: const Icon(LucideIcons.trash2, size: 18), label: const Text('Remove my university login'),
-            onPressed: () async {
-              await model.removePortalLogin();
-              if (context.mounted) Navigator.of(context).pop();
-            },
-          ),
-        ])),
-      );
 }

@@ -168,7 +168,7 @@ class _IntroScreenState extends State<IntroScreen> {
               children: const [
                 _Slide(art: _CountdownArt(), title: 'Never miss a deadline', body: 'Every assignment counts down on your phone, with reminders you choose: a day before, three hours before, an hour before.'),
                 _Slide(art: _AttendanceArt(), title: 'Know how many classes you can miss', body: 'Attendance shows exactly how many hours you can still skip and stay above the minimum, class by class and for the whole semester.'),
-                _Slide(art: _PrivacyArt(), title: 'Your data stays yours', body: "Your PC or your own private GitHub repository does the checking, and the phone only reads a small summary file. Your portal password stays off the phone, unless you add it for lecture downloads, and then it sits in secure storage."),
+                _Slide(art: _PrivacyArt(), title: 'Your data stays yours', body: "Your PC or your own private GitHub repository does the checking, and the phone only reads a small summary file. Your portal password never reaches the phone."),
               ],
             ),
           ),

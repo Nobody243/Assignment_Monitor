@@ -86,4 +86,4 @@ jobs:
 
       - name: Start the signed release build for the new tag
         if: env.SKIP != '1'
-        run: gh workflow run phone-release.yml --ref "${{ steps.next.outputs.tag }}" -f publish=true -f minify=true
+        run: gh workflow run phone-release.yml --ref "${{ steps.next.outputs.tag }}" -f publish=true -f minify=false
