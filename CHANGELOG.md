@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Scrollbars are slim and match the app instead of Windows' wide grey bar: a rounded thumb floating in a transparent track with no arrow buttons, faint until you point at the area, wider and darker under the pointer, and tinted with the palette's accent while you drag it. It follows the light and dark themes.
+
 ## 1.9.6 - 2026-11-21
 
 - Home: the two columns are balanced (the Results card moved under Courses), so there is no large empty block beside the long right-hand column. Text cut short with an ellipsis now shows in full as a tooltip when you point at it, and the small "View all" links have a larger click area.
