@@ -1,5 +1,6 @@
 import logging
 import subprocess
+from datetime import datetime
 
 from results import gpa_of
 from campus import seat_text
@@ -10,7 +11,12 @@ log = logging.getLogger("bahria.notifier")
 CREATE_NO_WINDOW = 0x08000000
 
 
-def send_toast(title: str, message: str, actions: list = None, view: str = "") -> None:
+def is_night(now=None) -> bool:
+    """23:00 to 07:00: notifications arrive silently and nothing is read aloud (urgent ones excepted by the callers)."""
+    return not 7 <= (now or datetime.now()).hour < 23
+
+
+def send_toast(title: str, message: str, actions: list = None, view: str = "", silent: bool = False) -> None:
     """Native Windows 10/11 desktop notification. `actions` are up to two (label, link) buttons. Pressing the notification
     opens the app, on the page named by `view` (dashboard, assignments, exams, settings ...) when given."""
     try:
@@ -21,6 +27,9 @@ def send_toast(title: str, message: str, actions: list = None, view: str = "") -
         toast = Notification(app_id=APP_NAME, title=title, msg=message, duration="short", launch=opens)
         for label, link in (actions or [])[:2]:
             toast.add_actions(label=label, launch=link)
+        if silent:
+            from winotify import audio
+            toast.set_audio(audio.Silent, loop=False)
         toast.show()
     except Exception as e:
         log.warning("Toast notification failed: %s", e)
@@ -71,9 +80,10 @@ def _notify(title: str, body: str, voice: str = "", channels: bool = True, actio
     mailbox. With the daily digest on, phone and email alerts that are not `urgent` wait for the morning digest."""
     env = load_env()
     log.info("Alert: %s - %s", title, body.replace("\n", " | "))
+    night = is_night() and not urgent
     if env.get("ENABLE_WINDOWS_TOAST", True):
-        send_toast(f"{APP_NAME}: {title}", body, actions, view)
-    if voice:
+        send_toast(f"{APP_NAME}: {title}", body, actions, view, silent=night)
+    if voice and not night:
         speak_voice(voice)
     if not channels:
         return
@@ -92,7 +102,6 @@ def alert_assignments(pending: list, extended: list) -> None:
     """Builds and sends a toast plus a voice alert summarising the state after a sync."""
     env = load_env()
     days_ahead = int(env.get("NOTIFY_DAYS_AHEAD", 3))
-    fan_out = True
 
     due_today = [p for p in pending if classify(p)["key"] == "today"]
     due_soon = [p for p in pending if (classify(p)["days"] or 99) <= days_ahead and classify(p)["key"] != "today"]
@@ -114,11 +123,8 @@ def alert_assignments(pending: list, extended: list) -> None:
         title = "Deadline extended"
         body = "\n".join(f"- {e['title']}: now {e['due_date']}" for e in extended[:3])
     else:
-        voice = ""
-        title = "All caught up"
-        body = "No pending assignments on Bahria LMS."
-        fan_out = False      # a desktop note after each check; not worth a phone buzz or an email twice a day
-    _notify(title, body, voice, channels=fan_out, view="assignments")
+        return       # nothing pending and nothing extended: no pop-up after every check (the app itself shows the state)
+    _notify(title, body, voice, view="assignments")
 
 
 def alert_attendance(changes: dict, minimum: int) -> None:

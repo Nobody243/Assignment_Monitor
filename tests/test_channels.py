@@ -145,3 +145,18 @@ def test_all_caught_up_stays_on_the_desktop(monkeypatch):
     assert calls == []
     notifier.alert_assignments([], [{"title": "Lab 3", "due_date": "30 Oct"}])
     assert calls == ["Deadline extended"]
+
+
+def test_night_is_silent_but_urgent_alerts_still_speak(monkeypatch):
+    import notifier
+    from datetime import datetime
+    assert notifier.is_night(datetime(2026, 11, 22, 23, 30)) and notifier.is_night(datetime(2026, 11, 22, 3, 0))
+    assert not notifier.is_night(datetime(2026, 11, 22, 7, 0)) and not notifier.is_night(datetime(2026, 11, 22, 22, 59))
+    seen = {"toast": [], "voice": []}
+    monkeypatch.setattr(notifier, "is_night", lambda now=None: True)
+    monkeypatch.setattr(notifier, "send_toast", lambda *a, **k: seen["toast"].append(k.get("silent")))
+    monkeypatch.setattr(notifier, "speak_voice", lambda *a, **k: seen["voice"].append(a[0]))
+    monkeypatch.setattr(notifier, "load_env", lambda: {})
+    notifier._notify("Reminder", "body", voice="say it", channels=False)
+    notifier._notify("Exam today", "body", voice="say it urgent", channels=False, urgent=True)
+    assert seen["toast"] == [True, False] and seen["voice"] == ["say it urgent"]

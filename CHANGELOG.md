@@ -4,6 +4,7 @@
 
 - Clicking a desktop notification now opens the app (or brings it to the front if it is already running). The Snooze and Done buttons on reminders still work as before without opening a window.
 - A notification opens the page it is about: an exam alert opens Exams, a reminder or deadline alert opens Assignments, and so on; a failed sign-in opens Settings.
+- Night is quiet (23:00 to 07:00, as on the phone): notifications arrive without sound and nothing is read aloud, except an exam today. The "All caught up" pop-up after every check is gone; the app shows that state itself.
 - Right-click the taskbar icon for Assignments, Exams and Attendance; the tray menu has Assignments and Exams too.
 
 ## 1.9.8 - 2026-11-22
