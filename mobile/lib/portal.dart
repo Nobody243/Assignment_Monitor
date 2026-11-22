@@ -354,6 +354,16 @@ class WebViewBrowser implements PortalBrowser {
   static final WebViewBrowser _instance = WebViewBrowser._();
 
   WebViewController? _c;
+
+  /// Lets go of a hidden browser that has stopped answering, so the next job builds a fresh one instead of waiting on it forever.
+  static void reset() => _instance._c = null;
+
+  /// A call into the hidden browser that never returns (its renderer died, it was paused) must not freeze every later portal job.
+  Future<T> _guard<T>(Future<T> f, String what, {int seconds = 45}) => f.timeout(Duration(seconds: seconds), onTimeout: () {
+        _c = null;
+        throw StateError('The hidden browser stopped answering ($what).');
+      });
+
   Completer<void>? _loaded;
   Completer<void>? _started;
 
@@ -388,12 +398,12 @@ class WebViewBrowser implements PortalBrowser {
     if (uri.scheme != 'https' || !isPortalHost(uri.host)) throw ArgumentError('Not a portal address.');
     final c = await _ready();
     _loaded = Completer<void>();
-    await c.loadRequest(uri);
+    await _guard(c.loadRequest(uri), 'opening a page');
     await _loaded!.future.timeout(timeout);
   }
 
   @override
-  Future<String> url() async => (await (await _ready()).currentUrl()) ?? '';
+  Future<String> url() async => (await _guard<String?>((await _ready()).currentUrl(), 'reading the address')) ?? '';
 
   @override
   Future<String> html() async => (await js('document.documentElement.outerHTML'))?.toString() ?? '';
@@ -401,7 +411,7 @@ class WebViewBrowser implements PortalBrowser {
   /// On Android the result of a script comes back JSON-encoded (a string arrives with quotes); this undoes that once.
   @override
   Future<dynamic> js(String source) async {
-    final r = await (await _ready()).runJavaScriptReturningResult(source);
+    final r = await _guard((await _ready()).runJavaScriptReturningResult(source), 'running a script');
     if (r is String) {
       if (r == 'null' || r == 'undefined') return null;
       try { return jsonDecode(r); } catch (_) { return r; }
@@ -487,7 +497,7 @@ class WebViewBrowser implements PortalBrowser {
     final c = await _ready();
     _loaded = Completer<void>();
     _started = Completer<void>();
-    await c.runJavaScript(source);
+    await _guard(c.runJavaScript(source), 'running a script');
     try {
       await _started!.future.timeout(const Duration(seconds: 3));
     } catch (_) {

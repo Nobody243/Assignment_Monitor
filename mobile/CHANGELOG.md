@@ -1,5 +1,8 @@
 # Phone app changelog
 
+## Unreleased
+
+- A frozen hidden browser or a portal job that never ends can no longer hold every later job behind it (which showed as "Looking up your courses" for minutes and then nothing): each call into the hidden browser gives up after 45 seconds, a whole job after six minutes, and the next job then builds a fresh browser. The message says where it stopped.
 ## 1.0.9 - 2026-11-22
 
 - The campus list is complete: Finishing School, National School of Hydrography and PN Nursing College were missing, so a student of those could not sign in; the list now matches the portal's own sign-in page exactly (a test pins it).

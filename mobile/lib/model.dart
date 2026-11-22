@@ -421,8 +421,9 @@ class AppModel extends ChangeNotifier {
       unawaited(replan());
       return true;
     } catch (e) {
-      error = 'The portal could not be read just now (${why(e)}). Pull down to try again.';
-      syncReport = ['failed: ${why(e)}'];
+      final at = syncStep.isEmpty ? '' : ' while: ${syncStep.toLowerCase()}';
+      error = 'The portal could not be read just now (${why(e)}$at). Pull down to try again.';
+      syncReport = ['failed${at.isEmpty ? '' : at}: ${why(e)}'];
       return false;
     } finally {
       syncStep = ''; syncDone = 0; syncTotal = 0;
@@ -481,7 +482,13 @@ class AppModel extends ChangeNotifier {
   Future<T> _serial<T>(Future<T> Function() job) {
     final done = Completer<T>();
     _portalQueue = _portalQueue.whenComplete(() async {
-      try { done.complete(await job()); } catch (e, s) { done.completeError(e, s); }
+      try {
+        // a job that never ends would hold every later one behind it: after six minutes it is stopped and the hidden browser let go of
+        done.complete(await job().timeout(const Duration(minutes: 6), onTimeout: () {
+          WebViewBrowser.reset();
+          throw StateError('The portal took too long and was stopped${syncStep.isEmpty ? '' : ' (at: $syncStep)'}.');
+        }));
+      } catch (e, s) { done.completeError(e, s); }
     });
     return done.future;
   }
