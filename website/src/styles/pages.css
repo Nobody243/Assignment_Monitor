@@ -46,6 +46,10 @@
 
 /* ============================================================ cloud checks walkthrough */
 .cloud-how { padding-top: 0; }
+.home-phone { padding: clamp(48px, 8vw, 110px) 0; }
+.shot-row.three { grid-template-columns: repeat(3, 1fr); max-width: 880px; margin: 0 auto; }
+.home-phone-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 36px; }
+@media (max-width: 760px) { .shot-row.three { grid-template-columns: repeat(3, 1fr); gap: 8px; } .shot-row.three .shot figcaption { display: none; } .shot-frame { padding: 4px; border-radius: 18px; } .shot-frame img { border-radius: 14px; } }
 .phone-shots { padding: 0 0 clamp(24px, 4vw, 48px); }
 .shot-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(12px, 2vw, 24px); align-items: start; }
 .shot { margin: 0; display: grid; gap: 10px; justify-items: center; }

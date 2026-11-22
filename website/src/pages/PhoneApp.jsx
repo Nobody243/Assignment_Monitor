@@ -11,9 +11,9 @@ import { SITE } from "../data/pages.js";
 
 const SHOTS = [
   ["today", "Today: the next deadline with a countdown, and what is coming up"],
-  ["assignments", "Assignments, soonest first"],
+  ["assignments", "Assignments: soonest first"],
   ["attendance", "Attendance: how many hours you can still miss in each course"],
-  ["results", "Results with CGPA and a GPA calculator"],
+  ["results", "Results: CGPA and a GPA calculator"],
 ];
 
 export default function PhoneApp() {

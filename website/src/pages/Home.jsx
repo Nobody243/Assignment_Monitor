@@ -13,6 +13,7 @@ import { useIsMobile } from "../lib/useMedia.js";
 import Features from "../components/home/Features.jsx";
 import Steps from "../components/home/Steps.jsx";
 import Gallery from "../components/home/Gallery.jsx";
+import PhoneShowcase from "../components/home/PhoneShowcase.jsx";
 import PrivacySection from "../components/home/PrivacySection.jsx";
 import Cta from "../components/home/Cta.jsx";
 import FaqList from "../components/FaqList.jsx";
@@ -42,6 +43,7 @@ export default function Home() {
       <Features />
       <Steps />
       <Gallery />
+      <PhoneShowcase />
       <PrivacySection />
       <section id="faq">
         <div className="wrap">

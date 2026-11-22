@@ -70,6 +70,7 @@ export default function Nav() {
   };
 
   return (
+    <><a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); const m = document.getElementById("main"); if (m) { m.focus({ preventScroll: true }); m.scrollIntoView(); } }}>Skip to content</a>
     <motion.header className={`nav${scrolled || open ? " is-scrolled" : ""}`} initial={{ y: -16, opacity: 0 }} animate={introDone ? { y: 0, opacity: 1 } : {}} transition={{ duration: 1, ease: EASE, delay: 0.5 }}>
       <div className="wrap">
         <Link className="brand" to="/" aria-label="Assignment Monitor home" onClick={(e) => { setOpen(false); if (window.location.pathname === "/") { e.preventDefault(); if (window.__lenis) window.__lenis.scrollTo(0, { duration: 1.1 }); else window.scrollTo({ top: 0, behavior: "smooth" }); window.history.replaceState(null, "", "/"); } }}>
@@ -111,6 +112,6 @@ export default function Nav() {
       </AnimatePresence>,
         document.body,
       )}
-    </motion.header>
+    </motion.header></>
   );
 }

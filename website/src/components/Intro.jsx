@@ -15,6 +15,13 @@ const TICKS = Array.from({ length: 60 }, (_, i) => {
    hero appears finished. A dial sweeps with real progress; on "ready" the screen opens like an iris while the planet
    floats up underneath. The counter only starts once the scene's shaders are compiled, and it never moves faster
    than 60 %/s, so nothing it does can read as a jump. Capped at 6.5 s; skipped entirely for reduced motion. */
+/* A returning visitor (the intro played in this browser within the last week) skips it. */
+const SEEN_KEY = "am-intro-seen";
+function returningVisitor() {
+  try { const t = Number(localStorage.getItem(SEEN_KEY)); return Boolean(t) && Date.now() - t < 7 * 864e5; } catch { return false; }
+}
+function markSeen() { try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch { /* private mode: it just plays again next time */ } }
+
 export default function Intro() {
   const scene = useScene();
   const scrollApi = useScroll(); const scrollRef = useRef(scrollApi); scrollRef.current = scrollApi;
@@ -23,7 +30,8 @@ export default function Intro() {
   const root = useRef(null), pctEl = useRef(null), statusEl = useRef(null), arc = useRef(null), tip = useRef(null), ticksG = useRef(null), stagesEl = useRef(null);
 
   useEffect(() => {
-    if (reduceMotion()) { setGone(true); scene.finishIntro(); return undefined; }
+    if (reduceMotion() || returningVisitor()) { setGone(true); scene.finishIntro(); return undefined; }
+    markSeen();
     document.documentElement.classList.add("is-intro"); window.scrollTo(0, 0); scrollRef.current.stop();
     const el = root.current;
     const ticks = Array.from(ticksG.current.querySelectorAll("line"));
