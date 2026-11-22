@@ -15,7 +15,7 @@ def quiet_env(tmp_path, monkeypatch):
     monkeypatch.setattr(jobs, "load_env", lambda: {"ENROLLMENT": "01-111111-111", "PASSWORD": "x", "HEADLESS": True})
     monkeypatch.setattr(jobs, "has_credentials", lambda env: True)
     toasts = []
-    monkeypatch.setattr(jobs, "send_toast", lambda title, body: toasts.append((title, body)))
+    monkeypatch.setattr(jobs, "send_toast", lambda title, body, view="": toasts.append((title, body)))
     return toasts
 
 

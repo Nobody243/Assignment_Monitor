@@ -214,6 +214,19 @@ function showWindow() {
   win.focus()
 }
 
+/** Opens the window on one page (the tray menu and the taskbar's right-click list use this). */
+function openView(view) {
+  showWindow()
+  if (win && !win.isDestroyed()) void win.webContents.executeJavaScript(`location.hash = ${JSON.stringify(hashForView(view, false))}`)
+}
+
+/** The taskbar icon's right-click list (Windows): straight to the pages people open most. */
+function setTaskbarList() {
+  if (process.platform !== 'win32' || DEV) return
+  const task = (title, view) => ({ program: process.execPath, arguments: `--view ${view}`, iconPath: process.execPath, iconIndex: 0, title, description: title })
+  try { app.setUserTasks([task('Assignments', 'assignments'), task('Exams', 'exams'), task('Attendance', 'attendance')]) } catch { /* an old Windows: no list */ }
+}
+
 function createTray() {
   try {
     tray = new Tray(nativeImage.createFromPath(ICON))
@@ -221,6 +234,8 @@ function createTray() {
   tray.setToolTip('Assignment Monitor')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Assignment Monitor', click: showWindow },
+    { label: 'Assignments', click: () => openView('assignments') },
+    { label: 'Exams', click: () => openView('exams') },
     { label: 'Check now', click: () => { if (engine) void fetch(`http://127.0.0.1:${engine.port}/api/sync`, { method: 'POST', headers: { Authorization: `Bearer ${engine.token}` } }).catch(() => {}) } },
     { type: 'separator' },
     { label: 'Quit', click: () => { quitting = true; app.quit() } },
@@ -284,6 +299,7 @@ if (CLI.headless) {
     createWindow()
     if (SMOKE) return void smoke()
     createTray()
+    setTaskbarList()
     pollSettings()
   })
 

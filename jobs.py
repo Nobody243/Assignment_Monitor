@@ -166,7 +166,7 @@ def run_check(quiet: bool = False, headless: bool = None) -> int:
     except LoginError as e:
         log.error("%s", e)
         if _note_failure("login", str(e)) == 1:
-            send_toast(f"{APP_NAME}: Sign-in failed", f"{e}\nOpen the app to update your credentials.")
+            send_toast(f"{APP_NAME}: Sign-in failed", f"{e}\nOpen the app to update your credentials.", view="settings")
         return 3
     except Exception as e:
         log.error("Sync failed: %s", e)
@@ -240,7 +240,7 @@ def run_lead_reminders(env: dict) -> int:
         quiet = not 7 <= datetime.now().hour < 23                       # a reminder may pop up at night, but never speaks
         voice = f"Reminder: {item['title']} for {item['course']} is due in {phrase}." if env.get("ENABLE_VOICE", True) and not quiet else ""
         from toast_actions import actions_for
-        _notify(title, body, voice=voice, actions=actions_for(item), urgent=left <= 3)
+        _notify(title, body, voice=voice, actions=actions_for(item), urgent=left <= 3, view="assignments")
         for k in keys:
             mark_reminder(k)
         sent += 1
@@ -259,7 +259,8 @@ def run_snooze_wakeups(env: dict) -> int:
         if not item or not is_open_pending(item):
             continue
         log.info("Snooze over: %s", item.get("title"))
-        _notify(f"Reminder: {item['title'][:40]}", f"{item['course']}\n{item.get('due_date', '')}", actions=actions_for(item), urgent=True)
+        _notify(f"Reminder: {item['title'][:40]}", f"{item['course']}\n{item.get('due_date', '')}",
+                actions=actions_for(item), urgent=True, view="assignments")
         sent += 1
     return sent
 

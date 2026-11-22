@@ -10,13 +10,14 @@ log = logging.getLogger("bahria.notifier")
 CREATE_NO_WINDOW = 0x08000000
 
 
-def send_toast(title: str, message: str, actions: list = None) -> None:
-    """Native Windows 10/11 desktop notification. `actions` are up to two (label, link) buttons."""
+def send_toast(title: str, message: str, actions: list = None, view: str = "") -> None:
+    """Native Windows 10/11 desktop notification. `actions` are up to two (label, link) buttons. Pressing the notification
+    opens the app, on the page named by `view` (dashboard, assignments, exams, settings ...) when given."""
     try:
         from winotify import Notification
         # pressing the notification itself opens the app (an installed program owns the link scheme, a source run does not)
         import toast_actions
-        opens = f"{toast_actions.SCHEME}://open" if toast_actions.available() else ""
+        opens = f"{toast_actions.SCHEME}://open" + (f"?view={view}" if view else "") if toast_actions.available() else ""
         toast = Notification(app_id=APP_NAME, title=title, msg=message, duration="short", launch=opens)
         for label, link in (actions or [])[:2]:
             toast.add_actions(label=label, launch=link)
@@ -64,13 +65,14 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'' if n == 1 else 's'}"
 
 
-def _notify(title: str, body: str, voice: str = "", channels: bool = True, actions: list = None, urgent: bool = False) -> None:
+def _notify(title: str, body: str, voice: str = "", channels: bool = True, actions: list = None,
+            urgent: bool = False, view: str = "") -> None:
     """Desktop notification (with optional buttons), optional voice line and, unless `channels` is False, the phone and the
     mailbox. With the daily digest on, phone and email alerts that are not `urgent` wait for the morning digest."""
     env = load_env()
     log.info("Alert: %s - %s", title, body.replace("\n", " | "))
     if env.get("ENABLE_WINDOWS_TOAST", True):
-        send_toast(f"{APP_NAME}: {title}", body, actions)
+        send_toast(f"{APP_NAME}: {title}", body, actions, view)
     if voice:
         speak_voice(voice)
     if not channels:
@@ -116,7 +118,7 @@ def alert_assignments(pending: list, extended: list) -> None:
         title = "All caught up"
         body = "No pending assignments on Bahria LMS."
         fan_out = False      # a desktop note after each check; not worth a phone buzz or an email twice a day
-    _notify(title, body, voice, channels=fan_out)
+    _notify(title, body, voice, channels=fan_out, view="assignments")
 
 
 def alert_attendance(changes: dict, minimum: int) -> None:
@@ -136,7 +138,7 @@ def alert_attendance(changes: dict, minimum: int) -> None:
         title = f"Attendance under {minimum}% in {_plural(len(dropped), 'course')}"
     else:
         title = f"New absence in {_plural(len(new_abs), 'course')}"
-    _notify(title, "\n".join(lines))
+    _notify(title, "\n".join(lines), view="attendance")
 
 
 def alert_assignment_files(posted: list) -> None:
@@ -147,7 +149,7 @@ def alert_assignment_files(posted: list) -> None:
     lines = [f"- {a['title'][:40]}: {' and '.join(words.get(k, k) for k in kinds)}" for a, kinds in posted[:3]]
     n = len(posted)
     _notify("Returned work" if all(k == ["returned"] for _a, k in posted) else f"{_plural(n, 'assignment')} updated by the teacher",
-            "\n".join(lines))
+            "\n".join(lines), view="assignments")
 
 
 def alert_announcements(new_items: list) -> None:
@@ -155,7 +157,7 @@ def alert_announcements(new_items: list) -> None:
         return
     lines = [f"- {a['course'][:26]}: {a['text'][:70]}" for a in new_items[:3]]
     title = f"{_plural(len(new_items), 'new announcement')} on the LMS"
-    _notify(title, "\n".join(lines))
+    _notify(title, "\n".join(lines), view="announcements")
 
 
 def _exam_line(e: dict) -> str:
@@ -175,12 +177,12 @@ def alert_exams_soon(exams: list) -> None:
     else:
         lead = f"in {_plural(first['days'], 'day')}"
     title = f"Exam {lead}: {first['title'][:40]}"
-    _notify(title, "\n".join(_exam_line(e) for e in exams[:4]))
+    _notify(title, "\n".join(_exam_line(e) for e in exams[:4]), view="exams")
 
 
 def alert_exam_today(e: dict) -> None:
     """Morning-of reminder (hourly job, once per exam)."""
-    _notify(f"Exam today: {e['title'][:40]}", _exam_line(e), urgent=True)
+    _notify(f"Exam today: {e['title'][:40]}", _exam_line(e), urgent=True, view="exams")
 
 
 def alert_exams_scheduled(exams: list) -> None:
@@ -193,7 +195,7 @@ def alert_exams_scheduled(exams: list) -> None:
     title = f"Exam schedule posted: {_plural(len(ups), 'paper')}"
     body = "\n".join(f"- {e['title'][:34]}: {e['date']} {e['start_time']}" + (f" · {seat_text(e)}" if seat_text(e) else "")
                      for e in ups[:4])
-    _notify(title, body)
+    _notify(title, body, view="exams")
 
 
 def alert_results_posted(semesters: list) -> None:
@@ -209,7 +211,7 @@ def alert_results_posted(semesters: list) -> None:
         else:
             state = f"{graded} of {len(s['courses'])} courses graded" + (f", GPA so far {gpa}" if gpa is not None else "")
         lines.append(f"- {s['name']}: {state}")
-    _notify("Result posted" if len(semesters) == 1 else f"{len(semesters)} results posted", "\n".join(lines))
+    _notify("Result posted" if len(semesters) == 1 else f"{len(semesters)} results posted", "\n".join(lines), view="results")
 
 
 def alert_lectures(new_items: list) -> None:
@@ -224,4 +226,4 @@ def alert_lectures(new_items: list) -> None:
         more = f" +{len(xs) - 2}" if len(xs) > 2 else ""
         lines.append(f"- {c[:28]}: " + ", ".join(
             (f"{x['title'][:24]} file" if x.get("kind") == "misc" else f"week {x['week']} {x['title'][:24]}") for x in xs[:2]) + more)
-    _notify(f"New lecture notes in {_plural(len(by_course), 'course')}", "\n".join(lines))
+    _notify(f"New lecture notes in {_plural(len(by_course), 'course')}", "\n".join(lines), view="lectures")
