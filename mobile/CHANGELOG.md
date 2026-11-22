@@ -1,6 +1,6 @@
 # Phone app changelog
 
-## Unreleased
+## 1.0.7 - 2026-11-22
 
 - The privacy statements are true again: the intro, the side menu and About and privacy said the portal password never reaches the phone, which stopped being true with the university login. They now say what each way of using the app keeps, and where it goes.
 - Settings shows the real version (it said 1.0.0), and has "University login" for someone who came in through GitHub, so lectures and uploads can be added later. The Lectures screen points to it.
