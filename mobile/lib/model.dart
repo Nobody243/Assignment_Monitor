@@ -176,22 +176,27 @@ class AppModel extends ChangeNotifier {
   Future<void> start() async {
     final began = DateTime.now();
     Duration spent() => DateTime.now().difference(began);
+    // Nothing below may leave the splash stuck: the keystore can throw or hang on the first start after an install or an
+    // update, so each risky read has a limit and a failure is treated as "nothing saved" (the next start works again).
+    Future<T?> safely<T>(Future<T> Function() f, {int seconds = 10}) async {
+      try { return await f().timeout(Duration(seconds: seconds)); } catch (e) { debugPrint('start: $e'); return null; }
+    }
     _step('Reading your saved data');
-    await prefs.load();
-    introSeen = (await SharedPreferences.getInstance()).getBool('introSeen') ?? false;
-    await _applyLockAtStart();
+    await safely(prefs.load);
+    introSeen = await safely(() async => (await SharedPreferences.getInstance()).getBool('introSeen') ?? false) ?? false;
+    await safely(_applyLockAtStart);
     unawaited(SecureScreen.set(prefs.secureScreen));
-    final token = await _store.token();
+    final token = await safely<String?>(_store.token);
     if (token != null) {
-      login = await _store.login();
-      final c = await _store.cached();
-      summary = c.summary; etag = c.etag; fetchedAt = c.fetchedAt;
+      login = await safely<String?>(_store.login);
+      final c = await safely(_store.cached);
+      if (c != null) { summary = c.summary; etag = c.etag; fetchedAt = c.fetchedAt; }
       if (summary != null && _splashMax > spent()) {
         _step('Looking for new data');
         // a slow network must not hold the app up: after the limit it opens on what it already has
-        await refresh().timeout(_splashMax - spent(), onTimeout: () {});
+        await safely<void>(() => refresh().timeout(_splashMax - spent(), onTimeout: () {}));
       }
-      if (summary != null) { _step('Planning your reminders'); await replan(); }
+      if (summary != null) { _step('Planning your reminders'); await safely(replan, seconds: 8); }
     }
     _step(token == null ? 'Almost there' : 'Opening your deadlines');
     final left = _splashMin - spent();

@@ -60,7 +60,7 @@ void main() {
   }
 
   Future<void> toPortalPage(WidgetTester tester) async {
-    await tapText(tester, 'Set up from this phone');
+    { final ctx = tester.element(find.byType(SignInScreen)); Navigator.of(ctx).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: tester.widget<SignInScreen>(find.byType(SignInScreen)).model))); await tester.pumpAndSettle(); }
     expect(find.text('What this does'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Continue'), 150, scrollable: find.byType(Scrollable).first);
     expect(tester.widget<FilledButton>(find.ancestor(of: find.text('Continue'), matching: find.byWidgetPredicate((w) => w is FilledButton))).onPressed, isNull, reason: 'consent first');
@@ -106,6 +106,7 @@ void main() {
       expect(model.cloudFirstCheck, isTrue);
       expect(find.text('Signed in as student1'), findsOneWidget);
       expect(find.textContaining('first check is running'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Check now'), 150, scrollable: find.byType(Scrollable).first);
       expect(find.text('Check now'), findsOneWidget);
       expect(find.text('What this does'), findsNothing);
 
@@ -191,7 +192,7 @@ void main() {
           }), Duration.zero);
       await tester.pumpWidget(signIn());
       await tester.pumpAndSettle();
-      await tapText(tester, 'Set up from this phone');
+      { final ctx = tester.element(find.byType(SignInScreen)); Navigator.of(ctx).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: tester.widget<SignInScreen>(find.byType(SignInScreen)).model))); await tester.pumpAndSettle(); }
       await tester.scrollUntilVisible(find.byType(CheckboxListTile), 150, scrollable: find.byType(Scrollable).first);
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));   // clear of the button bar under it
       await tester.pumpAndSettle();

@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../model.dart';
 import 'intro.dart' show BrandMark;
 import '../source.dart' show DeviceCode, repoName;
-import 'cloud_setup_screens.dart' show CloudSetupWizard;   // setup from the phone
 
 /// First run: sign in to GitHub (device flow) or look at the demo. Also shown while the first summary is awaited.
 class SignInScreen extends StatelessWidget {
@@ -66,24 +65,19 @@ class SignInScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         ..._cloudOptions(context),
-        TextButton(onPressed: model.useDemo, child: const Text('Look around with demo data')),
       ];
 
-  /// The ways to use the GitHub cloud checks: a read-only token (recommended), setting them up from the phone, or a GitHub code.
+  /// Two ways in, the student's choice: a read-only token (the safer one) or a GitHub code.
   List<Widget> _cloudOptions(BuildContext context) => [
-        // the safest way in is the default: a token that can only read the one repository
         FilledButton.icon(
           onPressed: model.phase == Phase.signingIn ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TokenSignInPage(model: model))),
-          icon: const Icon(LucideIcons.shieldCheck), label: const Text('Sign in (read-only, recommended)'),
+          icon: const Icon(LucideIcons.shieldCheck), label: const Text('Sign in with a read-only token'),
         ),
         const SizedBox(height: 10),
-        // new here, or no PC: the phone sets up the checks itself (lib/screens/cloud_setup_screens.dart)
         OutlinedButton.icon(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CloudSetupWizard(model: model))),
-          icon: const Icon(LucideIcons.smartphone), label: const Text('Set up from this phone'),
+          onPressed: model.phase == Phase.signingIn ? null : model.signIn,
+          icon: const Icon(LucideIcons.keyRound), label: const Text('Sign in with a GitHub code'),
         ),
-        const SizedBox(height: 4),
-        TextButton(onPressed: model.phase == Phase.signingIn ? null : model.signIn, child: const Text('Sign in with a GitHub code instead')),
       ];
 
   List<Widget> _code(BuildContext context, DeviceCode c) {
