@@ -66,10 +66,14 @@ const VIEWS = ['dashboard', 'assignments', 'attendance', 'exams', 'results', 'ti
  */
 function parseCli(argv) {
   const has = f => argv.includes(f)
-  const link = argv.find(a => /^assignment-monitor:\/\//i.test(a))          // a button on a reminder notification
+  const found = argv.find(a => /^assignment-monitor:\/\//i.test(a))
+  // pressing the notification itself opens the app (optionally on one page); a button on it (snooze, done) is a background job
+  const open = found && /^assignment-monitor:\/\/open(\/|\?|$)/i.test(found) ? found : null
+  const link = open ? null : found
   const headless = HEADLESS_FLAGS.some(has) || !!link
   const i = argv.indexOf('--view')
-  const view = i >= 0 && VIEWS.includes(argv[i + 1]) ? argv[i + 1] : null
+  let view = i >= 0 && VIEWS.includes(argv[i + 1]) ? argv[i + 1] : null
+  if (open) { const v = (/[?&]view=([a-z]+)/i.exec(open) || [])[1]; view = VIEWS.includes(v) ? v : null }
   return {
     headless,
     passthrough: headless ? [...argv.filter(a => HEADLESS_FLAGS.includes(a) || HEADLESS_MODIFIERS.includes(a)), ...(link ? ['--toast-action', link] : [])] : [],

@@ -14,7 +14,10 @@ def send_toast(title: str, message: str, actions: list = None) -> None:
     """Native Windows 10/11 desktop notification. `actions` are up to two (label, link) buttons."""
     try:
         from winotify import Notification
-        toast = Notification(app_id=APP_NAME, title=title, msg=message, duration="short")
+        # pressing the notification itself opens the app (an installed program owns the link scheme, a source run does not)
+        import toast_actions
+        opens = f"{toast_actions.SCHEME}://open" if toast_actions.available() else ""
+        toast = Notification(app_id=APP_NAME, title=title, msg=message, duration="short", launch=opens)
         for label, link in (actions or [])[:2]:
             toast.add_actions(label=label, launch=link)
         toast.show()

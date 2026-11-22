@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Clicking a desktop notification now opens the app (or brings it to the front if it is already running). The Snooze and Done buttons on reminders still work as before without opening a window.
+
 ## 1.9.8 - 2026-11-22
 
 - The campus list in Settings is complete: Finishing School, National School of Hydrography and PN Nursing College were missing; it now matches the portal's own sign-in page.

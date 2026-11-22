@@ -54,6 +54,12 @@ test('a saved window position is used only while it is still on a screen', () =>
 test('the old command line still means what it did', () => {
   assert.deepEqual(parseCli(['--check', '--quiet', '--junk']), { headless: true, passthrough: ['--check', '--quiet'], quit: false, tray: false, setup: false, view: null })
   assert.equal(parseCli(['--remind', '--test']).passthrough.join(' '), '--remind --test')
+  // pressing the notification itself opens the window (never a background job); a button on it is still a job
+  const press = parseCli(['assignment-monitor://open'])
+  assert.equal(press.headless, false); assert.equal(press.view, null)
+  assert.equal(parseCli(['assignment-monitor://open?view=assignments']).view, 'assignments')
+  assert.equal(parseCli(['assignment-monitor://open?view=bogus']).view, null)
+  assert.equal(parseCli(['assignment-monitor://snooze?id=1&h=1']).headless, true)
   assert.equal(parseCli(['--enable-automation']).headless, true)
   const gui = parseCli(['--tray', '--view', 'attendance'])
   assert.deepEqual([gui.headless, gui.tray, gui.view], [false, true, 'attendance'])
