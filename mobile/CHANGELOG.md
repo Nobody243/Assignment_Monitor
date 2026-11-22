@@ -1,5 +1,9 @@
 # Phone app changelog
 
+## 1.0.13 - 2026-11-22
+
+- Phone: the token link uses a fresh name each time
+
 ## 1.0.12 - 2026-11-22
 
 - Phone: tester-only tools in Settings; removed portal code archived outside the app
