@@ -14,6 +14,7 @@ import '../logic.dart';
 import '../model.dart';
 import '../reminders.dart';
 import '../source.dart' show repoName;
+import '../tester.dart';
 import '../theme.dart';
 import 'cloud_setup_screens.dart' show CloudSettingsPage;   // phone-only Cloud checks
 import 'widgets.dart';
@@ -51,7 +52,7 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
-        if (!model.demo) ...[
+        if (!model.demo && isTester(model.login)) ...[
           row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => CloudSettingsPage(model: model)),
           const Divider(height: 1, indent: 76),
         ],
@@ -205,7 +206,7 @@ class AccountSettings extends StatelessWidget {
       ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.userRound), title: Text(summary.studentName),
           subtitle: Text(model.demo ? 'Demo data, nothing is read from GitHub' : 'GitHub: ${model.login ?? '–'}')),
       if (!model.demo) ...[
-        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.folderGit2), title: const Text('Reading from'), subtitle: Text('${model.login ?? ''}/$repoName')),
+        if (isTester(model.login)) ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.folderGit2), title: const Text('Reading from'), subtitle: Text('${model.login ?? ''}/$repoName')),
         ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: const Text('Last read from GitHub'),
             subtitle: Text(model.fetchedAt == null ? 'Not yet' : '${agoLabel(model.age!)} · summary made ${agoLabel(DateTime.now().difference(summary.generatedAt))}')),
       ],
@@ -231,7 +232,7 @@ class AboutSettings extends StatelessWidget {
       const Divider(height: 32),
       const _Head('App'),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.smartphone), title: Text('Assignment Monitor for phones'), subtitle: Text('Version $appVersion')),
-      ListTile(
+      if (isTester(model.login)) ListTile(
         contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.clipboardCopy), title: const Text('Copy support info'),
         subtitle: const Text('Versions, freshness and counts for a bug report. No name, grades or sign-in.'),
         onTap: () async {
