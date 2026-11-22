@@ -17,7 +17,7 @@ const ssoUrl = 'https://$cmsHost/Sys/Common/GoToLMS.aspx';
 const assignmentsUrl = 'https://$lmsHost/Student/Assignments.php';
 
 /// The direct-from-the-phone mode (mobile/STANDALONE.md): its sign-in entry on the first screen.
-const standaloneReady = bool.fromEnvironment('STANDALONE', defaultValue: true);   // --dart-define=STANDALONE=false hides it
+const standaloneReady = bool.fromEnvironment('STANDALONE');   // the portal-first sign-in on the first screen is off; the login is added in Settings for lectures
 
 /// What the hidden browser calls itself: an ordinary desktop Chrome, so the portal sends the same pages the desktop app reads.
 const desktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';

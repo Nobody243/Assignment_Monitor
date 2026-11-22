@@ -60,7 +60,8 @@ class BackgroundCheck {
     final cached = await st.cached();
     Summary? fresh;
     String? freshEtag;
-    if (creds != null) {
+    if (creds != null && (token == null || login == null)) {
+      // no GitHub sign-in: the portal is the source
       try { fresh = await (portalRead ?? readPortal)(creds).timeout(const Duration(minutes: 5)); } catch (e) { debugPrint('portal read failed'); }
     }
     if (fresh == null) {
@@ -72,6 +73,9 @@ class BackgroundCheck {
       }
       fresh = fetched.summary!;
       freshEtag = fetched.etag;
+      // the lecture list is read from the portal, not carried by the summary file: keep what the phone has
+      final lec = cached.summary?.raw['lectures'];
+      if (lec != null && fresh.raw['lectures'] == null) fresh.raw['lectures'] = lec;
     }
     var shown = 0;
     final before = cached.summary;

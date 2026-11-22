@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:assignment_monitor_mobile/data.dart';
+import 'package:assignment_monitor_mobile/portal.dart';
 import 'package:assignment_monitor_mobile/source.dart';
 
 /// Keeps the sign-in and the last summary in memory, so the model runs without a phone's keystore.
@@ -23,4 +26,16 @@ class MemoryVault implements Vault {
   @override Future<String?> read(String key) async => data[key];
   @override Future<void> write(String key, String value) async => data[key] = value;
   @override Future<void> delete(String key) async => data.remove(key);
+}
+
+/// A portal browser that fails at everything, for tests that must prove the portal is not used (or fails harmlessly when it is).
+class OfflineBrowser implements PortalBrowser {
+  @override Future<void> open(String url, {Duration timeout = const Duration(seconds: 40)}) async => throw StateError('offline');
+  @override Future<String> url() async => '';
+  @override Future<String> html() async => '';
+  @override Future<dynamic> js(String source) async => throw StateError('offline');
+  @override Future<void> jsThenSettle(String source, {Duration timeout = const Duration(seconds: 20)}) async {}
+  @override Future<FetchedFile> fetchFile(String url, {int maxBytes = maxDownloadBytes}) async => throw StateError('offline');
+  @override Future<void> attachFile(String selector, String name, String mime, Uint8List bytes) async {}
+  @override Future<void> close() async {}
 }

@@ -43,7 +43,7 @@ class SignInScreen extends StatelessWidget {
               for (final (icon, text) in const [
                 (LucideIcons.timer, 'Live countdowns and reminders that work offline'),
                 (LucideIcons.calendarCheck, 'Attendance: exactly how many hours you can still miss'),
-                (LucideIcons.lock, 'Your login stays in this phone\'s secure storage and goes only to the university portal. No server of ours is involved.'),
+                (LucideIcons.lock, 'Your portal password stays off the phone, unless you add it later for lecture downloads (then in secure storage).'),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -64,7 +64,7 @@ class SignInScreen extends StatelessWidget {
 
   List<Widget> _start(BuildContext context) => [
         if (model.error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(model.error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-        Text('Sign in once with the same login as the university portal. Deadlines, attendance, lectures and uploads all work from this phone, with no PC needed.',
+        Text('Your deadlines, attendance, exams, results and timetable are read from your desktop app or your own private GitHub repository, so they open in a second. Notifications come from there too. Lecture notes need your university login, which you can add later in Settings.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         if (standaloneReady) ...[

@@ -248,7 +248,7 @@ class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
       body: SafeArea(
         child: Column(children: [
           // one strip at a time, so they never crowd the content: what is being read now, else what went wrong, else the offer
-          if (!m.demo && m.refreshing && m.portalMode) _SyncBar(model: m)
+          if (!m.demo && m.refreshing && (m.portalMode || m.syncStep.isNotEmpty)) _SyncBar(model: m)
           else if (!m.demo && (m.error != null || stale || (m.portalMode && m.syncSkipped.isNotEmpty))) _Banner(model: m)
           // the offer is a nice-to-have: on a small screen or with large text it would crowd the content out, and Settings has it anyway
           else if (m.offerCloud && MediaQuery.sizeOf(context).height >= 640 && MediaQuery.textScalerOf(context).scale(14) <= 18.5) _CloudOffer(model: m),
@@ -354,7 +354,7 @@ class _SideMenu extends StatelessWidget {
             const Spacer(),
             staggered(items.length + 1, Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _MenuRow(icon: LucideIcons.logOut, label: model.demo ? 'Leave the demo' : 'Sign out', selected: false, onTap: onSignOut),
-              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text(model.portalMode ? "Your login stays in this phone's secure storage and goes only to the university portal." : "Your portal password is never stored on this phone.", style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
+              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 8, 0), child: Text(model.hasLogin ? "Your university login (for lectures) stays in this phone's secure storage and goes only to the portal." : "Your portal password is never stored on this phone.", style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant))),
             ])),
           ]),
         ))))),

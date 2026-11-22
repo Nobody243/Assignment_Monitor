@@ -47,7 +47,7 @@ class LecturesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!model.portalMode) {
+    if (!model.hasLogin) {
       return EmptyState(
         icon: LucideIcons.bookOpen, title: model.demo ? 'Lectures are not in the demo' : 'Lectures need your university login',
         hint: model.demo

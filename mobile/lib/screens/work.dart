@@ -153,6 +153,10 @@ class _WorkTile extends StatelessWidget {
   }
 }
 
+/// Uploading, replacing and deleting a submission from the phone is built and tested but switched off: the phone shows and
+/// reminds, and work is submitted on the portal or the PC app.
+const phoneUploads = false;
+
 class _Detail extends StatelessWidget {
   const _Detail({required this.work, required this.now, required this.prefs, this.model});
   final AppModel? model;
@@ -201,9 +205,9 @@ class _Detail extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: FilledButton.icon(icon: const Icon(LucideIcons.check), onPressed: () { prefs.update(() => prefs.done.add(w.id)); Navigator.pop(context); }, label: const Text('Done'))),
           ]),
-          if (model?.portalMode ?? false) ..._files(context, t) else ...[
+          if (model?.hasLogin ?? false) ..._files(context, t) else ...[
             const SizedBox(height: 10),
-            Text('Add your university login (Settings, University login) to download the brief and upload your work from this phone.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+            Text('Add your university login (Settings, University login) to download the brief from this phone. Submit your work on the portal or the PC app.', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
           ],
         ]),
       ),
@@ -248,7 +252,7 @@ class _Detail extends StatelessWidget {
             if (saved != null) await openSavedFile(saved);
           },
         ),
-      if (w.canSubmit) ...[
+      if (phoneUploads && w.canSubmit) ...[
         const SizedBox(height: 8),
         FilledButton.icon(
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
@@ -286,9 +290,11 @@ class _Fact extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(k, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          Text(v, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(width: 16),
+          // a long value (a date with its time, a note) wraps and stays on the right instead of running off the edge
+          Expanded(child: Text(v, textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.w600))),
         ]),
       );
 }

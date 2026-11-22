@@ -97,7 +97,7 @@ void main() {
   }
 
   testWidgets('the account screen tells the truth in each mode', (tester) async {
-    final portalModel = model()..summary = summary..portalMode = true;
+    final portalModel = model()..summary = summary..portalMode = true..hasLogin = true;
     await show(tester, () => Scaffold(body: AccountSettings(summary: summary, model: portalModel)), size: const Size(390, 844));
     expect(find.textContaining('University portal'), findsWidgets);
     expect(find.text('Last read from the portal'), findsOneWidget);

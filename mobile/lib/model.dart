@@ -196,8 +196,9 @@ class AppModel extends ChangeNotifier {
     await _applyLockAtStart();
     unawaited(SecureScreen.set(prefs.secureScreen));
     final token = await _store.token();
-    portalMode = await hasPortal();
-    final signedIn = token != null || portalMode;
+    hasLogin = await hasPortal();
+    portalMode = hasLogin && token == null;   // the data comes from the portal only when there is no GitHub sign-in
+    final signedIn = token != null || hasLogin;
     if (signedIn) {
       login = await _store.login();
       final c = await _store.cached();
@@ -301,19 +302,31 @@ class AppModel extends ChangeNotifier {
 
   /// Reads only one section's data (the screen's own pull-to-refresh), not the whole portal again. Without a portal login the
   /// summary comes whole from GitHub, so this is the same as [refresh].
-  Future<void> refreshSection(String section) => refresh(only: {section});
+  Future<void> refreshSection(String section) async {
+    // The lecture list is not in the summary file: with a university login it is read from the portal, apart from the data's source.
+    if (section == 'lectures' && hasLogin && !portalMode) {
+      if (demo || refreshing) return;
+      refreshing = true; notifyListeners();
+      try { await _refreshFromPortal(only: {'lectures'}); } finally { refreshing = false; notifyListeners(); }
+      return;
+    }
+    return refresh(only: {section});
+  }
 
   Future<void> refresh({Set<String>? only}) async {
     if (demo || refreshing) return;
     refreshing = true;   // claimed before the first await, so a pull-to-refresh and a resume together cannot both run
     final token = await _store.token();
-    portalMode = await hasPortal();
+    hasLogin = await hasPortal();
+    portalMode = hasLogin && (token == null || login == null);
     if (portalMode) {
-      // straight from the portal; if that fails and a cloud sign-in also exists, its summary still fills the screens
-      final ok = await _refreshFromPortal(only: only);
-      if (ok || only != null || token == null || login == null) { refreshing = false; notifyListeners(); return; }
-    } else if (token == null || login == null) { refreshing = false; return; }
-    error = portalMode ? null : error;
+      // no GitHub sign-in: the data comes straight from the portal
+      await _refreshFromPortal(only: only);
+      refreshing = false; notifyListeners();
+      return;
+    }
+    if (token == null || login == null) { refreshing = false; return; }
+    error = null;
     notifyListeners();
     try {
       final f = await _source.fetch(token, login!, etag: etag);
@@ -323,7 +336,9 @@ class AppModel extends ChangeNotifier {
       } else if (f.missing) {
         if (summary == null && phase != Phase.loading) phase = Phase.waiting;
       } else {
+        final lectures = summary?.raw['lectures'];   // the lecture list is read from the portal, not carried by the summary file
         summary = f.summary; etag = f.etag; fetchedAt = DateTime.now();
+        if (lectures != null && summary!.raw['lectures'] == null) summary!.raw['lectures'] = lectures;
         await _store.saveSummary(summary!, etag);
         if (phase != Phase.loading) phase = Phase.ready;
         unawaited(replan());
@@ -359,6 +374,9 @@ class AppModel extends ChangeNotifier {
 
   /// True when the phone holds a portal sign-in: the data then comes straight from the portal.
   bool portalMode = false;
+
+  /// A university login is saved (used for the lecture list and downloads; the data may still come from GitHub).
+  bool hasLogin = false;
 
   /// What the portal read is doing right now ("Reading attendance"), and the parts it had to skip.
   String syncStep = '';
@@ -431,10 +449,25 @@ class AppModel extends ChangeNotifier {
 
   /// After a successful sign-in: the first read of the portal starts, and the waiting screen shows what it is doing.
   void beginPortalMode() {
-    portalMode = true; error = null;
-    if (summary == null) phase = Phase.waiting;   // someone who already has data keeps seeing it while the portal is read
+    hasLogin = true; error = null;
+    if (!cloudOn) {
+      // no GitHub: the portal is the data source (kept for those who use the phone this way)
+      portalMode = true;
+      if (summary == null) phase = Phase.waiting;   // someone who already has data keeps seeing it while the portal is read
+      notifyListeners();
+      unawaited(refresh());
+      return;
+    }
     notifyListeners();
-    unawaited(refresh());
+    unawaited(refreshSection('lectures'));   // data stays from GitHub; the login adds the lecture list and downloads
+  }
+
+  /// Forgets the saved university login (the lecture list and downloads stop working); the rest of the data is untouched.
+  Future<void> removePortalLogin() async {
+    await _portalStore.clear();
+    hasLogin = false;
+    if (portalMode) { portalMode = false; }
+    notifyListeners();
   }
 
   /// Runs [job] with a signed-in portal and a folder for downloads, then throws the session away. Each file action signs in
@@ -451,6 +484,7 @@ class AppModel extends ChangeNotifier {
       await portal.close();
     }
   }
+
 
   /// True when GitHub background checks are connected (a GitHub sign-in exists).
   bool get cloudOn => login != null;

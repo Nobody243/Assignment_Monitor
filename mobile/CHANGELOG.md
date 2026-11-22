@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The phone is read-only by default again, and fast: your deadlines, attendance, exams, results and timetable are read from your desktop app or your own private GitHub repository (one small file, about a second), and notifications come from there too. The university-login-first start is gone from the first screen.
+- The university login is now an add-on for lecture notes: add it in Settings, then Lectures lists every course's files and downloads them (about 20 to 30 seconds, only when you tap), and the assignment sheet can download a brief. It is not used for the rest of the data when GitHub is connected, and it can be removed in Settings.
+- The phone no longer offers to upload, replace or delete a submission: submit on the portal or the PC app. (The code is kept but switched off.)
+- The lecture list is kept when the data is refreshed from GitHub.
+- A long value in the assignment sheet (a date with its time, a note) wraps instead of running off the edge.
 - Attendance, exam seats and the timetable now arrive the first time: those portal pages draw their tables after they load, and the phone read them too early (an empty page that looked like "done"). It now waits until the table is there.
 - A page that still comes back empty is read once more, and if it stays empty the earlier data is kept instead of being replaced by "no timetable yet"; the report in Settings says so.
 - The everyday check is much shorter: lecture notes (two page loads per course) are read only when there are none yet or when you refresh the Lectures screen, and a course whose attendance hours have not changed keeps its class list instead of loading its page again.

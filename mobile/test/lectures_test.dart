@@ -18,7 +18,7 @@ void main() {
   Future<AppModel> model({bool portal = true, bool demo = false, List<String> skipped = const []}) async {
     SharedPreferences.setMockInitialValues({});
     final m = AppModel(Prefs(), store: MemoryStore());
-    m.portalMode = portal; m.demo = demo; m.syncSkipped = skipped;
+    m.hasLogin = portal; m.demo = demo; m.syncSkipped = skipped;
     return m;
   }
 

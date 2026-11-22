@@ -168,7 +168,7 @@ class _IntroScreenState extends State<IntroScreen> {
               children: const [
                 _Slide(art: _CountdownArt(), title: 'Never miss a deadline', body: 'Every assignment counts down on your phone, with reminders you choose: a day before, three hours before, an hour before.'),
                 _Slide(art: _AttendanceArt(), title: 'Know how many classes you can miss', body: 'Attendance shows exactly how many hours you can still skip and stay above the minimum, class by class and for the whole semester.'),
-                _Slide(art: _PrivacyArt(), title: 'Your data stays yours', body: "Sign in once with your university login. It stays in this phone's secure storage and goes only to the university portal, never through a server of ours. You can also let your own private GitHub repository keep checking while the phone is off."),
+                _Slide(art: _PrivacyArt(), title: 'Your data stays yours', body: "Your PC or your own private GitHub repository does the checking, and the phone only reads a small summary file. Your portal password stays off the phone, unless you add it for lecture downloads, and then it sits in secure storage."),
               ],
             ),
           ),
@@ -305,11 +305,11 @@ class _PrivacyArt extends StatelessWidget {
     Widget link() => Padding(padding: const EdgeInsets.only(bottom: 24), child: Icon(LucideIcons.arrowRight, size: 20, color: t.colorScheme.onSurfaceVariant));
     return Column(mainAxisSize: MainAxisSize.min, children: [
       FittedBox(fit: BoxFit.scaleDown, child: Row(mainAxisSize: MainAxisSize.min, children: [
-        node(LucideIcons.graduationCap, 'University portal'),
+        node(LucideIcons.monitor, 'Your PC'),
+        const SizedBox(width: 14), link(), const SizedBox(width: 14),
+        node(LucideIcons.lock, 'Private repo'),
         const SizedBox(width: 14), link(), const SizedBox(width: 14),
         node(LucideIcons.smartphone, 'This phone', accent: true),
-        const SizedBox(width: 14), link(), const SizedBox(width: 14),
-        node(LucideIcons.lock, 'Your private repo'),
       ])),
       const SizedBox(height: 22),
       Container(
@@ -318,7 +318,7 @@ class _PrivacyArt extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(LucideIcons.keyRound, size: 18, color: t.colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
-          Flexible(child: Text('Your login stays on this phone', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
+          Flexible(child: Text('Password stays off the phone', style: t.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
         ]),
       ),
     ]);

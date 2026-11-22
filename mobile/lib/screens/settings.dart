@@ -53,8 +53,12 @@ class SettingsHub extends StatelessWidget {
         const Divider(height: 1, indent: 76),
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
-        if (!model.demo && !model.portalMode) ...[
-          row(LucideIcons.graduationCap, 'University login', 'Add it for lectures and to upload your work from this phone', () => PortalSignInPage(model: model)),
+        if (!model.demo && !model.hasLogin) ...[
+          row(LucideIcons.graduationCap, 'University login', 'Add it to see lecture notes and download them', () => PortalSignInPage(model: model)),
+          const Divider(height: 1, indent: 76),
+        ],
+        if (!model.demo && model.hasLogin && !model.portalMode) ...[
+          row(LucideIcons.graduationCap, 'University login', 'Saved, used for lecture notes and downloads. Tap to remove it', () => _RemoveLogin(model: model)),
           const Divider(height: 1, indent: 76),
         ],
         if (!model.demo) ...[
@@ -221,7 +225,7 @@ class AccountSettings extends StatelessWidget {
             subtitle: Text(model.portalMode ? 'The university portal, straight from this phone${model.cloudOn ? '. GitHub checks are also on (${model.login}/$repoName).' : ''}' : '${model.login ?? ''}/$repoName')),
         ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.refreshCw), title: Text(model.portalMode ? 'Last read from the portal' : 'Last read from GitHub'), subtitle: Text(readAt)),
       ],
-      if (model.portalMode) ...[
+      if (model.hasLogin) ...[
         const Divider(height: 32),
         const _Head('Downloaded files'),
         ListTile(
@@ -258,18 +262,18 @@ class AboutSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       const _Head('What the phone holds'),
-      if (model.portalMode)
-        const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Your university login'), subtitle: Text("Enrollment number, password and campus, in this phone's secure storage. They are sent only to the university portal, and deleted when you sign out."))
+      if (model.hasLogin)
+        ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.lock), title: const Text('Your university login'), subtitle: Text(model.portalMode ? "Enrollment number, password and campus, in this phone's secure storage. They are sent only to the university portal, and deleted when you sign out." : "Enrollment number, password and campus, in this phone's secure storage, used only for the lecture list and downloads. They are sent only to the university portal, and deleted when you remove the login or sign out."))
       else
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.lock), title: Text('Portal password'), subtitle: Text("Not kept on the phone, which does not contact the portal in this mode. With the desktop app it never reaches the phone; in the phone setup of GitHub checks it is typed once, encrypted and sent to your own repository's secret store.")),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.keyRound), title: Text('A GitHub sign-in (only if you use GitHub checks)'), subtitle: Text("Kept in the phone's secure storage, used only to read or run the checks in your own repository.")),
       const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.hardDrive), title: Text('The last read of your data'), subtitle: Text('Assignments, attendance, grades and the rest, stored on the phone (encrypted in secure storage) so the app opens offline.')),
-      if (model.portalMode)
+      if (model.hasLogin)
         const ListTile(contentPadding: EdgeInsets.zero, leading: Icon(LucideIcons.download), title: Text('Files you download'), subtitle: Text("Lecture files and assignment briefs are kept in the app's own storage, out of reach of other apps, until you clear the app's data or uninstall it.")),
       const Divider(height: 32),
       const _Head('Sharing'),
-      Muted(model.portalMode
-          ? 'No analytics and no crash reporting. The phone talks only to the university portal and, if you use GitHub checks, to GitHub. Nothing goes through a server of ours.'
+      Muted(model.hasLogin
+          ? 'No analytics and no crash reporting. The phone talks only to GitHub (your summary file) and, for lecture notes, to the university portal. Nothing goes through a server of ours.'
           : 'No analytics and no crash reporting. Nothing is sent anywhere except the request to GitHub that reads your summary file.'),
       const Divider(height: 32),
       const _Head('App'),
@@ -417,4 +421,27 @@ class SyncReportPage extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Asks before forgetting the saved university login.
+class _RemoveLogin extends StatelessWidget {
+  const _RemoveLogin({required this.model});
+  final AppModel model;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('University login', style: TextStyle(fontWeight: FontWeight.w700))),
+        body: SafeArea(child: ListView(padding: const EdgeInsets.all(20), children: [
+          Text("Your university login is saved in this phone's secure storage and used only for the lecture list and downloads. Everything else is read from GitHub.", style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            icon: const Icon(LucideIcons.trash2, size: 18), label: const Text('Remove my university login'),
+            onPressed: () async {
+              await model.removePortalLogin();
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
+        ])),
+      );
 }

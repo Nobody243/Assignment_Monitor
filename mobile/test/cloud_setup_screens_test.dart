@@ -60,7 +60,6 @@ void main() {
   }
 
   Future<void> toPortalPage(WidgetTester tester) async {
-    await tapText(tester, 'I already use the GitHub checks');
     await tapText(tester, 'Set up from this phone');
     expect(find.text('What this does'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Continue'), 150, scrollable: find.byType(Scrollable).first);
@@ -192,7 +191,6 @@ void main() {
           }), Duration.zero);
       await tester.pumpWidget(signIn());
       await tester.pumpAndSettle();
-      await tapText(tester, 'I already use the GitHub checks');
       await tapText(tester, 'Set up from this phone');
       await tester.scrollUntilVisible(find.byType(CheckboxListTile), 150, scrollable: find.byType(Scrollable).first);
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));   // clear of the button bar under it
