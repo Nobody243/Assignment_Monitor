@@ -25,7 +25,7 @@ export default function Hero() {
     <section className="hero">
       <motion.div className="wrap hero-copy" ref={copy} initial={{ scale: 1.04 }} animate={introDone ? { scale: 1 } : {}} transition={{ duration: 2.2, ease: EASE }}>
         <motion.div initial="hidden" animate={state} variants={{ hidden: {}, show: { transition: { delayChildren: 0.45, staggerChildren: 0.055 } } }} className="hero-stack">
-          <motion.p className="eyebrow mono" variants={rise}>For Bahria University students · Windows · free</motion.p>
+          <motion.p className="eyebrow mono" variants={rise}>For Bahria University students · Windows and Android · free</motion.p>
           <h1 aria-label="Never miss an LMS deadline again.">
             {WORDS.map((w) => <span className="w" key={w} aria-hidden="true"><motion.span variants={word}>{w}</motion.span></span>)}
             <span className="w" aria-hidden="true"><motion.span className="heading-accent hero-accent" variants={word}>again.</motion.span></span>

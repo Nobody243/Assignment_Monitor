@@ -5,10 +5,10 @@
   "trailingSlash": false,
   "redirects": [
     { "source": "/", "has": [{ "type": "host", "value": "assignment-monitor.vercel.app" }], "destination": "https://assignment-monitor.saaddev.top/", "permanent": true },
-    { "source": "/:page(download|privacy|faq|cloud)", "has": [{ "type": "host", "value": "assignment-monitor.vercel.app" }], "destination": "https://assignment-monitor.saaddev.top/:page", "permanent": true }
+    { "source": "/:page(download|privacy|faq|cloud|phone-app)", "has": [{ "type": "host", "value": "assignment-monitor.vercel.app" }], "destination": "https://assignment-monitor.saaddev.top/:page", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/:page(download|privacy|faq|phone|cloud|gpa-calculator)", "destination": "/:page.html" },
+    { "source": "/:page(download|privacy|faq|phone|phone-app|cloud|gpa-calculator)", "destination": "/:page.html" },
     { "source": "/guide/:slug(bahria-attendance|bahria-lms-deadlines|bahria-cgpa-calculator|bahria-exam-seating-plan)", "destination": "/guide/:slug.html" }
   ],
   "headers": [
@@ -29,6 +29,7 @@
     { "source": "/draco/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
     { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }, { "key": "Service-Worker-Allowed", "value": "/" }] },
     { "source": "/latest.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }] },
+    { "source": "/phone.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }] },
     { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=86400" }] }
   ]
 }

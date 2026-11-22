@@ -111,3 +111,35 @@ jobs:
             mobile/build/app/outputs/AssignmentMonitor-phone.apk
             mobile/build/app/outputs/AssignmentMonitor-phone.aab
             mobile/build/app/outputs/AssignmentMonitor-phone.sha256
+
+      - name: Tell the website about the phone release (published releases only)
+        # website/public/phone.json is what the site's Android page shows (version, size, links) without asking GitHub's
+        # API from every visitor's browser. It lives under website/, which neither phone workflow watches, so no loop.
+        if: startsWith(github.ref, 'refs/tags/phone-v') && github.event_name == 'workflow_dispatch' && inputs.publish
+        working-directory: .
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime, json, os
+          tag = os.environ["GITHUB_REF_NAME"]
+          base = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases"
+          apk = "mobile/build/app/outputs/AssignmentMonitor-phone.apk"
+          info = {
+              "version": tag.removeprefix("phone-v"), "tag": tag,
+              "published_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "page_url": f"{base}/tag/{tag}",
+              "apk_url": f"{base}/download/{tag}/AssignmentMonitor-phone.apk",
+              "apk_size": os.path.getsize(apk),
+              "sha_url": f"{base}/download/{tag}/AssignmentMonitor-phone.sha256",
+          }
+          with open("phone.json", "w", encoding="utf-8") as f:
+              f.write(json.dumps(info, indent=2) + "\n")
+          PY
+          git config user.name "Nobody243"
+          git config user.email "Nobody243@users.noreply.github.com"
+          git fetch --depth=1 origin main
+          git checkout -B main origin/main
+          mv -f phone.json website/public/phone.json
+          git add website/public/phone.json
+          git commit -m "Website: the latest phone app is ${GITHUB_REF_NAME} (written by the release build)" || exit 0
+          git push origin main

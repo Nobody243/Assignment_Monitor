@@ -10,9 +10,9 @@ import DownloadMenu from "./DownloadMenu.jsx";
 import { DownloadActions, PlatformNote } from "./DownloadActions.jsx";
 
 /* The bar shows only the few things most visitors want; everything else sits under "More" (and in the footer). */
-const TOP = [["/download", "Download"], ["/phone-app", "Android app"], ["/gpa-calculator", "GPA calculator"]];
+const TOP = [["/download", "Download"], ["/phone-app", "Android app"], ["/gpa-calculator", "GPA calculator"], ["/privacy", "Privacy"]];
 const SECTIONS = [["story", "Tour"], ["features", "Features"], ["screens", "Screens"]];
-const MORE_PAGES = [["/cloud", "Cloud checks"], ["/privacy", "Privacy"], ["/faq", "FAQ"]];
+const MORE_PAGES = [["/cloud", "Cloud checks"], ["/faq", "FAQ"]];
 const PAGES = [...TOP, ...MORE_PAGES];
 
 const GitHubIcon = () => (

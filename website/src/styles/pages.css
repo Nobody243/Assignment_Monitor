@@ -46,6 +46,17 @@
 
 /* ============================================================ cloud checks walkthrough */
 .cloud-how { padding-top: 0; }
+.phone-shots { padding: 0 0 clamp(24px, 4vw, 48px); }
+.shot-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(12px, 2vw, 24px); align-items: start; }
+.shot { margin: 0; display: grid; gap: 10px; justify-items: center; }
+.shot-frame { width: 100%; max-width: 250px; padding: 7px; border-radius: 30px; background: #1a1b1e; border: 1px solid var(--line-2); box-shadow: var(--shadow-win); }
+.shot-frame img { display: block; width: 100%; height: auto; border-radius: 24px; }
+.shot figcaption { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.shot-note { margin-top: 14px; text-align: center; font-size: var(--t-xs); color: var(--ink-3); }
+.qr-card { display: flex; align-items: center; gap: 18px; margin: 0 0 22px; padding: 16px; border-radius: var(--card-r); background: var(--glass); border: 1px solid var(--line); }
+.qr-card .qr { flex: none; border-radius: 10px; }
+.qr-card p { margin: 0; color: var(--ink-3); font-size: var(--t-sm); }
+@media (max-width: 760px) { .shot-row { grid-template-columns: repeat(2, 1fr); } }
 .cloud-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .cloud-card { padding: var(--card-pad); border-radius: var(--card-r); background: var(--glass); border: 1px solid var(--line); }
 .cloud-card .mono { display: block; margin-bottom: 12px; color: var(--accent); }

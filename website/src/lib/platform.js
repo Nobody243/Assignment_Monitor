@@ -13,6 +13,8 @@ function detectWindows() {
 }
 
 export const IS_WINDOWS = detectWindows();
+/* An Android phone or tablet: the home page offers the phone app first. */
+export const IS_ANDROID = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent || "");
 export const CAN_SHARE = typeof navigator !== "undefined" && typeof navigator.share === "function";
 export const SHARE = {
   title: "Assignment Monitor",
