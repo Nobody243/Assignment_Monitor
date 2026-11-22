@@ -318,6 +318,12 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
 /// The real browser: a WebView the student never sees, with its cookies and cache cleared before and after, limited to the
 /// two university hosts.
 class WebViewBrowser implements PortalBrowser {
+  /// One hidden browser for the whole app run: a new one for every refresh and download piled up native views (webview_flutter has
+  /// no way to dispose one) and, after a few refreshes, the portal could no longer be read. Its cookies are cleared after each job.
+  factory WebViewBrowser() => _instance;
+  WebViewBrowser._();
+  static final WebViewBrowser _instance = WebViewBrowser._();
+
   WebViewController? _c;
   Completer<void>? _loaded;
   Completer<void>? _started;
@@ -463,8 +469,8 @@ class WebViewBrowser implements PortalBrowser {
 
   @override
   Future<void> close() async {
+    // the view stays for the next job; only the session is thrown away
     final c = _c;
-    _c = null;
     try {
       await WebViewCookieManager().clearCookies();
       await c?.clearCache();

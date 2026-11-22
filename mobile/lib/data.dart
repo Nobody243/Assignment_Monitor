@@ -75,7 +75,7 @@ class Lecture {
   String get title => _str(m['title'], 'Lecture');
   String get kind => _str(m['kind'], 'lecture');
   Object? get week => m['week'];
-  List<({String label, String filename})> get files => [for (final f in _list(m['files'])) (label: _str(f['label'], 'Download'), filename: _str(f['filename']))];
+  List<({String label, String filename, int index})> get files => [for (final (i, f) in _list(m['files']).indexed) (label: _str(f['label'], 'Download'), filename: _str(f['filename']), index: f['index'] is num ? (f['index'] as num).toInt() : i)];
 }
 
 class Course {

@@ -49,17 +49,54 @@ class PortalFiles {
   /// One lecture (or miscellaneous) file. The course page is read again to find the file's current link, matched by file
   /// name, then link, then label, exactly as the desktop does.
   Future<SavedFile> lectureFile({required String course, required Object? week, required String title, required String kind,
-      required String filename, required String label}) async {
+      required String filename, required String label, int index = 0}) async {
     await portal.lmsPage(kind == 'misc' ? miscUrl : lecturesUrl);
-    final html = await portal.selectCourse(course);
-    final live = kind == 'misc' ? parseMisc(html, course) : parseLectures(html, course);
-    final weekFiles = [for (final x in live) if ('${x['week']}' == '$week' && x['title'] == title) for (final f in (x['files'] as List)) (f as Map).cast<String, dynamic>()];
+    var html = await portal.selectCourse(course);
     Map<String, dynamic>? hit;
-    if (filename.isNotEmpty) { hit = weekFiles.where((f) => f['filename'] == filename).firstOrNull; }
-    hit ??= () { final same = weekFiles.where((f) => f['label'] == label).toList(); return same.length == 1 ? same.first : null; }();
-    if (hit == null) throw FileProblem('That file is no longer listed on the portal.');
+    // The list can still be filling in when the page has "loaded", so a miss is looked at again a few times before it is called
+    // missing. Weeks and titles are compared loosely (case, spacing), and a file is found by its name, then by its position in
+    // the week, then by its label when that is unique.
+    for (var attempt = 0; attempt < 4 && hit == null; attempt++) {
+      if (attempt > 0) { await Future<void>.delayed(pause * 6); html = await _b.html(); }
+      hit = _findLectureFile(kind == 'misc' ? parseMisc(html, course) : parseLectures(html, course), week: week, title: title, filename: filename, label: label, index: index);
+    }
+    if (hit == null) throw FileProblem('That file is not listed on the portal right now (${safeName(course, 40)}). Pull down on Lectures and try again.');
     final sub = kind == 'misc' ? 'Miscellaneous' : 'Week ${'$week'.padLeft(2, '0')}';
     return _save(hit['href'] as String, [safeName(course), '$sub - ${safeName(title, 60)}'], filename.isNotEmpty ? filename : '');
+  }
+
+  static String _norm(Object? s) => '$s'.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  /// The file's current entry in the live list, or null. Public for testing.
+  static Map<String, dynamic>? findForTest(List<Map<String, dynamic>> live, {required Object? week, required String title, required String filename, required String label, required int index}) =>
+      _findLectureFile(live, week: week, title: title, filename: filename, label: label, index: index);
+
+  static Map<String, dynamic>? _findLectureFile(List<Map<String, dynamic>> live,
+      {required Object? week, required String title, required String filename, required String label, required int index}) {
+    List<Map<String, dynamic>> filesOf(bool Function(Map<String, dynamic>) keep) =>
+        [for (final x in live) if (keep(x)) for (final f in (x['files'] as List? ?? const [])) (f as Map).cast<String, dynamic>()];
+    final sameWeek = _norm(week), sameTitle = _norm(title);
+    // The week and title together are the safe identity: there a file is found by its name, then its label when that is unique, then
+    // its position. If the portal has since renumbered a week (title alone) the same three apply; if it has edited a title (week
+    // alone) only the exact file name is trusted, so a different week's file is never taken for this one.
+    final tiers = <(List<Map<String, dynamic>>, bool)>[
+      (filesOf((x) => _norm(x['week']) == sameWeek && _norm(x['title']) == sameTitle), true),
+      (filesOf((x) => _norm(x['title']) == sameTitle), true),
+      (filesOf((x) => _norm(x['week']) == sameWeek), false),
+    ];
+    for (final (pool, loose) in tiers) {
+      if (pool.isEmpty) continue;
+      if (filename.isNotEmpty) {
+        final byName = pool.where((f) => _norm(f['filename']) == _norm(filename)).firstOrNull;
+        if (byName != null) return byName;
+      }
+      if (!loose) continue;
+      final byLabel = pool.where((f) => _norm(f['label']) == _norm(label)).toList();
+      if (byLabel.length == 1) return byLabel.first;
+      if (index >= 0 && index < pool.length) return pool[index];
+      if (pool.length == 1) return pool.first;
+    }
+    return null;
   }
 
   /// An assignment's brief (or solution / your submission / the returned work), looked up in the live course table.

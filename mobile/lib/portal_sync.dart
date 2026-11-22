@@ -283,7 +283,7 @@ Map<String, dynamic> buildSummary({
 
   final lec = [for (final l in lectures) {
     'id': l['id'], 'course': l['course'], 'week': l['week'], 'title': l['title'], 'kind': l['kind'] ?? 'lecture',
-    'files': [for (final f in (l['files'] as List? ?? const [])) if (f is Map) {'label': f['label'], 'filename': f['filename']}],
+    'files': [for (final (i, f) in (l['files'] as List? ?? const []).indexed) if (f is Map) {'label': f['label'], 'filename': f['filename'], 'index': i}],
   }];
 
   return {

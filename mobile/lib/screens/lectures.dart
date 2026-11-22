@@ -108,7 +108,7 @@ class _Week extends StatelessWidget {
               label: Text(f.filename.isEmpty ? f.label : f.filename, maxLines: 1, overflow: TextOverflow.ellipsis),
               onPressed: () async {
                 final saved = await runFileJob(context, 'Downloading ${f.filename.isEmpty ? f.label : f.filename}', () => model.withPortalFiles((files) =>
-                    files.lectureFile(course: l.course, week: l.week, title: l.title, kind: l.kind, filename: f.filename, label: f.label)));
+                    files.lectureFile(course: l.course, week: l.week, title: l.title, kind: l.kind, filename: f.filename, label: f.label, index: f.index)));
                 if (saved != null) await openSavedFile(saved);
               },
             ),

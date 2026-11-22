@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Lecture downloads find their file more reliably: a list that is still filling in is read again a few times before the file is called missing, weeks and titles are compared loosely (case, spacing, a renumbered week), and a file is matched by name, then by its position in the week; a different week's file is never taken. The message names the course when it truly is not listed.
+- Refreshing several times in a row no longer breaks the portal read: one hidden browser is reused (a new one each time piled up until the portal could not be read), and portal jobs (a read, a lecture list, a download) run one after another instead of signing in over each other.
+- When a read fails, the red banner says why in a few words, and Settings, "What the phone read" keeps the reason.
 - The phone is read-only by default again, and fast: your deadlines, attendance, exams, results and timetable are read from your desktop app or your own private GitHub repository (one small file, about a second), and notifications come from there too. The university-login-first start is gone from the first screen.
 - The university login is now an add-on for lecture notes: add it in Settings, then Lectures lists every course's files and downloads them (about 20 to 30 seconds, only when you tap), and the assignment sheet can download a brief. It is not used for the rest of the data when GitHub is connected, and it can be removed in Settings.
 - The phone no longer offers to upload, replace or delete a submission: submit on the portal or the PC app. (The code is kept but switched off.)

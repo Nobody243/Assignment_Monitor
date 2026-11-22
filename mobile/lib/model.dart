@@ -390,14 +390,16 @@ class AppModel extends ChangeNotifier {
 
   /// Reads the whole portal with the saved sign-in and replaces the summary. Returns false (with [error] worded for the
   /// student) when it could not.
-  Future<bool> _refreshFromPortal({Set<String>? only}) async {
+  Future<bool> _refreshFromPortal({Set<String>? only}) => _serial(() => _readPortal(only: only));
+
+  Future<bool> _readPortal({Set<String>? only}) async {
     final c = await _portalStore.read();
     if (c == null) return false;
     error = null; syncStep = 'Signing in'; notifyListeners();
     final portal = _portalFactory(credentials: c);
     try {
       final r = await portal.signIn(c);
-      if (!r.ok) { error = r.message; return false; }
+      if (!r.ok) { error = r.message; syncReport = ['sign-in: ${r.problem?.name ?? 'failed'}: ${r.message}']; return false; }
       final campus = campuses.where((x) => x.$2 == c.instituteId).map((x) => x.$1).firstOrNull ?? '';
       final out = await PortalSync(portal).run(
         say: (s) { syncStep = s; notifyListeners(); }, campus: campus, previous: summary?.raw, only: only,
@@ -419,7 +421,8 @@ class AppModel extends ChangeNotifier {
       unawaited(replan());
       return true;
     } catch (e) {
-      error = 'The portal could not be read just now. ${e is StateError ? e.message : 'Check the connection and try again.'}';
+      error = 'The portal could not be read just now (${why(e)}). Pull down to try again.';
+      syncReport = ['failed: ${why(e)}'];
       return false;
     } finally {
       syncStep = ''; syncDone = 0; syncTotal = 0;
@@ -470,9 +473,30 @@ class AppModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Portal jobs (a read, a lecture list, a download) run one after another: two hidden-browser sessions at once would sign in
+  /// over each other and fail in ways that look like "the portal is down".
+  Future<void> _portalQueue = Future<void>.value();
+  Future<T> _serial<T>(Future<T> Function() job) {
+    final done = Completer<T>();
+    _portalQueue = _portalQueue.whenComplete(() async {
+      try { done.complete(await job()); } catch (e, s) { done.completeError(e, s); }
+    });
+    return done.future;
+  }
+
+  Future<T> serialForTest<T>(Future<T> Function() job) => _serial(job);
+
+  /// A few words on why something failed (no page text, no links), for the banner and the read report.
+  static String why(Object e) {
+    final text = e is StateError ? e.message : e is ArgumentError ? '${e.message}' : '${e.runtimeType}: ${'$e'.replaceAll(RegExp(r'\s+'), ' ')}';
+    return text.length > 90 ? text.substring(0, 90) : text;
+  }
+
   /// Runs [job] with a signed-in portal and a folder for downloads, then throws the session away. Each file action signs in
   /// on its own (about 15 seconds), so nothing stays open between taps and a dropped session is never reused.
-  Future<T> withPortalFiles<T>(Future<T> Function(PortalFiles files) job) async {
+  Future<T> withPortalFiles<T>(Future<T> Function(PortalFiles files) job) => _serial(() => _withPortalFiles(job));
+
+  Future<T> _withPortalFiles<T>(Future<T> Function(PortalFiles files) job) async {
     final c = await _portalStore.read();
     if (c == null) throw FileProblem('Sign in with your university login (Settings) to use files.');
     final portal = _portalFactory(credentials: c);
