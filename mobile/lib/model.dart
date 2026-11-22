@@ -435,7 +435,9 @@ class AppModel extends ChangeNotifier {
 
   /// Tries the sign-in and, only if the portal accepts it, keeps the details in the keystore. Returns what happened and, on
   /// success, the number of courses the LMS lists (a first proof that the whole path works, not just the CMS).
-  Future<({SignInResult result, int courses})> connectPortal(PortalCredentials c) async {
+  Future<({SignInResult result, int courses})> connectPortal(PortalCredentials c) => _serial(() => _connectPortal(c));
+
+  Future<({SignInResult result, int courses})> _connectPortal(PortalCredentials c) async {
     if (!c.complete) return (result: const SignInResult.failed(SignInProblem.wrongDetails, 'Enter the enrollment number and the password.'), courses: 0);
     final portal = _portalFactory(credentials: c);
     try {

@@ -35,13 +35,15 @@ class SettingsHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    Widget row(IconData i, String title, String sub, Widget Function() page) => ListTile(
+    // [bar] false for a page that brings its own Scaffold and app bar (University login, the read report, the setup): wrapping it
+    // again gave two bars, and so two back buttons side by side
+    Widget row(IconData i, String title, String sub, Widget Function() page, {bool bar = true}) => ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: Container(width: 44, height: 44, decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)), child: Icon(i, size: 22)),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
           trailing: const Icon(LucideIcons.chevronRight, size: 20),
-          onTap: () => _open(context, title, page),
+          onTap: () => bar ? _open(context, title, page) : Navigator.of(context).push(slideRoute<void>(page())),
         );
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
       Card(child: Column(children: [
@@ -54,19 +56,19 @@ class SettingsHub extends StatelessWidget {
         row(LucideIcons.shieldCheck, 'Security', model.prefs.appLock ? 'App lock is on' : 'App lock is off', () => SecuritySettings(model: model)),
         const Divider(height: 1, indent: 76),
         if (!model.demo && !model.hasLogin) ...[
-          row(LucideIcons.graduationCap, 'University login', 'Add it to see lecture notes and download them', () => PortalSignInPage(model: model)),
+          row(LucideIcons.graduationCap, 'University login', 'Add it to see lecture notes and download them', () => PortalSignInPage(model: model), bar: false),
           const Divider(height: 1, indent: 76),
         ],
         if (!model.demo && model.hasLogin && !model.portalMode) ...[
-          row(LucideIcons.graduationCap, 'University login', 'Saved, used for lecture notes and downloads. Tap to remove it', () => _RemoveLogin(model: model)),
+          row(LucideIcons.graduationCap, 'University login', 'Saved, used for lecture notes and downloads. Tap to remove it', () => _RemoveLogin(model: model), bar: false),
           const Divider(height: 1, indent: 76),
         ],
         if (!model.demo) ...[
-          row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => model.portalMode && !model.cloudOn ? _WizardWithSavedLogin(model: model) : CloudSettingsPage(model: model)),
+          row(LucideIcons.cloud, 'Background checks (GitHub)', 'Keep checking when the phone is off; run, change the login, or turn off', () => model.portalMode && !model.cloudOn ? _WizardWithSavedLogin(model: model) : CloudSettingsPage(model: model), bar: !(model.portalMode && !model.cloudOn)),
           const Divider(height: 1, indent: 76),
         ],
         if (model.portalMode) ...[
-          row(LucideIcons.listChecks, 'What the phone read', 'Per part: what came back and how long it took', () => SyncReportPage(model: model)),
+          row(LucideIcons.listChecks, 'What the phone read', 'Per part: what came back and how long it took', () => SyncReportPage(model: model), bar: false),
           const Divider(height: 1, indent: 76),
         ],
         row(LucideIcons.userRound, 'Account and data', model.demo ? 'Demo data' : (model.login ?? 'Signed in'), () => AccountSettings(summary: summary, model: model)),

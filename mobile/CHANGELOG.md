@@ -2,6 +2,8 @@
 
 ## 1.0.8 - 2026-11-22
 
+- University login no longer shows two back buttons side by side: Settings wrapped every page in its own app bar, and the pages that bring their own (University login, What the phone read, removing the login) ended up with two. Every Settings page now has exactly one, and a test checks it.
+- The university sign-in is more patient and says more: it waits a few seconds for the sign-in form to appear before deciding the page is wrong, tries once more from a fresh page when it still looks wrong, tells you when the portal says the account is signed in somewhere else, and otherwise names what the page was (its title and field names, never anything typed) instead of "looks different". The sign-in test also no longer runs at the same time as another portal job on the one hidden browser.
 - Lecture downloads find their file more reliably: a list that is still filling in is read again a few times before the file is called missing, weeks and titles are compared loosely (case, spacing, a renumbered week), and a file is matched by name, then by its position in the week; a different week's file is never taken. The message names the course when it truly is not listed.
 - Refreshing several times in a row no longer breaks the portal read: one hidden browser is reused (a new one each time piled up until the portal could not be read), and portal jobs (a read, a lecture list, a download) run one after another instead of signing in over each other.
 - When a read fails, the red banner says why in a few words, and Settings, "What the phone read" keeps the reason.

@@ -124,4 +124,28 @@ void main() {
     await show(has);
     expect(find.textContaining('Tap to remove it'), findsOneWidget);
   });
+
+  testWidgets('each Settings page has exactly one app bar and so one back button, including University login and the read report', (tester) async {
+    Future<void> openPage(AppModel m, String row) async {
+      tester.view.devicePixelRatio = 1; tester.view.physicalSize = const Size(390, 900);
+      await tester.pumpWidget(MaterialApp(key: UniqueKey(), home: Scaffold(body: SettingsHub(summary: Summary(_summary('A')), prefs: m.prefs, model: m))));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(find.text(row));
+      await tester.pumpAndSettle();
+    }
+    addTearDown(tester.view.reset);
+    final none = AppModel(Prefs(), store: MemoryStore())..summary = Summary(_summary('A'));
+    for (final row in ['Reminders', 'Appearance', 'University login']) {
+      await openPage(none, row);
+      expect(find.byType(AppBar), findsOneWidget, reason: row);
+      expect(find.byType(BackButton), findsOneWidget, reason: row);
+    }
+    final has = AppModel(Prefs(), store: MemoryStore())..summary = Summary(_summary('A'))..hasLogin = true;
+    await openPage(has, 'University login');
+    expect(find.byType(AppBar), findsOneWidget, reason: 'remove login');
+    final portal = AppModel(Prefs(), store: MemoryStore())..summary = Summary(_summary('A'))..portalMode = true..hasLogin = true..syncReport = ['assignments: 3 (1.0 s)'];
+    await openPage(portal, 'What the phone read');
+    expect(find.byType(AppBar), findsOneWidget, reason: 'read report');
+    expect(find.byType(BackButton), findsOneWidget, reason: 'read report');
+  });
 }

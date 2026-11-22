@@ -118,7 +118,7 @@ class PortalCourse {
 }
 
 class Portal {
-  Portal(this.browser, {this.pause = const Duration(milliseconds: 500), this.signInSeconds = 30, this.listSeconds = 20, this.credentials});
+  Portal(this.browser, {this.pause = const Duration(milliseconds: 500), this.signInSeconds = 30, this.listSeconds = 20, this.formSeconds = 10, this.credentials});
   final PortalBrowser browser;
 
   /// Kept so a dropped session can sign in again without asking (the portal expires sessions quietly).
@@ -129,6 +129,9 @@ class Portal {
 
   /// How long to wait for the course list to appear on the page.
   final int listSeconds;
+
+  /// How long to wait for the sign-in form to appear on the login page.
+  final int formSeconds;
 
   /// How long to wait between looks at the page; tests make it zero.
   final Duration pause;
@@ -156,11 +159,29 @@ class Portal {
   Future<SignInResult> signIn(PortalCredentials c) async {
     try {
       var r = await _signInOnce(c);
-      if (!r.ok && r.problem == SignInProblem.wrongDetails && r.message == _noReason) r = await _signInOnce(c);
+      // a rejection with no reason, or a page that looked wrong, is most often a page read before it was ready: one more try
+      // from a fresh page. A real rejection (the portal gave a reason) is never repeated.
+      if (!r.ok && ((r.problem == SignInProblem.wrongDetails && r.message == _noReason) || r.problem == SignInProblem.unexpected)) {
+        await Future<void>.delayed(pause * 4);
+        r = await _signInOnce(c);
+      }
       return r;
     } catch (e) {
       // the hidden browser itself failed (not available on this device, a platform error): say so instead of hanging
       return const SignInResult.failed(SignInProblem.unexpected, 'The sign-in could not run on this device just now. Try again, or use the GitHub way in.');
+    }
+  }
+
+  /// What the page in front of the sign-in looks like, in a few words and without anything typed into it: its title and the
+  /// kinds of fields it has. For telling a changed page from a slow one.
+  Future<String> _describePage() async {
+    try {
+      final raw = await browser.js("JSON.stringify({t: (document.title || '').trim().slice(0, 50), i: Array.from(document.querySelectorAll('input,select')).map(e => e.id || e.name || e.type).slice(0, 8)})");
+      if (raw is! String) return 'unreadable';
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      return 'title "${m['t']}", fields ${(m['i'] as List).join(', ')}';
+    } catch (_) {
+      return 'unreadable';
     }
   }
 
@@ -170,14 +191,18 @@ class Portal {
     } catch (e) {
       return const SignInResult.failed(SignInProblem.offline, 'The university portal did not answer. Check the connection and try again.');
     }
-    final hasForm = await browser.js("!!document.querySelector('#BodyPH_tbEnrollment')") == true;
+    // "loaded" can come before the form is on the page: give it a few seconds before deciding the page is not the sign-in
+    final hasForm = await _waitFor(() async => await browser.js("!!document.querySelector('#BodyPH_tbEnrollment')") == true, seconds: formSeconds);
     if (!hasForm) {
       if (!await _onLogin()) { _inLms = false; return const SignInResult.ok(); }   // the portal remembered a session
       final page = (await browser.html()).toLowerCase();
       if (page.contains('captcha') || page.contains('recaptcha')) {
         return const SignInResult.failed(SignInProblem.blocked, 'The portal is asking for a captcha, which the phone cannot solve on its own.');
       }
-      return const SignInResult.failed(SignInProblem.unexpected, 'The portal sign-in page looks different from what the app expects.');
+      if (RegExp(r'already (logged|signed)|another (session|device|browser)|session (is )?(active|exists)').hasMatch(page)) {
+        return const SignInResult.failed(SignInProblem.blocked, 'The portal says this account is already signed in somewhere else. Sign out there, or wait a few minutes, then try again.');
+      }
+      return SignInResult.failed(SignInProblem.unexpected, 'The portal showed a sign-in page the app does not recognise (${await _describePage()}). Try again in a minute.');
     }
     final page = (await browser.html()).toLowerCase();
     if (page.contains('g-recaptcha') || page.contains('captcha_image')) {

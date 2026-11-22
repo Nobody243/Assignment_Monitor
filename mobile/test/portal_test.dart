@@ -14,8 +14,12 @@ import 'helpers.dart';
 
 /// A scripted portal: tracks the address and answers the few scripts the sign-in runs.
 class FakeBrowser implements PortalBrowser {
-  FakeBrowser({this.rejectFirst = 0, this.loginForm = true, this.acceptPassword = 'right', this.pageHtml = '<html></html>', this.error = '', this.offline = false, this.courses = const []});
+  FakeBrowser({this.rejectFirst = 0, this.loginForm = true, this.acceptPassword = 'right', this.pageHtml = '<html></html>', this.error = '', this.offline = false, this.courses = const [], this.formAfter = 0});
   bool loginForm, offline;
+
+  /// How many looks for the sign-in form find nothing before it appears (a page that is still being drawn).
+  int formAfter;
+  int formPolls = 0;
 
   /// How many sign-in clicks the portal ignores without saying why (a page that was not ready).
   int rejectFirst;
@@ -53,7 +57,8 @@ class FakeBrowser implements PortalBrowser {
   @override
   Future<dynamic> js(String s) async {
     scripts.add(s);
-    if (s.contains("!!document.querySelector('#BodyPH_tbEnrollment')")) return loginForm;
+    if (s.contains("!!document.querySelector('#BodyPH_tbEnrollment')")) return loginForm && ++formPolls > formAfter;
+    if (s.contains('JSON.stringify({t:')) return '{"t":"Maintenance","i":["btnOk"]}';
     if (s.contains('readyState')) return true;
     if (s.contains("set('#BodyPH_tbPassword'")) {
       // the line is:  set('#BodyPH_tbPassword', "<json string>");
@@ -115,6 +120,20 @@ void main() {
     expect(r.problem, SignInProblem.unexpected);
   });
 
+  test('a sign-in form that is still being drawn when the page has loaded is waited for', () async {
+    final b = FakeBrowser(formAfter: 3);
+    final r = await Portal(b, pause: Duration.zero, signInSeconds: 0).signIn(good);
+    expect(r.ok, isTrue);
+    expect(b.opened.where((u) => u == loginUrl).length, 1, reason: 'no second try was needed');
+  });
+
+  test('an account the portal says is signed in elsewhere is told so, not reported as a changed page', () async {
+    final b = FakeBrowser(loginForm: false, pageHtml: '<p>This account is already logged in on another device.</p>');
+    final r = await Portal(b, pause: Duration.zero, formSeconds: 0).signIn(good);
+    expect(r.problem, SignInProblem.blocked);
+    expect(r.message, contains('already signed in somewhere else'));
+  });
+
   test('a first click the portal ignores without a message is tried once more, and then works', () async {
     final b = FakeBrowser(rejectFirst: 1);
     final r = await Portal(b, pause: Duration.zero, signInSeconds: 0).signIn(good);
@@ -155,8 +174,11 @@ void main() {
   });
 
   test('a changed login page is reported as unexpected, not as a wrong password', () async {
-    final r = await Portal(FakeBrowser(loginForm: false), pause: Duration.zero).signIn(good);
+    final b = FakeBrowser(loginForm: false);
+    final r = await Portal(b, pause: Duration.zero, formSeconds: 0).signIn(good);
     expect(r.problem, SignInProblem.unexpected);
+    expect(r.message, contains('Maintenance'), reason: 'it says what the page was, so a changed page can be told from a slow one');
+    expect(b.opened.where((u) => u == loginUrl).length, 2, reason: 'a page that looked wrong is looked at once more from a fresh load');
   });
 
   test('the course list comes through single sign-on and is read by name', () async {
