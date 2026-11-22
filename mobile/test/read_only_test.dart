@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:assignment_monitor_mobile/model.dart';
+import 'package:assignment_monitor_mobile/screens/signin.dart';
 import 'package:assignment_monitor_mobile/source.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   _startupTest();
+  _tokenNameTest();
   test('the phone app is read-only: no hidden browser, portal sign-in or downloads', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     for (final p in ['webview_flutter', 'file_picker', 'html:']) {
@@ -37,5 +39,15 @@ void _startupTest() {
     final m = AppModel(Prefs(), store: Store(vault: _BrokenVault()), splashMin: Duration.zero);
     await m.start();
     expect(m.phase, Phase.signedOut);
+  });
+}
+
+void _tokenNameTest() {
+  test('the token link carries a new name each time, so GitHub never says the name is taken', () {
+    final a = TokenSignInPage.tokenUrl(DateTime(2026, 11, 22, 14, 5));
+    final b = TokenSignInPage.tokenUrl(DateTime(2026, 11, 23, 9, 30));
+    expect(a.queryParameters['name'], 'Assignment Monitor phone 2026-11-22 1405');
+    expect(a.queryParameters['name'], isNot(b.queryParameters['name']));
+    expect(a.queryParameters['contents'], 'read');
   });
 }

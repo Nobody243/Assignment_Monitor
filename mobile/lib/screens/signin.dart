@@ -127,6 +127,15 @@ class SignInScreen extends StatelessWidget {
 /// The tighter way to sign in: a token that can read one repository and nothing else. The steps are on the screen, and the
 /// GitHub page opens with the name, description, permission and expiry already filled in.
 class TokenSignInPage extends StatefulWidget {
+  /// GitHub refuses a token name that one of your tokens already has, so every link carries today's date and the time:
+  /// signing in again later (a new phone, an expired token) never hits "name has already been taken".
+  static Uri tokenUrl(DateTime now) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final stamp = '${now.year}-${two(now.month)}-${two(now.day)}+${two(now.hour)}${two(now.minute)}';
+    return Uri.parse('https://github.com/settings/personal-access-tokens/new'
+        '?name=Assignment+Monitor+phone+$stamp&description=Read-only+access+for+the+Assignment+Monitor+phone+app&expires_in=365&contents=read');
+  }
+
   const TokenSignInPage({super.key, required this.model});
   final AppModel model;
   @override
@@ -136,9 +145,6 @@ class TokenSignInPage extends StatefulWidget {
 class _TokenSignInState extends State<TokenSignInPage> {
   final field = TextEditingController();
   bool show = false;
-
-  static final createUrl = Uri.parse('https://github.com/settings/personal-access-tokens/new'
-      '?name=Assignment+Monitor+phone&description=Read-only+access+for+the+Assignment+Monitor+phone+app&expires_in=365&contents=read');
 
   @override
   void initState() { super.initState(); widget.model.addListener(_changed); }
@@ -179,7 +185,7 @@ class _TokenSignInState extends State<TokenSignInPage> {
           _step(context, 3, 'Create the token, copy it, and paste it here.'),
           const SizedBox(height: 4),
           OutlinedButton.icon(
-            onPressed: () => launchUrl(createUrl, mode: LaunchMode.externalApplication),
+            onPressed: () => launchUrl(TokenSignInPage.tokenUrl(DateTime.now()), mode: LaunchMode.externalApplication),
             icon: const Icon(LucideIcons.externalLink, size: 18), label: const Text('Open GitHub token page'),
           ),
           const SizedBox(height: 18),
