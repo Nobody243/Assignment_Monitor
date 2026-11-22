@@ -22,15 +22,21 @@ class _B implements PortalBrowser {
 
 /// A portal that serves the parser fixtures, with chosen pages or courses failing.
 class _Portal extends Portal {
-  _Portal({this.failPages = const {}, this.failCourse}) : super(_B(), pause: Duration.zero);
+  _Portal({this.failPages = const {}, this.failCourse, this.emptyTimes = const {}}) : super(_B(), pause: Duration.zero);
+
+  /// How many times each CMS page answers with an empty shell before it fills in (a page read too early).
+  final Map<String, int> emptyTimes;
+  final seen = <String, int>{};
   final Set<String> failPages;
   final String? failCourse;
   final order = <String>[];
 
   @override Future<List<PortalCourse>> courses() async => const [PortalCourse('1', 'Cyber Security'), PortalCourse('2', 'Databases')];
-  @override Future<String> cmsPage(String url) async {
+  @override Future<String> cmsPage(String url, {String? ready, int readySeconds = 8}) async {
     order.add(url);
     if (failPages.contains(url)) throw StateError('page failed');
+    final n = seen[url] = (seen[url] ?? 0) + 1;
+    if (n <= (emptyTimes[url] ?? 0)) return '<html><body></body></html>';
     return switch (url) {
       attendanceUrl => attendanceHtml, resultsUrl => resultsHtml, examsUrl => examsHtml, timetableUrl => ttHtml, _ => detailHtml,
     };
@@ -44,7 +50,7 @@ class _Portal extends Portal {
 
 void main() {
   test('everything is read, and the summary has every section', () async {
-    final out = await PortalSync(_Portal(), now: () => DateTime(2026, 11, 21, 9)).run(campus: 'Islamabad E-8 Campus');
+    final out = await PortalSync(_Portal(), now: () => DateTime(2026, 11, 21, 9), retryPause: Duration.zero).run(campus: 'Islamabad E-8 Campus');
     expect(out.skipped, isEmpty);
     final s = out.summary;
     expect(s.studentName, 'Muhammad Saad');
@@ -135,6 +141,62 @@ void main() {
     final p = _NoCourses();
     expect(() => PortalSync(p).run(), throwsA(isA<StateError>()));
   });
+  test('a page read before it filled in is read again, so attendance, exams and the timetable arrive the first time', () async {
+    final p = _Portal(emptyTimes: {attendanceUrl: 1, examsUrl: 1, timetableUrl: 1});
+    final out = await PortalSync(p, retryPause: Duration.zero).run();
+    expect(out.summary.attendance, isNotEmpty);
+    expect(out.summary.exams, isNotEmpty);
+    expect(out.summary.timetable, isNotEmpty);
+    expect(out.skipped, isEmpty);
+    expect(out.report.every((l) => !l.contains('came back empty')), isTrue);
+  });
+
+  test('a page that stays empty keeps the earlier data instead of wiping it, and says so', () async {
+    final previous = {
+      'schema': 1,
+      'attendance': [{'code': 'OLD101', 'title': 'Old', 'present': 3.0, 'absent': 1.0, 'percent': 75, 'ok': true}],
+      'timetable': [{'day': 'Mon', 'start': '09:00', 'end': '10:00', 'course': 'Old class'}],
+    };
+    final p = _Portal(emptyTimes: {attendanceUrl: 99, timetableUrl: 99});
+    final out = await PortalSync(p, retryPause: Duration.zero).run(previous: previous);
+    expect(out.summary.attendance.single.code, 'OLD101');
+    expect(out.summary.timetable.single.course, 'Old class');
+    expect(out.report.where((l) => l.contains('came back empty')).length, 2);
+    expect(out.skipped, isEmpty, reason: 'an empty page is not a failure');
+  });
+
+  test('with nothing earlier to keep, an empty page is simply empty', () async {
+    final out = await PortalSync(_Portal(emptyTimes: {examsUrl: 99}), retryPause: Duration.zero).run();
+    expect(out.summary.exams, isEmpty);
+    expect(out.report.any((l) => l.startsWith('exams: 0 rows')), isTrue);
+  });
+
+  test('the everyday check leaves the lecture notes out once there are some, and reads them when there are none', () async {
+    final known = {'schema': 1, 'lectures': [{'id': 'x', 'course': 'C', 'week': 1, 'title': 'W', 'files': []}]};
+    final a = _Portal();
+    final withLectures = await PortalSync(a, retryPause: Duration.zero).run(previous: known);
+    expect(a.order.contains(lecturesUrl), isFalse);
+    expect(withLectures.summary.raw['lectures'], isNotEmpty, reason: 'the earlier list stays');
+    final b = _Portal();
+    await PortalSync(b, retryPause: Duration.zero).run();
+    expect(b.order.contains(lecturesUrl), isTrue, reason: 'first time: read them');
+    final c = _Portal();
+    await PortalSync(c, retryPause: Duration.zero).run(previous: known, only: {'lectures'});
+    expect(c.order.contains(lecturesUrl), isTrue, reason: 'the Lectures screen refresh always reads them');
+  });
+
+  test('attendance whose hours have not changed does not load the class-by-class pages again', () async {
+    final first = _Portal();
+    final out1 = await PortalSync(first, retryPause: Duration.zero).run(only: {'attendance'});
+    final details1 = first.order.where((u) => u != attendanceUrl && u.contains('Attendance')).length;
+    final again = _Portal();
+    final out2 = await PortalSync(again, retryPause: Duration.zero).run(only: {'attendance'}, previous: out1.summary.raw);
+    final details2 = again.order.where((u) => u != attendanceUrl && u.contains('Attendance')).length;
+    expect(details1, greaterThan(0));
+    expect(details2, lessThan(details1), reason: 'unchanged courses reuse their class list');
+    expect(out2.summary.attendance.length, out1.summary.attendance.length);
+  });
+
 }
 
 class _NoCourses extends _Portal {

@@ -1,5 +1,10 @@
 # Phone app changelog
 
+## Unreleased
+
+- Attendance, exam seats and the timetable now arrive the first time: those portal pages draw their tables after they load, and the phone read them too early (an empty page that looked like "done"). It now waits until the table is there.
+- A page that still comes back empty is read once more, and if it stays empty the earlier data is kept instead of being replaced by "no timetable yet"; the report in Settings says so.
+- The everyday check is much shorter: lecture notes (two page loads per course) are read only when there are none yet or when you refresh the Lectures screen, and a course whose attendance hours have not changed keeps its class list instead of loading its page again.
 ## 1.0.7 - 2026-11-22
 
 - The privacy statements are true again: the intro, the side menu and About and privacy said the portal password never reaches the phone, which stopped being true with the university login. They now say what each way of using the app keeps, and where it goes.

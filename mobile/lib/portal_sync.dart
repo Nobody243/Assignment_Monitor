@@ -18,7 +18,10 @@ const examsUrl = '$cmsBase/Sys/Student/ExamSeatingPlan/ExamSeats';
 const timetableUrl = '$cmsBase/Sys/Student/CourseRegistration/TimeTable.aspx';
 
 class PortalSync {
-  PortalSync(this.portal, {this.minimumAttendance = 75, DateTime Function()? now}) : _now = now ?? DateTime.now;
+  PortalSync(this.portal, {this.minimumAttendance = 75, DateTime Function()? now, this.retryPause = const Duration(seconds: 3)}) : _now = now ?? DateTime.now;
+
+  /// How long to wait before reading an empty-looking page once more.
+  final Duration retryPause;
   final Portal portal;
   final int minimumAttendance;
   final DateTime Function() _now;
@@ -33,7 +36,10 @@ class PortalSync {
     void Function(String)? say, String campus = '', Map<String, dynamic>? previous, Future<void> Function(Summary)? onPartial,
     Set<String>? only, void Function(int done, int total)? onProgress,
   }) async {
-    bool want(String k) => only == null || only.contains(k);
+    // The everyday full check leaves the lecture notes out unless there are none yet: they change rarely and cost two page loads
+    // per course (the Lectures screen's own refresh reads them). A screen's refresh reads just its own part.
+    final lecturesKnown = previous?['lectures'] is List && (previous!['lectures'] as List).isNotEmpty;
+    bool want(String k) => only != null ? only.contains(k) : (k != 'lectures' || !lecturesKnown);
     const all = ['assignments', 'attendance', 'exams', 'results', 'timetable', 'announcements', 'lectures'];
     final total = all.where(want).length;
     var finished = 0;
@@ -63,13 +69,31 @@ class PortalSync {
       return s;
     }
 
-    Future<void> part(String name, String key, Future<String> Function() f) async {
+    bool had(String key) {
+      final v = previous?[key];
+      if (v is List) return v.isNotEmpty;
+      if (v is Map) return (v['semesters'] is List && (v['semesters'] as List).isNotEmpty) || (v['sessions'] is List && (v['sessions'] as List).isNotEmpty);
+      return false;
+    }
+
+    /// [empty] says whether what was read looks empty. An empty page is read once more after a pause (it may have been taken before
+    /// the portal filled it in); if it is still empty and the last full read had data, the earlier data is kept rather than replaced
+    /// by nothing, and the report says so. Only parts that replace their data can use this.
+    Future<void> part(String name, String key, Future<String> Function() f, {bool Function()? empty}) async {
       if (!want(key)) return;   // a section refresh reads only its own part
       tell(name);
       onProgress?.call(finished, total);
       final began = DateTime.now();
       try {
-        final what = await f();
+        var what = await f();
+        if (empty != null && empty()) {
+          await Future<void>.delayed(retryPause);
+          what = await f();
+          if (empty() && had(key)) {
+            report.add('$key: the portal page came back empty, so the earlier data was kept');
+            return;
+          }
+        }
         read.add(key);
         report.add('$key: $what (${(DateTime.now().difference(began).inMilliseconds / 1000).toStringAsFixed(1)} s)');
         if (onPartial != null) await onPartial(Summary(build()));
@@ -113,10 +137,10 @@ JSON.stringify({name: ((document.querySelector('a.dropdown-toggle span.hidden-xs
     });
     if (want('assignments') && courses.isEmpty) throw StateError('No courses were found. Sign in again, or try later.');
 
-    await part('Reading attendance', 'attendance', () async { attendance = await _attendance(); return '${attendance.length} courses'; });
-    await part('Reading exam seats', 'exams', () async { exams = await _exams(); return '${exams.length} rows'; });
-    await part('Reading results', 'results', () async { results = parseResults(await portal.cmsPage(resultsUrl)); return '${(results!['semesters'] as List).length} semesters'; });
-    await part('Reading the timetable', 'timetable', () async { timetable = parseTimetable(await portal.cmsPage(timetableUrl)); return '${(timetable!['sessions'] as List).length} classes'; });
+    await part('Reading attendance', 'attendance', () async { attendance = await _attendance(previous?['attendance']); return '${attendance.length} courses'; }, empty: () => attendance.isEmpty);
+    await part('Reading exam seats', 'exams', () async { exams = await _exams(); return '${exams.length} rows'; }, empty: () => exams.isEmpty);
+    await part('Reading results', 'results', () async { results = parseResults(await portal.cmsPage(resultsUrl, ready: "document.querySelector('table caption')", readySeconds: 6)); return '${(results!['semesters'] as List).length} semesters'; }, empty: () => (results?['semesters'] as List? ?? const []).isEmpty);
+    await part('Reading the timetable', 'timetable', () async { timetable = parseTimetable(await portal.cmsPage(timetableUrl, ready: "document.querySelector('td.event')", readySeconds: 8)); return '${(timetable!['sessions'] as List).length} classes'; }, empty: () => (timetable?['sessions'] as List? ?? const []).isEmpty);
     await part('Reading announcements', 'announcements', () async {
       await portal.lmsPage(announcementsUrl);
       await eachCourse('announcements', (c) async { announcements.addAll(parseAnnouncements(await portal.selectCourse(c.name), c.name)); });
@@ -152,23 +176,30 @@ JSON.stringify({host: location.host, path: location.pathname, tables: document.q
     }
   }
 
-  Future<List<Json>> _attendance() async {
-    final courses = parseAttendance(await portal.cmsPage(attendanceUrl));
+  Future<List<Json>> _attendance(Object? previous) async {
+    final courses = parseAttendance(await portal.cmsPage(attendanceUrl, ready: "Array.from(document.querySelectorAll('tr')).some(r => r.cells.length >= 12)", readySeconds: 10));
+    // a course whose hours have not changed since the last read keeps the class-by-class list it had (each list is a page load)
+    final old = <String, Map<String, dynamic>>{
+      for (final c in (previous is List ? previous : const [])) if (c is Map && c['code'] != null) '${c['code']}': c.cast<String, dynamic>(),
+    };
     for (final c in courses) {
+      final was = old['${c['code']}'];
+      final same = was != null && was['present'] == c['present'] && was['absent'] == c['absent'] && was['classes'] is List && (was['classes'] as List).isNotEmpty;
+      if (same) { c['sessions'] = [for (final s in was['classes'] as List) if (s is Map) s.cast<String, dynamic>()]; continue; }
       final url = '${c['detail_url']}';
       if (url.isEmpty) { c['sessions'] = <Json>[]; continue; }
       try {
-        final d = parseAttendanceDetail(await portal.cmsPage(Uri.parse(attendanceUrl).resolve(url).toString()));
+        final d = parseAttendanceDetail(await portal.cmsPage(Uri.parse(attendanceUrl).resolve(url).toString(), ready: "document.querySelector(\"[id*='AttendanceDetails']\")", readySeconds: 6));
         c['sessions'] = d['sessions'];
       } catch (_) {
-        c['sessions'] = <Json>[];   // the totals are still right; only the class-by-class list is missing
+        c['sessions'] = was?['classes'] ?? <Json>[];   // the totals are still right; keep the older class list if there is one
       }
     }
     return courses;
   }
 
   Future<List<Json>> _exams() async {
-    final page = await portal.cmsPage(examsUrl);
+    final page = await portal.cmsPage(examsUrl, ready: "document.querySelector(\"[id*='ExamSeats']\")", readySeconds: 6);
     final raw = await portal.browser.js('''
 JSON.stringify(Array.from(document.querySelectorAll('#BodyPH_ddlExamTypeFilter option')).map(o => [o.value, (o.innerText || '').trim()]).filter(x => x[0] && x[1]))''');
     final types = [for (final e in jsonDecode('${raw ?? '[]'}') as List) ((e as List)[0] as String, e[1] as String)];

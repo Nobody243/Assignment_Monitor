@@ -256,14 +256,22 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
     throw StateError('The portal did not list your courses this time.');
   }
 
-  /// Opens a CMS page and returns its HTML, signing in again once if the portal sent the session back to the login page.
-  Future<String> cmsPage(String url) async {
+  /// Opens a CMS page and returns its HTML, signing in again once if the portal sent the session back to the login page. With
+  /// [ready] it first waits for the page to be filled in (see below).
+  Future<String> cmsPage(String url, {String? ready, int readySeconds = 8}) async {
     await browser.open(url);
     if (await _onLogin()) {
       final c = credentials;
       if (c == null || !(await signIn(c)).ok) throw StateError('The portal session ended.');
       await browser.open(url);
       if (await _onLogin()) throw StateError('The page could not be opened.');
+    }
+    // "loaded" is not "filled in": these pages draw their tables with scripts after the load event, and the HTML taken at once
+    // can be an empty shell (attendance, exam seats or the timetable "not there" until a second try). The page is read once the
+    // part the caller needs ([ready], a JavaScript condition) is there, or after [readySeconds] if it never shows up.
+    if (ready != null) {
+      await _waitFor(() async => await browser.js('(() => { try { return !!($ready); } catch (e) { return false; } })()') == true, seconds: readySeconds);
+      await Future<void>.delayed(pause);
     }
     return browser.html();
   }
