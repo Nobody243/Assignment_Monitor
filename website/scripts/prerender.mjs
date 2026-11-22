@@ -83,6 +83,11 @@ function render(path, page) {
   html = setTag(html, { tag: "meta", key: "property", value: "og:description" }, "content", page.description);
   html = setTag(html, { tag: "meta", key: "name", value: "twitter:title" }, "content", full);
   html = setTag(html, { tag: "meta", key: "name", value: "twitter:description" }, "content", page.description);
+  if (page.ogImage) {   // a page with its own social picture (1200x630) and its description
+    html = setTag(html, { tag: "meta", key: "property", value: "og:image" }, "content", SITE + page.ogImage);
+    html = setTag(html, { tag: "meta", key: "name", value: "twitter:image" }, "content", SITE + page.ogImage);
+    if (page.ogAlt) html = setTag(html, { tag: "meta", key: "property", value: "og:image:alt" }, "content", page.ogAlt);
+  }
   const extra = structured(path, page, full);
   if (extra) html = html.replace("</head>", `  ${extra}\n</head>`);
   // the outline goes after the boot cover inside #root; the cover is opaque and fixed, so it sits on top

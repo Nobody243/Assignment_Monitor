@@ -16,6 +16,16 @@ const SHOTS = [
   ["results", "Results: CGPA and a GPA calculator"],
 ];
 
+const COMPARE = [
+  ["Reads the portal itself", "Yes", "No, it reads a summary"],
+  ["Deadline reminders", "Yes, spoken too", "Yes, with Snooze and Done"],
+  ["Attendance, exams, results", "Yes", "Yes"],
+  ["Upload or replace a submission", "Yes", "No (read-only)"],
+  ["Lecture notes download", "Yes", "No"],
+  ["Works with the PC off", "With cloud checks", "Yes, once cloud checks are on"],
+  ["Lock with fingerprint or PIN", "Windows sign-in", "Yes"],
+];
+
 export default function PhoneApp() {
   usePageMeta(...metaFor("/phone-app"));
   const rel = usePhoneRelease();
@@ -49,6 +59,21 @@ export default function PhoneApp() {
             <Item as="article" className="cloud-card"><p className="mono">Everything in one place</p><h3>Attendance, exams, results</h3><p>How many classes you can still miss, your exam seat and room, announcements, the timetable, and results with CGPA and a GPA what-if calculator.</p></Item>
             <Item as="article" className="cloud-card"><p className="mono">Read-only and private</p><h3>Your data stays yours</h3><p>The phone reads one summary file from your own private GitHub repository. No server of ours, no account, no analytics. The app can be locked with your fingerprint, face or PIN.</p></Item>
           </Stagger>
+        </div>
+      </section>
+
+      <section className="compare">
+        <div className="wrap">
+          <Reveal>
+            <p className="mono">Desktop or phone?</p>
+            <h2 className="h-md">Use both. They do different jobs.</h2>
+            <div className="compare-table" role="table" aria-label="What each app does">
+              <div role="row" className="compare-head"><span role="columnheader" /><span role="columnheader">Windows app</span><span role="columnheader">Android app</span></div>
+              {COMPARE.map(([what, pc, phone]) => (
+                <div role="row" key={what}><span role="rowheader">{what}</span><span role="cell">{pc}</span><span role="cell">{phone}</span></div>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 

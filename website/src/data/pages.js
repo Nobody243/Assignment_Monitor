@@ -97,9 +97,9 @@ export const PAGES = {
   },
   "/gpa-calculator": {
     title: "Bahria GPA and CGPA calculator",
-    description: "Free GPA and CGPA calculator for Bahria University students: add your courses, credit hours and grades, see your semester GPA and CGPA, and set a target to see what grades you need. Runs in your browser; nothing is sent or saved.",
+    description: "Free GPA and CGPA calculator for Bahria University students: add your courses, credit hours and grades, see your semester GPA and CGPA, and set a target to see what grades you need. Runs in your browser; nothing is sent, and your entries are kept only in this browser.",
     h1: "Bahria GPA and CGPA calculator",
-    lede: "Add your courses, pick the grades, and see your semester GPA and your CGPA. Set a target to see what grades get you there. It runs in your browser: nothing you type is sent or saved.",
+    lede: "Add your courses, pick the grades, and see your semester GPA and your CGPA. Set a target to see what grades get you there. It runs in your browser: nothing you type is sent anywhere, and your entries stay only in this browser so they are there next time.",
     sections: [
       { h: "How it is worked out", p: ["Each course contributes its credit hours times its grade points. The GPA is the total of those divided by the total credit hours. The CGPA is the same sum carried across every graded semester, so it needs your earlier CGPA and credit hours. Zero-credit courses weigh nothing."] },
       { h: "The grade scale", p: ["A 4.00, A- 3.67, B+ 3.33, B 3.00, B- 2.67, C+ 2.33, C 2.00, C- 1.67, D+ 1.33, D 1.00, F 0.00, as the CMS result page prints it. Confirm the scale and any pass marks with your department; this is an independent student tool, not an official Bahria University calculator."] },
@@ -114,6 +114,8 @@ export const PAGES = {
     sections: [],      // the prerender appends the FAQ itself (src/data/faq.js) and its FAQPage structured data
   },
   "/phone-app": {
+    ogImage: "/assets/og-phone.png?v=1",
+    ogAlt: "Assignment Monitor for Android: three phone screens (Today, Attendance, Results) beside the words Your deadlines, in your pocket.",
     title: "Android app",
     description: "The Assignment Monitor Android app: deadlines with reminders, attendance, exam seats, results and announcements on your phone. Read-only, private, free.",
     h1: "Your deadlines, in your pocket.",

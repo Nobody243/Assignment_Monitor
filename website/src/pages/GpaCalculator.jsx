@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePageMeta } from "../lib/meta.js";
 import { PageHero, Reveal } from "../components/Reveal.jsx";
@@ -8,20 +8,35 @@ import { GRADES, GRADE_POINTS, cgpaAfter, creditsOf, gpaOf, lowestGradeFor, need
 
 let nextId = 1;
 const blank = () => ({ id: nextId++, name: "", credits: "3", grade: "" });
+const KEY = "am-gpa-v1";
+/* What you typed is kept in this browser only (localStorage), so it is there when you come back. Never sent. */
+function loadSaved() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!s || !Array.isArray(s.rows) || !s.rows.length) return null;
+    const rows = s.rows.slice(0, 30).map((r) => ({ id: nextId++, name: String(r.name || "").slice(0, 60), credits: ["0", "1", "2", "3", "4"].includes(String(r.credits)) ? String(r.credits) : "3", grade: GRADES.includes(r.grade) ? r.grade : "" }));
+    return { rows, prevCgpa: String(s.prevCgpa || ""), prevCredits: String(s.prevCredits || ""), target: String(s.target || "") };
+  } catch { return null; }
+}
 const fmt = (n) => (n == null ? "–" : n.toFixed(2));
 
-/* A calculator that runs entirely in the page: nothing is sent or stored. It reuses the grade scale the CMS prints,
+/* A calculator that runs entirely in the page: nothing is sent anywhere. It reuses the grade scale the CMS prints,
    which the desktop app's Results page also uses, and ends with a quiet pointer to the app. */
 export default function GpaCalculator() {
   usePageMeta(...metaFor("/gpa-calculator"));
-  const [rows, setRows] = useState(() => [blank(), blank(), blank(), blank(), blank()]);
-  const [prevCgpa, setPrevCgpa] = useState("");
-  const [prevCredits, setPrevCredits] = useState("");
-  const [target, setTarget] = useState("");
+  const [saved] = useState(loadSaved);
+  const [rows, setRows] = useState(() => (saved ? saved.rows : [blank(), blank(), blank(), blank(), blank()]));
+  const [prevCgpa, setPrevCgpa] = useState(saved ? saved.prevCgpa : "");
+  const [prevCredits, setPrevCredits] = useState(saved ? saved.prevCredits : "");
+  const [target, setTarget] = useState(saved ? saved.target : "");
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(KEY, JSON.stringify({ rows: rows.map(({ name, credits, grade }) => ({ name, credits, grade })), prevCgpa, prevCredits, target })); } catch { /* private mode: nothing is kept */ }
+  }, [rows, prevCgpa, prevCredits, target]);
 
   const update = (id, patch) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const remove = (id) => setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.id !== id) : rs));
-  const reset = () => { setRows([blank(), blank(), blank(), blank(), blank()]); setPrevCgpa(""); setPrevCredits(""); setTarget(""); };
+  const reset = () => { setRows([blank(), blank(), blank(), blank(), blank()]); setPrevCgpa(""); setPrevCredits(""); setTarget(""); try { localStorage.removeItem(KEY); } catch { /* nothing to clear */ } };
 
   const out = useMemo(() => {
     const gpa = gpaOf(rows);
@@ -33,12 +48,16 @@ export default function GpaCalculator() {
     return { gpa, credits, allCredits, hasPrev, cgpa, goal };
   }, [rows, prevCgpa, prevCredits, target]);
 
+  const copy = async () => {
+    const text = `Semester GPA ${fmt(out.gpa)}, ${out.hasPrev ? "new " : ""}CGPA ${fmt(out.cgpa)}, ${out.credits} credit hours counted (Assignment Monitor GPA calculator)`;
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { window.prompt("Copy this result:", text); }
+  };
   const bad = (v, lo, hi) => v !== "" && !(Number(v) >= lo && Number(v) <= hi);
 
   return (
     <>
       <PageHero kicker="Tool · Results" title="Bahria GPA and CGPA calculator"
-        lede="Add your courses, pick the grades, and see your semester GPA and your CGPA. Set a target to see what grades get you there. It runs in your browser: nothing you type is sent or saved." />
+        lede="Add your courses, pick the grades, and see your semester GPA and your CGPA. Set a target to see what grades get you there. It runs in your browser: nothing you type is sent anywhere, and your entries stay only in this browser so they are there next time." />
       <section className="calc">
         <div className="wrap calc-wrap">
           <Reveal className="calc-card">
@@ -82,6 +101,7 @@ export default function GpaCalculator() {
 
           <Reveal as="aside" className="calc-card calc-result" aria-live="polite">
             <p className="mono">Result</p>
+            {out.gpa != null && <button type="button" className="calc-btn calc-btn-quiet calc-copy" onClick={copy}>{copied ? "Copied" : "Copy result"}</button>}
             <dl className="calc-figs">
               <div><dt>Semester GPA</dt><dd>{fmt(out.gpa)}</dd></div>
               <div><dt>{out.hasPrev ? "New CGPA" : "CGPA"}</dt><dd>{fmt(out.cgpa)}</dd></div>
@@ -106,7 +126,7 @@ export default function GpaCalculator() {
 
             <div className="calc-cta">
               <p><b>Do this automatically.</b> Assignment Monitor reads your real transcript from the CMS, keeps every semester, lets you try grades on the running one, and tells you the moment a result is posted. It also watches deadlines, attendance and exams.</p>
-              <div className="hero-cta"><Button to="/download">Download the app</Button></div>
+              <div className="hero-cta"><Button to="/download">Download the app</Button><Button to="/phone-app" variant="quiet">Android app</Button></div>
             </div>
           </Reveal>
 

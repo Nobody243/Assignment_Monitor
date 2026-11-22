@@ -31,5 +31,19 @@
   "categories": [
     "education",
     "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Download",
+      "url": "/download"
+    },
+    {
+      "name": "Android app",
+      "url": "/phone-app"
+    },
+    {
+      "name": "GPA calculator",
+      "url": "/gpa-calculator"
+    }
   ]
 }

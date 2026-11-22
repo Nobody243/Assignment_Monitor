@@ -32,6 +32,15 @@ export default function Download() {
         <Button to="/phone-app" variant="quiet" size="lg">Android app</Button>
       </PageHero>
 
+      <section className="dl-verify">
+        <div className="wrap">
+          <Reveal className="verify-card">
+            <p className="mono">Check your download</p>
+            <p>Every release has a SHA-256 checksum next to it. After downloading, compare it in PowerShell: <code>Get-FileHash .\AssignmentMonitor-Setup.exe</code>. The two values must match. <a href={`${rel.setupUrl}.sha256`} target="_blank" rel="noopener">Open the checksum file</a>.</p>
+          </Reveal>
+        </div>
+      </section>
+
       <section className="dl-options">
         <div className="wrap">
           <Stagger className="option-grid" step={0.12}>
