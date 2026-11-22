@@ -31,6 +31,7 @@ export default function Footer() {
             <div><h3>Get it</h3><ul>
               <li><Link to={DOWNLOAD_PATH.setup}>Installer for Windows</Link></li>
               <li><Link to={DOWNLOAD_PATH.zip}>Portable zip</Link></li>
+              <li><Link to="/phone-app">Android app</Link></li>
               <li><Link to="/download">Download guide</Link></li>
               <li><Link to="/cloud">Cloud checks</Link></li>
               <li><Ext href={LINKS.releases}>All releases</Ext></li>

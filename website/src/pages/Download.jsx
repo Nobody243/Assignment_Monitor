@@ -29,6 +29,7 @@ export default function Download() {
         lede={<>Windows 10 or 11, 64-bit. No administrator rights, no account.<span className="dl-when">{rel.publishedAt ? `Released ${fmtDate(rel.publishedAt)}.` : "Checking the latest release…"}</span></>} notice={banner}>
         <DownloadButton kind="setup" size="lg" direct />
         <DownloadButton kind="zip" size="lg" direct />
+        <Button to="/phone-app" variant="quiet" size="lg">Android app</Button>
       </PageHero>
 
       <section className="dl-options">

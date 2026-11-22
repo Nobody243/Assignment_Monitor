@@ -113,6 +113,30 @@ export const PAGES = {
     lede: "Short answers. For anything else, open an issue on GitHub and include the app version from Settings → About.",
     sections: [],      // the prerender appends the FAQ itself (src/data/faq.js) and its FAQPage structured data
   },
+  "/phone-app": {
+    title: "Android app",
+    description: "The Assignment Monitor Android app: deadlines with reminders, attendance, exam seats, results and announcements on your phone. Read-only, private, free.",
+    h1: "Your deadlines, in your pocket.",
+    lede: "The phone app reads a small summary of your assignments, attendance, exams, results and announcements, and reminds you before things are due. It only reads: it never signs in to the university portal and never holds your portal password.",
+    sections: [
+      { h: "What you get", bullets: [
+        "Countdowns and reminders a day, three hours or an hour before each deadline, quiet at night, with Snooze and Done on the notification.",
+        "Attendance with how many classes you can still miss, exam seats and rooms, announcements, the timetable, and results with CGPA and a GPA what-if calculator.",
+        "Read-only and private: it reads one summary file from your own private GitHub repository. No server of ours, no account, no analytics. It can be locked with your fingerprint, face or PIN.",
+      ] },
+      { h: "Setting it up", bullets: [
+        "Download the APK from this page and open it; allow the install once.",
+        "Turn on Cloud checks in the desktop app: a private repository in your own GitHub account checks the portal for you and keeps the summary file.",
+        "In the phone app sign in with a read-only token (the safer one) or with a GitHub code (the easier one).",
+        "Allow notifications. The app checks for new data about every two hours, even when closed.",
+      ] },
+      { h: "Good to know", bullets: [
+        "It is read-only: it cannot submit work or download lecture files. Use the desktop app for those.",
+        "Android only, as a signed APK from GitHub, not Google Play. Updates are a new download installed over the old one.",
+        "If reminders arrive late, set the app to no restrictions in the phone's battery settings.",
+      ] },
+    ],
+  },
   "/phone": {
     title: "Phone alerts",
     description: "Pair your phone with Assignment Monitor on your PC so alerts arrive as notifications here.",

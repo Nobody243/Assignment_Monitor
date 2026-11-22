@@ -16,6 +16,7 @@ import Download from "./pages/Download.jsx";
 import Privacy from "./pages/Privacy.jsx";
 import Faq from "./pages/Faq.jsx";
 import Phone from "./pages/Phone.jsx";
+import PhoneApp from "./pages/PhoneApp.jsx";
 import Cloud from "./pages/Cloud.jsx";
 import Guide from "./pages/Guide.jsx";
 import GpaCalculator from "./pages/GpaCalculator.jsx";
@@ -48,6 +49,7 @@ export default function App() {
                 <Route path="/privacy" element={<Page><Privacy /></Page>} />
                 <Route path="/faq" element={<Page><Faq /></Page>} />
                 <Route path="/phone" element={<Page><Phone /></Page>} />
+                <Route path="/phone-app" element={<Page><PhoneApp /></Page>} />
                 <Route path="/cloud" element={<Page><Cloud /></Page>} />
                 <Route path="/guide/:slug" element={<Page><Guide /></Page>} />
                 <Route path="/gpa-calculator" element={<Page><GpaCalculator /></Page>} />
