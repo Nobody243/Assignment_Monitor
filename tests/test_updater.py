@@ -74,7 +74,7 @@ def test_a_phone_release_as_latest_does_not_hide_the_desktop_update():
     listing = _releases("phone-v1.0.8", "v1.9.7", "phone-v1.0.7", "v1.9.6", "v1.9.5")
     info = updater.check_latest(fetch=lambda url, timeout: listing, latest_tag=lambda timeout: "phone-v1.0.8")
     assert info["version"] == "1.9.7"
-    assert info["newer"] is True or info["version"] == updater.APP_VERSION   # newer than whatever this build is
+    assert updater.is_newer(info["version"], "1.9.5") is True   # what an app still on 1.9.5 now sees (not tied to this build's own version)
     assert info["setup_url"].endswith("v1.9.7/AssignmentMonitor-Setup.exe")
 
 
