@@ -97,7 +97,7 @@ export function LecturesPage({ lectures, colors, now, busy, demo, folder, onDown
                       <div className="flex flex-wrap items-center gap-2">
                         {weekNo(l) > 0 && <span className="num text-muted-foreground text-xs">Week {weekNo(l)}</span>}
                         <span className="font-medium">{l.title}</span>
-                        {isNew(l, now) && <Badge className="h-5 px-1.5 text-[10px]">New</Badge>}
+                        {isNew(l, now) && <Badge className="h-5 px-1.5 text-xs">New</Badge>}
                       </div>
                       <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
                         {l.files.map((f, i) => <span key={i} className="flex items-center gap-1"><Paperclip className="size-3" />{f.filename || f.label}</span>)}

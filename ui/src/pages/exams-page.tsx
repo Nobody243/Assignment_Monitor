@@ -14,8 +14,8 @@ function ExamCard({ r }: { r: Row }) {
   return (
     <div className={cn('bg-card panel-lift flex gap-4 rounded-2xl border p-4', done && 'opacity-60')}>
       <div className="bg-muted grid size-16 shrink-0 place-items-center rounded-xl text-center leading-none">
-        {date ? (<div><div className="num text-2xl font-medium">{date.getDate()}</div><div className="text-muted-foreground mt-0.5 text-[11px] uppercase">{new Intl.DateTimeFormat('en-GB', { month: 'short', weekday: 'short' }).format(date)}</div></div>)
-          : <div className="text-muted-foreground text-[11px]">date<br />not posted</div>}
+        {date ? (<div><div className="num text-2xl font-medium">{date.getDate()}</div><div className="text-muted-foreground mt-0.5 text-xs uppercase">{new Intl.DateTimeFormat('en-GB', { month: 'short', weekday: 'short' }).format(date)}</div></div>)
+          : <div className="text-muted-foreground text-xs">date<br />not posted</div>}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">

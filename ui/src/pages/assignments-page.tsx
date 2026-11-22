@@ -151,7 +151,7 @@ export function AssignmentsPage({ all, colors, now, tab, setTab, course, setCour
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="num text-sm">{d.day}{d.time && <span className="text-muted-foreground ml-2 text-xs">{d.time}</span>}</div>
-                          {a.is_extended && a.original_due_date && <div className="text-warning text-[11px]">extended from {a.original_due_date.split(/[ -]/).slice(0, 3).join(' ')}</div>}
+                          {a.is_extended && a.original_due_date && <div className="text-warning text-xs">extended from {a.original_due_date.split(/[ -]/).slice(0, 3).join(' ')}</div>}
                         </TableCell>
                         <TableCell className="hidden xl:table-cell">
                           <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>

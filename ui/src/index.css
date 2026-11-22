@@ -6,10 +6,38 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Type scale: golden ratio. Every size is the 14px body size times phi to a quarter-step (phi^(n/4), about 1.128 each), so
+   sizes grow evenly and four steps double-and-a-half the size (phi). The line height follows the same ratio, 1 + (phi - 1) /
+   phi^(n/4): airy for small text (about 1.62 at the body size) and tightening to 1.24 for the largest. Nothing is set
+   below text-xs (12.4px). */
+@theme {
+    --text-xs: 0.7758rem;   /* 12.41px = 14px x phi^(-1/4) */
+    --text-xs--line-height: 1.697;
+    --text-sm: 0.8750rem;   /* 14.00px = 14px x phi^(0/4) */
+    --text-sm--line-height: 1.618;
+    --text-base: 0.9869rem;   /* 15.79px = 14px x phi^(1/4) */
+    --text-base--line-height: 1.548;
+    --text-lg: 1.1130rem;   /* 17.81px = 14px x phi^(2/4) */
+    --text-lg--line-height: 1.486;
+    --text-xl: 1.2553rem;   /* 20.08px = 14px x phi^(3/4) */
+    --text-xl--line-height: 1.431;
+    --text-2xl: 1.4158rem;   /* 22.65px = 14px x phi^(4/4) */
+    --text-2xl--line-height: 1.382;
+    --text-3xl: 1.8009rem;   /* 28.81px = 14px x phi^(6/4) */
+    --text-3xl--line-height: 1.300;
+    --text-4xl: 2.2908rem;   /* 36.65px = 14px x phi^(8/4) */
+    --text-4xl--line-height: 1.236;
+    --text-5xl: 2.9139rem;   /* 46.62px = 14px x phi^(10/4) */
+    --text-5xl--line-height: 1.186;
+    --text-6xl: 3.7066rem;   /* 59.30px = 14px x phi^(12/4) */
+    --text-6xl--line-height: 1.146;
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
     --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+    --color-control: var(--control-border);
     --color-brand: var(--brand);
     --color-banner: var(--banner);
     --color-success: var(--success);
@@ -72,7 +100,7 @@
     --destructive: oklch(0.5 0.2 27);
     --border: oklch(0.91 0.008 245);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.55 0.03 250);
+    --ring: oklch(0.42 0.05 255);   /* a focus ring has to be seen: about 3:1 even at the half strength the controls draw it at */
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -111,7 +139,7 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 9%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.7 0.03 250);
+    --ring: oklch(0.82 0.04 255);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -140,6 +168,20 @@
   body {
     @apply bg-background text-foreground;
     }
+  /* Controls tell the browser which theme they are in (so built-in pieces such as dropdown lists, date pickers and autofill are
+     dark on a dark page) and take the palette's accent for checkmarks and radios. */
+  :root { color-scheme: light; accent-color: var(--primary); }
+  :root.dark, .dark { color-scheme: dark; }
+
+  /* The outline of a control (checkbox, text box, dropdown) is drawn from the text colour so it reads at about 3:1 against the
+     page in every theme and palette; --border stays pale for the dividers and card edges, which are not controls. */
+  :root, .dark { --control-border: color-mix(in oklab, var(--foreground) 46%, var(--background)); }
+
+  /* Clickable things show the hand. */
+  button:not(:disabled), [role='button']:not([aria-disabled='true']), [role='tab'], [role='menuitem'], [role='option'],
+  [role='checkbox'], [role='switch'], [role='combobox'], summary, label[for], a[href] { cursor: pointer; }
+  :disabled, [aria-disabled='true'] { cursor: not-allowed; }
+
   /* Scrollbars: slim, rounded, no arrow buttons, drawn from the theme instead of Windows' wide grey bar. The thumb floats in a
      transparent track (a 4px transparent border around the fill), stays faint so it is clear a list scrolls, firms up when
      the pointer is over the scrolling area, widens and darkens under the pointer, and takes the palette's accent while it is

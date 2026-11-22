@@ -2,7 +2,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
-const { paintBadge, trayStatus, hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen } = require('../lib/helpers.cjs')
+const { windowBackground, WINDOW_BACKGROUND, paintBadge, trayStatus, hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen } = require('../lib/helpers.cjs')
 
 test('the engine ready line is parsed, and anything else is ignored', () => {
   assert.deepEqual(parseReadyLine('{"port": 51234, "token": "abc123"}\n'), { port: 51234, token: 'abc123' })
@@ -105,4 +105,12 @@ test('a button on a reminder notification is handed to the engine and never open
   assert.equal(c.headless, true)
   assert.deepEqual(c.passthrough, ['--toast-action', 'assignment-monitor://snooze?id=a%231&h=1'])
   assert.equal(parseCli(['http://example.com']).headless, false)
+})
+
+test('the window colour follows the theme last used, else the system, and ignores anything else', () => {
+  assert.equal(windowBackground('dark', false), WINDOW_BACKGROUND.dark)
+  assert.equal(windowBackground('light', true), WINDOW_BACKGROUND.light)
+  assert.equal(windowBackground(null, true), WINDOW_BACKGROUND.dark, 'first start follows the system')
+  assert.equal(windowBackground(null, false), WINDOW_BACKGROUND.light)
+  for (const bad of ['', 'blue', 42, {}, undefined]) assert.equal(windowBackground(bad, true), WINDOW_BACKGROUND.dark, String(bad))
 })

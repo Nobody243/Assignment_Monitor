@@ -59,8 +59,8 @@ export function ResultsPage({ results }: { results: Results }) {
               <div className="flex min-h-0 w-full flex-1 items-end justify-center">
                 <div className={cn('w-full max-w-16 rounded-lg transition-colors', sel?.name === s.name ? 'bg-primary' : 'bg-primary/35 group-hover:bg-primary/55')} style={{ height: `${Math.max(6, ((s.gpa ?? 0) / 4) * 100)}%` }} />
               </div>
-              <span className="text-muted-foreground text-[11px]">{shortName(s.name)}</span>
-              <span className="num text-muted-foreground text-[10px]">{f2(s.cgpa)}</span>
+              <span className="text-muted-foreground text-xs">{shortName(s.name)}</span>
+              <span className="num text-muted-foreground text-xs">{f2(s.cgpa)}</span>
             </button>
           ))}
         </div>
@@ -123,7 +123,7 @@ export function ResultsPage({ results }: { results: Results }) {
               <div key={s.g} className="rounded-xl border p-2.5 text-center">
                 <div className="text-sm font-medium">{s.g}</div>
                 <div className="num mt-1 text-base">{f2(s.cgpa)}</div>
-                <div className={cn('num text-[11px]', (s.cgpa ?? 0) >= (done.cgpa ?? 0) ? 'text-success' : 'text-destructive')}>{s.cgpa != null && done.cgpa != null ? `${s.cgpa >= done.cgpa ? '+' : ''}${(s.cgpa - done.cgpa).toFixed(2)}` : ''}</div>
+                <div className={cn('num text-xs', (s.cgpa ?? 0) >= (done.cgpa ?? 0) ? 'text-success' : 'text-destructive')}>{s.cgpa != null && done.cgpa != null ? `${s.cgpa >= done.cgpa ? '+' : ''}${(s.cgpa - done.cgpa).toFixed(2)}` : ''}</div>
               </div>
             ))}
           </div>

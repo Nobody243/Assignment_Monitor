@@ -72,7 +72,7 @@ function Banner({ state, now, next }: { state: State; now: number; next?: Assign
             <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" stroke="rgba(255,255,255,0.18)" />
             <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="var(--glow)" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
           </svg>
-          <div className="absolute inset-0 grid place-items-center text-center leading-none"><div><div className="num text-lg font-medium">{pct}%</div><div className="mt-0.5 text-[10px] text-white/80">submitted</div></div></div>
+          <div className="absolute inset-0 grid place-items-center text-center leading-none"><div><div className="num text-lg font-medium">{pct}%</div><div className="mt-0.5 text-xs text-white/80">submitted</div></div></div>
         </div>
       </div>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-white/15 pt-4 sm:grid-cols-4">
@@ -80,7 +80,7 @@ function Banner({ state, now, next }: { state: State; now: number; next?: Assign
           <div key={k.label} className="min-w-0">
             <dt className="text-xs text-white/80">{k.label}</dt>
             <dd className="num text-2xl font-medium">{k.value}</dd>
-            <dd className="text-[11px] leading-snug text-white/75">{k.sub}</dd>
+            <dd className="text-xs leading-snug text-white/75">{k.sub}</dd>
           </div>
         ))}
       </dl>
@@ -172,7 +172,7 @@ function Deadlines({ all, colors, onOpen, onGo }: { all: Assignment[]; colors: R
               <li key={a.id}>
                 <button type="button" onClick={() => onOpen(a.id)} className="hover:bg-muted/60 flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors">
                   <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[a.course] }} aria-hidden />
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{a.title}</span><span className="text-muted-foreground block truncate text-xs">{a.course}</span><span className="num text-muted-foreground block text-[11px]">{dueParts(a.due_at).day} · {dueParts(a.due_at).time}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{a.title}</span><span className="text-muted-foreground block truncate text-xs">{a.course}</span><span className="num text-muted-foreground block text-xs">{dueParts(a.due_at).day} · {dueParts(a.due_at).time}</span></span>
                   <span className={cn('num shrink-0 rounded-full border px-2 py-0.5 text-xs', a.urgency === 'today' ? 'border-destructive/30 bg-destructive/10 text-destructive' : a.urgency === 'soon' ? 'border-warning/40 bg-warning/10 text-warning' : 'text-muted-foreground')}>{chip}</span>
                 </button>
               </li>
@@ -258,7 +258,7 @@ function ExamsPanel({ state, now }: { state: State; now: number }) {
             const days = Math.round((d.getTime() - today.getTime()) / 864e5)
             return (
               <li key={e.title + e.date} className="flex items-start gap-3 text-sm">
-                <div className="bg-muted grid size-11 shrink-0 place-items-center rounded-xl text-center leading-none"><div><div className="num text-base font-medium">{d.getDate()}</div><div className="text-muted-foreground text-[10px] uppercase">{new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(d)}</div></div></div>
+                <div className="bg-muted grid size-11 shrink-0 place-items-center rounded-xl text-center leading-none"><div><div className="num text-base font-medium">{d.getDate()}</div><div className="text-muted-foreground text-xs uppercase">{new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(d)}</div></div></div>
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{e.title}</div>
                   <div className="text-muted-foreground text-xs">{[e.exam_type, e.start_time, e.room].filter(Boolean).join(' · ')}</div></div>
                 <span className={cn('num shrink-0 rounded-full border px-2 py-0.5 text-xs', days <= 3 ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'text-muted-foreground')}>{days === 0 ? 'Today' : `${days}d`}</span>
@@ -284,9 +284,9 @@ function ResultsPanel({ state }: { state: State }) {
       <div className="flex h-20 items-end gap-2" role="img" aria-label={`GPA by semester, latest ${st.gpa?.toFixed(2) ?? ''}`}>
         {series.map((x, i) => (
           <div key={x.name} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`${x.name}: GPA ${x.gpa?.toFixed(2)}, CGPA ${x.cgpa?.toFixed(2)}`}>
-            <span className="num text-muted-foreground text-[10px]">{x.gpa?.toFixed(1)}</span>
+            <span className="num text-muted-foreground text-xs">{x.gpa?.toFixed(1)}</span>
             <div className={cn('w-full rounded-md', i === series.length - 1 ? 'bg-primary' : 'bg-banner/70 dark:bg-foreground/50')} style={{ height: `${Math.max(8, ((x.gpa ?? 0) / 4) * 100)}%` }} />
-            <span className="text-muted-foreground text-[10px]">{x.name.replace(/^(Fall|Spring|Summer)-(\d{2})(\d{2})$/, (_m, t: string, _c: string, y: string) => `${t[0]}${y}`)}</span>
+            <span className="text-muted-foreground text-xs">{x.name.replace(/^(Fall|Spring|Summer)-(\d{2})(\d{2})$/, (_m, t: string, _c: string, y: string) => `${t[0]}${y}`)}</span>
           </div>
         ))}
       </div>
@@ -354,9 +354,9 @@ function Load({ all, now }: { all: Assignment[]; now: number }) {
         <div className="flex h-28 items-end gap-1.5" role="img" aria-label={`${total} deadlines in the next 14 days`}>
           {days.map((d, i) => (
             <div key={i} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={counts[i].map(a => a.title).join('\n') || 'Nothing due'}>
-              <span className="num text-muted-foreground text-[10px]">{counts[i].length || ''}</span>
+              <span className="num text-muted-foreground text-xs">{counts[i].length || ''}</span>
               <div className={cn('w-full rounded-md', counts[i].length ? (i === 0 ? 'bg-primary' : 'bg-banner/70 dark:bg-foreground/50') : 'bg-muted')} style={{ height: counts[i].length ? `${Math.max(14, (counts[i].length / max) * 62)}%` : '6%' }} />
-              <span className={cn('num text-[10px]', i === 0 ? 'text-foreground font-semibold' : 'text-muted-foreground')}>{d.getDate()}</span>
+              <span className={cn('num text-xs', i === 0 ? 'text-foreground font-semibold' : 'text-muted-foreground')}>{d.getDate()}</span>
             </div>
           ))}
         </div>

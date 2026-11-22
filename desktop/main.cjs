@@ -2,8 +2,8 @@
 const path = require('node:path')
 const fs = require('node:fs')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, Tray, dialog, nativeImage, net, protocol, screen, session, shell } = require('electron')
-const { CSP, boundsOnScreen, hashForView, isSafeExternalUrl, mimeFor, paintBadge, parseCli, resolveAppPath, trayStatus } = require('./lib/helpers.cjs')
+const { app, BrowserWindow, Menu, Tray, dialog, nativeImage, nativeTheme, net, protocol, screen, session, shell } = require('electron')
+const { CSP, boundsOnScreen, hashForView, isSafeExternalUrl, mimeFor, paintBadge, parseCli, resolveAppPath, trayStatus, windowBackground } = require('./lib/helpers.cjs')
 const { engineCommand, runJob, startEngine } = require('./lib/engine.cjs')
 
 const CLI = parseCli(process.argv.slice(app.isPackaged ? 1 : 2))      // the command line the app has always understood
@@ -40,11 +40,24 @@ function loadState() {
     return boundsOnScreen(s, screen.getAllDisplays()) ? s : null
   } catch { return null }
 }
+// the theme the interface was last seen in ('dark' or 'light'), kept with the window state for the next start-up
+let lastTheme = null
+function savedTheme() {
+  try { const t = JSON.parse(fs.readFileSync(statePath(), 'utf8')).theme; return t === 'dark' || t === 'light' ? t : null } catch { return null }
+}
+/** Reads the interface's theme (read-only: the page's own setting) so the window colour behind it matches next time. */
+async function noteTheme() {
+  if (!win || win.isDestroyed()) return
+  try {
+    const t = await win.webContents.executeJavaScript("localStorage.getItem('am-theme')")
+    if (t === 'dark' || t === 'light') { lastTheme = t; win.setBackgroundColor(windowBackground(t, nativeTheme.shouldUseDarkColors)); saveState() }
+  } catch { /* the page is not ready or is gone: keep what was saved */ }
+}
 function saveState() {
   if (!win || win.isDestroyed() || win.isMinimized()) return
   try {
     const b = win.getNormalBounds()
-    fs.writeFileSync(statePath(), JSON.stringify({ ...b, maximized: win.isMaximized() }))
+    fs.writeFileSync(statePath(), JSON.stringify({ ...b, maximized: win.isMaximized(), theme: lastTheme ?? savedTheme() }))
   } catch { /* the position is a convenience, never a failure */ }
 }
 
@@ -145,7 +158,7 @@ function createWindow() {
   const saved = loadState()
   win = new BrowserWindow({
     width: saved?.width ?? 1360, height: saved?.height ?? 860, x: saved?.x, y: saved?.y, minWidth: 900, minHeight: 620,
-    show: false, title: 'Assignment Monitor', icon: ICON, backgroundColor: '#eef1f6', autoHideMenuBar: true,
+    show: false, title: 'Assignment Monitor', icon: ICON, backgroundColor: windowBackground(savedTheme(), nativeTheme.shouldUseDarkColors), autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true,
       spellcheck: false, devTools: DEV || SMOKE,
@@ -153,6 +166,9 @@ function createWindow() {
     },
   })
   if (saved?.maximized) win.maximize()
+  lastTheme = savedTheme()
+  win.webContents.on('did-finish-load', () => { void noteTheme() })
+  win.on('blur', () => { void noteTheme() })   // a theme change is made in the window, so it is read when the window is left
   if (!SMOKE && !CLI.tray) win.once('ready-to-show', () => win.show())
 
   // links: https opens in the browser; the window itself never leaves the interface

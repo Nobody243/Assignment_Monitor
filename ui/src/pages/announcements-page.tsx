@@ -51,7 +51,7 @@ export function AnnouncementsPage({ items, colors, now }: { items: Announcement[
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="size-2.5 rounded-full" style={{ backgroundColor: colors[a.course] }} aria-hidden />
                   <span className="text-sm font-medium">{a.course}</span>
-                  {fresh && <Badge className="h-5 px-1.5 text-[10px]">New</Badge>}
+                  {fresh && <Badge className="h-5 px-1.5 text-xs">New</Badge>}
                   <span className="num text-muted-foreground ml-auto text-xs">{d ? fmt.format(d) : a.posted}</span>
                 </div>
                 <h2 className="mt-2 font-semibold select-text">{a.title}</h2>

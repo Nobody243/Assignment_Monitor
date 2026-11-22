@@ -134,7 +134,7 @@ export function SetupWizard(p: Props) {
               <li key={s.key}>
                 <button type="button" onClick={() => setI(n)} aria-current={n === i ? 'step' : undefined}
                   className={cn('flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm transition-colors', n === i ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                  <span className={cn('num grid size-5 shrink-0 place-items-center rounded-full border text-[11px]', n < i && 'bg-primary text-primary-foreground border-transparent')}>{n < i ? <Check className="size-3" /> : n + 1}</span>
+                  <span className={cn('num grid size-5 shrink-0 place-items-center rounded-full border text-xs', n < i && 'bg-primary text-primary-foreground border-transparent')}>{n < i ? <Check className="size-3" /> : n + 1}</span>
                   {s.title}
                 </button>
               </li>

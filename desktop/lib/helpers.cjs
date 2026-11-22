@@ -122,4 +122,12 @@ function paintBadge(bitmap, width, height) {
   return out
 }
 
-module.exports = { paintBadge, trayStatus, hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen }
+/** The window's own colour, shown before the interface has painted anything: the theme last used in the interface (it follows
+ *  the system until the person picks one), so a dark-theme launch does not flash light. Colours match the page backgrounds. */
+const WINDOW_BACKGROUND = { light: '#eef1f6', dark: '#0f1116' }
+function windowBackground(savedTheme, systemDark) {
+  const theme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : (systemDark ? 'dark' : 'light')
+  return WINDOW_BACKGROUND[theme]
+}
+
+module.exports = { windowBackground, WINDOW_BACKGROUND, paintBadge, trayStatus, hashForView, parseCli, parseReadyLine, isSafeExternalUrl, resolveAppPath, mimeFor, CSP, boundsOnScreen }
