@@ -1,5 +1,9 @@
 # Phone app changelog
 
+## 1.0.11 - 2026-11-22
+
+- Phone: read-only again (portal login, Lectures and the hidden browser removed); notification plugin kept intact in release builds
+
 ## 1.0.10 - 2026-11-22
 
 - The phone app is read-only again. The university login, the Lectures screen, downloads and the hidden browser are gone (they stalled on some phones and were not worth the risk of holding a portal password). Everything comes from the GitHub cloud check, as before.
