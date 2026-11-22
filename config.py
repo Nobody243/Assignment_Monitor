@@ -97,6 +97,9 @@ CAMPUSES = [
     ("IPP (Karachi)", "5"),
     ("NCMPR", "4"),
     ("ODL", "14"),
+    ("Finishing School", "10"),
+    ("National School of Hydrography", "11"),
+    ("PN Nursing College", "8"),
 ]
 CAMPUS_NAMES = [c[0] for c in CAMPUSES]
 CAMPUS_ID_BY_NAME = {c[0]: c[1] for c in CAMPUSES}

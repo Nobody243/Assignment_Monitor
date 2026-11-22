@@ -37,6 +37,9 @@ const campuses = <(String, String)>[
   ('IPP (Karachi)', '5'),
   ('NCMPR', '4'),
   ('ODL', '14'),
+  ('Finishing School', '10'),
+  ('National School of Hydrography', '11'),
+  ('PN Nursing College', '8'),
 ];
 
 class PortalCredentials {
@@ -234,7 +237,8 @@ class Portal {
   const out = [];
   for (const sel of ['.text-danger', '.alert', "[id*='lblMessage']", "[id*='lblError']"]) {
     for (const el of document.querySelectorAll(sel)) {
-      if (el.offsetParent !== null) { const t = (el.innerText || '').trim(); if (t && !out.includes(t)) out.push(t); }
+      // the portal's alert carries a close glyph ahead of its text ("x Error! Invalid credentials provided.")
+      if (el.offsetParent !== null) { const t = (el.innerText || '').replace(/\\s+/g, ' ').replace(/^[\\u00d7x]\\s*/i, '').trim(); if (t && !out.includes(t)) out.push(t); }
     }
   }
   return out.join(', ');

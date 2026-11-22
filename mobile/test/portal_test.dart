@@ -225,9 +225,20 @@ void main() {
     expect(await s.read(), isNull);
   });
 
-  test('the campus list matches the desktop app', () {
+  test("every campus the portal's sign-in page offers is offered here, with the same ids", () {
+    // the institute list of the portal's own sign-in page (read in November 2026); a student of any of them must be able to sign in
+    const portalIds = {'13', '10', '12', '6', '5', '1', '9', '2', '3', '11', '4', '14', '8'};
+    expect(campuses.map((c) => c.$2).toSet(), portalIds);
     expect(campuses.first, ('Islamabad E-8 Campus', '1'));
-    expect(campuses.length, 10);
+    expect(campuses.length, 13);
+  });
+
+  test("the portal's alert text is cleaned of its close glyph and spacing before it is shown", () async {
+    final b = FakeBrowser(error: 'Invalid credentials provided.');
+    final r = await Portal(b, pause: Duration.zero, signInSeconds: 0).signIn(const PortalCredentials('x', 'wrong', '1'));
+    expect(r.message, 'Invalid credentials provided.');
+    final script = b.scripts.firstWhere((s) => s.contains('querySelectorAll(sel)'));
+    expect(script, contains(r'\u00d7'), reason: 'the script removes the leading x');
   });
 
   group('model and screen', () {

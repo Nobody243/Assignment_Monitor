@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The campus list in Settings is complete: Finishing School, National School of Hydrography and PN Nursing College were missing; it now matches the portal's own sign-in page.
 - Update check: the app no longer says "you have the latest version" when a newer one exists. The phone app's releases share this repository, and once one of them became GitHub's "latest release" the updater read its number (1.0.8) as older than the app's (1.9.5). It now looks only at desktop releases (tagged v1.9.7), searching the release list when "latest" is not one, and the build marks each desktop release as the latest while phone releases never are.
 
 ## 1.9.7 - 2026-11-22
