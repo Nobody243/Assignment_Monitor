@@ -1,5 +1,10 @@
 # Phone app changelog
 
+## 1.0.12 - 2026-11-22
+
+- Phone: tester-only tools in Settings; removed portal code archived outside the app
+- Phone: the first start can no longer hang on loading; sign-in offers only a token or a GitHub code
+
 ## 1.0.11 - 2026-11-22
 
 - Phone: read-only again (portal login, Lectures and the hidden browser removed); notification plugin kept intact in release builds
