@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.9 - 2026-11-22
 
 - Clicking a desktop notification now opens the app (or brings it to the front if it is already running). The Snooze and Done buttons on reminders still work as before without opening a window.
 - A notification opens the page it is about: an exam alert opens Exams, a reminder or deadline alert opens Assignments, and so on; a failed sign-in opens Settings.
