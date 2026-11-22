@@ -202,7 +202,9 @@ void main() {
   test('a portal that never lists the courses says so, not an empty list', () async {
     final p = Portal(FakeBrowser(), pause: Duration.zero, signInSeconds: 0, listSeconds: 0);
     await p.signIn(good);
-    expect(p.courses, throwsA(isA<StateError>()));
+    expect(p.courses, throwsA(isA<StateError>().having((e) => e.message, 'message', allOf(
+        contains('did not list your courses'), contains('lms.bahria.edu.pk/Student/Assignments.php'), isNot(contains('?'))))),
+        reason: 'it says where it got stuck, host and path only');
   });
 
   test('only the two university hosts are portal hosts', () {

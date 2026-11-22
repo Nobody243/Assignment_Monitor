@@ -269,9 +269,10 @@ class Portal {
   /// only good for the page they were read from; use the names.
   Future<List<PortalCourse>> courses() async {
     // two looks: if the first finds no course list the single sign-on may have lapsed or the page been slow, so the second goes
-    // through single sign-on again
+    // through single sign-on again. Where each look ended is kept (host and path only), so a failure can say where it got stuck.
+    final ended = <String>[];
     for (var attempt = 0; attempt < 2; attempt++) {
-      if (!await enterLms()) { _inLms = false; continue; }
+      if (!await enterLms()) { _inLms = false; ended.add('single sign-on stopped at ${await _where()}'); continue; }
       await browser.open(assignmentsUrl);
       final there = await _waitFor(() async => await browser.js("document.querySelectorAll('#courseId option[value]:not([value=\"\"])').length > 0") == true, seconds: listSeconds);
       if (there) {
@@ -280,9 +281,20 @@ JSON.stringify(Array.from(document.querySelectorAll('#courseId option')).map(o =
         final list = jsonDecode(raw as String) as List;
         return [for (final e in list) PortalCourse((e as List)[0] as String, e[1] as String)];
       }
+      ended.add('the courses page ended at ${await _where()}');
       _inLms = false;
     }
-    throw StateError('The portal did not list your courses this time.');
+    throw StateError('The portal did not list your courses this time (${ended.join('; ')}).');
+  }
+
+  /// The page the hidden browser is on, as host and path only (no query, which can carry a one-time token).
+  Future<String> _where() async {
+    try {
+      final u = Uri.tryParse(await browser.url());
+      return u == null || u.host.isEmpty ? 'a blank page' : '${u.host}${u.path}';
+    } catch (_) {
+      return 'an unknown page';
+    }
   }
 
   /// Opens a CMS page and returns its HTML, signing in again once if the portal sent the session back to the login page. With

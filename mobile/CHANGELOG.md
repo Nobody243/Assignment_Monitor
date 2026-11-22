@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- When the course list cannot be found, the message now says where the hidden browser got stuck (the page's host and path, never anything after a "?"), for each of the two looks, so a stalled single sign-on can be told from a missing course list.
 - A frozen hidden browser or a portal job that never ends can no longer hold every later job behind it (which showed as "Looking up your courses" for minutes and then nothing): each call into the hidden browser gives up after 45 seconds, a whole job after six minutes, and the next job then builds a fresh browser. The message says where it stopped.
 ## 1.0.9 - 2026-11-22
 
