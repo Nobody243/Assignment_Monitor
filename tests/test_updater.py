@@ -61,6 +61,43 @@ def test_check_latest_uses_the_api_when_there_is_no_release_to_redirect_to():
     assert info["version"] == "0.0.2"
 
 
+def _releases(*tags, **kw):
+    return [{"tag_name": t, "draft": kw.get("draft", False), "prerelease": kw.get("pre", False),
+             "html_url": f"https://github.com/x/y/releases/tag/{t}",
+             "assets": [{"name": "AssignmentMonitor-Setup.exe",
+                         "browser_download_url": f"https://github.com/x/y/releases/download/{t}/AssignmentMonitor-Setup.exe"}]}
+            for t in tags]
+
+
+def test_a_phone_release_as_latest_does_not_hide_the_desktop_update():
+    # GitHub's latest release was the phone app's (phone-v1.0.8): the app used to read 1.0.8 as older than 1.9.5 and say it was up to date
+    listing = _releases("phone-v1.0.8", "v1.9.7", "phone-v1.0.7", "v1.9.6", "v1.9.5")
+    info = updater.check_latest(fetch=lambda url, timeout: listing, latest_tag=lambda timeout: "phone-v1.0.8")
+    assert info["version"] == "1.9.7"
+    assert info["newer"] is True or info["version"] == updater.APP_VERSION   # newer than whatever this build is
+    assert info["setup_url"].endswith("v1.9.7/AssignmentMonitor-Setup.exe")
+
+
+def test_only_published_desktop_releases_are_offered():
+    listing = _releases("v2.0.0", draft=True) + _releases("v1.9.9", pre=True) + _releases("phone-v9.9.9") + _releases("v1.9.8")
+    assert updater.newest_desktop_release(listing)["version"] == "1.9.8"
+    assert updater.newest_desktop_release(_releases("phone-v1.0.1")) is None
+    assert updater.newest_desktop_release([]) is None
+    assert updater.newest_desktop_release("nonsense") is None
+
+
+@pytest.mark.parametrize("tag, ok", [
+    ("v1.9.7", True), ("1.9.7", True), ("V2.0.0", True), ("phone-v1.0.8", False), ("v1.9", False), ("latest", False), ("", False),
+])
+def test_which_tags_are_desktop_releases(tag, ok):
+    assert bool(updater.DESKTOP_TAG.match(tag)) is ok
+
+
+def test_a_phone_release_with_no_desktop_release_at_all_offers_nothing():
+    info = updater.check_latest(fetch=lambda url, timeout: _releases("phone-v1.0.8"), latest_tag=lambda timeout: "phone-v1.0.8")
+    assert info is None
+
+
 def test_release_from_tag_handles_an_empty_tag():
     info = updater.release_from_tag("")
     assert info["newer"] is False and info["setup_url"] is None and info["page"] == updater.LATEST_URL

@@ -28,11 +28,24 @@ SETUP_NAME = "AssignmentMonitor-Setup.exe"
 LATEST_URL = f"{REPO_URL}/releases/latest"
 
 
-def api_url() -> str:
+def _repo_api() -> str:
     m = re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", REPO_URL)
     if not m:
         raise ValueError("REPO_URL is not a GitHub repository URL")
-    return f"https://api.github.com/repos/{m.group(1)}/{m.group(2)}/releases/latest"
+    return f"https://api.github.com/repos/{m.group(1)}/{m.group(2)}"
+
+
+def api_url() -> str:
+    return _repo_api() + "/releases/latest"
+
+
+def releases_api_url() -> str:
+    return _repo_api() + "/releases?per_page=30"
+
+
+# A desktop release is tagged v1.9.7. The phone app's releases live in the same repository, tagged phone-v1.0.8, and GitHub's
+# "latest release" can be either: this app only ever offers its own.
+DESKTOP_TAG = re.compile(r"^[vV]?\d+\.\d+\.\d+$")
 
 
 def parse_version(text: str) -> tuple:
@@ -107,24 +120,50 @@ def _fetch_json(url: str, timeout: int) -> dict:
         return json.loads(r.read().decode("utf-8"))
 
 
+def newest_desktop_release(payload) -> dict | None:
+    """The highest desktop release in a releases list (or a single release object): published, not a pre-release, tagged v1.2.3.
+    Phone releases (phone-v1.0.8), drafts and the rolling pre-release are skipped."""
+    items = payload if isinstance(payload, list) else [payload]
+    best = None
+    for r in items:
+        if not isinstance(r, dict) or r.get("draft") or r.get("prerelease"):
+            continue
+        tag = str(r.get("tag_name") or "")
+        if not DESKTOP_TAG.match(tag):
+            continue
+        if best is None or parse_version(tag) > parse_version(str(best.get("tag_name"))):
+            best = r
+    return parse_release(best) if best else None
+
+
 def check_latest(timeout: int = 8, fetch=_fetch_json, latest_tag=_latest_tag):
-    """Returns the parsed release dict, or None when GitHub cannot be reached at all. The redirect check comes
-    first (no API, no rate limit); the API is tried only if that fails."""
+    """Returns the parsed release dict, or None when GitHub cannot be reached at all. The redirect check comes first (no API, no
+    rate limit); when "latest" is not a desktop release (the phone app's releases are in the same repository) or the redirect
+    fails, the releases list is searched for the newest desktop release."""
     try:
         tag = latest_tag(timeout)
-        if tag:
+        if tag and DESKTOP_TAG.match(tag):
             info = release_from_tag(tag)
             log.info("Update check: latest release %s (%s)", info["version"], "newer" if info["newer"] else "up to date")
             return info
+        if tag:
+            log.info("Update check: the latest release is %s, not a desktop release; looking through the list", tag)
     except Exception as e:
         log.info("Update check (redirect) failed: %s", str(e).splitlines()[0][:120])
     try:
-        info = parse_release(fetch(api_url(), timeout))
-        log.info("Update check (API): latest release %s (%s)", info["version"] or "?", "newer" if info["newer"] else "up to date")
-        return info
+        info = newest_desktop_release(fetch(releases_api_url(), timeout))
+        if info:
+            log.info("Update check (API): latest desktop release %s (%s)", info["version"], "newer" if info["newer"] else "up to date")
+            return info
+    except Exception as e:
+        log.info("Update check (list) failed: %s", str(e).splitlines()[0][:120])
+    try:
+        info = newest_desktop_release(fetch(api_url(), timeout))
+        if info:
+            return info
     except Exception as e:
         log.info("Update check skipped: %s", str(e).splitlines()[0][:120])
-        return None
+    return None
 
 
 def _safe_url(url: str) -> bool:

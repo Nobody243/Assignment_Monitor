@@ -103,6 +103,8 @@ jobs:
           # a run started by hand on a tag, or by the automatic release, publishes when "publish" is on; a pushed tag stays a draft
           draft: ${{ !(github.event_name == 'workflow_dispatch' && inputs.publish) }}
           prerelease: false
+          # the repository's "latest release" is the desktop app's: its in-app updater and the website's download link follow it
+          make_latest: false
           body_path: phone-notes.md
           name: Phone app ${{ github.ref_name }}
           files: |
