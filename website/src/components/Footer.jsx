@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { useRelease } from "../lib/release.jsx";
 import { useScroll } from "../lib/scroll.jsx";
 import { LINKS } from "../data/content.js";
-import { IS_WINDOWS } from "../lib/platform.js";
+import { IS_WINDOWS, IS_ANDROID } from "../lib/platform.js";
+import { usePhoneRelease } from "../lib/phoneRelease.js";
 import { SendToPc } from "./SendToPc.jsx";
 import { DOWNLOAD_PATH } from "./Button.jsx";
 
@@ -11,6 +12,7 @@ const Ext = ({ href, children }) => <a href={href} target="_blank" rel="noopener
 
 export default function Footer() {
   const rel = useRelease();
+  const phone = usePhoneRelease();
   const { scrollTo } = useScroll();
   return (
     <footer className="footer">
@@ -21,9 +23,11 @@ export default function Footer() {
             <Link className="brand footer-brand-link" to="/"><img src="/assets/logo.svg?v=2" alt="" width="34" height="34" /><span>Assignment Monitor<small>for Bahria University LMS</small></span></Link>
             <p>A small, honest tool that reads your LMS so you don't have to. Built by a Bahria student, for Bahria students. Free forever, open source, and it never phones home.</p>
             <div className="footer-cta">
-              {IS_WINDOWS
-                ? <Link className="btn btn-accent" to={DOWNLOAD_PATH.setup} data-download-page="setup">Download <small>v{rel.version}</small></Link>
-                : <SendToPc />}
+              {IS_ANDROID
+                ? <a className="btn btn-accent" href={phone.apkUrl}>Download for Android <small>v{phone.version}</small></a>
+                : IS_WINDOWS
+                  ? <Link className="btn btn-accent" to={DOWNLOAD_PATH.setup} data-download-page="setup">Download <small>v{rel.version}</small></Link>
+                  : <SendToPc />}
               <a className="btn btn-ghost" href={LINKS.repo} target="_blank" rel="noopener">Star on GitHub</a>
             </div>
           </div>

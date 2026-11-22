@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRelease, fmtMB } from "../lib/release.jsx";
-import { IS_WINDOWS } from "../lib/platform.js";
+import { IS_WINDOWS, IS_ANDROID } from "../lib/platform.js";
+import { usePhoneRelease } from "../lib/phoneRelease.js";
 import { SendToPc } from "./SendToPc.jsx";
 import { DOWNLOAD_PATH } from "./Button.jsx";
 import { EASE } from "../lib/motion.js";
@@ -15,6 +16,7 @@ const Chevron = () => (
    to the guide for the difference. Elsewhere it becomes "Send to PC". */
 export default function DownloadMenu() {
   const rel = useRelease();
+  const phone = usePhoneRelease();
   const [open, setOpen] = useState(false);
   const root = useRef(null);
   const { pathname } = useLocation();
@@ -27,6 +29,7 @@ export default function DownloadMenu() {
     return () => { document.removeEventListener("pointerdown", onDoc); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
+  if (IS_ANDROID) return <a className="btn btn-primary" href={phone.apkUrl}>Download <small>v{phone.version}</small></a>;
   if (!IS_WINDOWS) return <SendToPc size="md" variant="primary" className="nav-send" short />;
 
   const close = () => setOpen(false);

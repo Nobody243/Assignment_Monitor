@@ -7,7 +7,7 @@ import { useRelease, fmtMB, fmtDate } from "../lib/release.jsx";
 import { PageHero, SectionHead, Stagger, Item, Reveal } from "../components/Reveal.jsx";
 import { Button, DownloadButton } from "../components/Button.jsx";
 import { SendToPc } from "../components/SendToPc.jsx";
-import { IS_WINDOWS, PLATFORM_NOTE } from "../lib/platform.js";
+import { IS_WINDOWS, IS_ANDROID, PLATFORM_NOTE } from "../lib/platform.js";
 import { LINKS, WHAT_INSTALLER_DOES, UNINSTALL_STEPS } from "../data/content.js";
 
 export default function Download() {
@@ -22,7 +22,7 @@ export default function Download() {
     const a = setTimeout(go, 150), b = setTimeout(go, 700);
     return () => { clearTimeout(a); clearTimeout(b); };
   }, [hash, scrollTo]);
-  const banner = IS_WINDOWS ? null : <div className="platform-banner"><p>{PLATFORM_NOTE}</p><SendToPc size="sm" variant="ghost" /></div>;
+  const banner = IS_WINDOWS ? null : IS_ANDROID ? <div className="platform-banner"><p>This page is for the Windows app. Looking for the phone app?</p><Button to="/phone-app" size="sm" variant="accent">Get the Android app</Button></div> : <div className="platform-banner"><p>{PLATFORM_NOTE}</p><SendToPc size="sm" variant="ghost" /></div>;
   return (
     <>
       <PageHero kicker="Download" title={<>Get Assignment Monitor <span className="heading-accent">v{rel.version}</span></>}
